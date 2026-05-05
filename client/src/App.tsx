@@ -16,7 +16,7 @@ const App = () => {
         <nav className="board-nav" aria-label="メインメニュー">
           <span className="nav-square" aria-hidden="true">■</span>
           <span className="nav-separator">|</span>
-          <a href="https://mugendoteita.main.jp/DotoEita/index.html">HOME</a>
+          <Link to="/">HOME</Link>
           <span className="nav-separator">|</span>
           <Link to="/" reloadDocument>更新</Link>
           <span className="nav-separator">|</span>

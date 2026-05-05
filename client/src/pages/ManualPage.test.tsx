@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import ManualPage from './ManualPage';
 
 describe('ManualPage', () => {
-  it('renders the DotEita manual content inside the SPA', () => {
+  it('renders the embedded board manual content inside the SPA', () => {
     render(<ManualPage />);
 
     expect(screen.getByRole('heading', { name: 'MUGEN ドット絵板の説明書' })).toBeInTheDocument();

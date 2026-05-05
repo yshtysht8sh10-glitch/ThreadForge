@@ -1,13 +1,13 @@
-# DotEita TypeScript Board
+# ThreadForge
 
-DotEita TypeScript Board is a React + TypeScript SPA with a small PHP + SQLite backend. It is a modernized implementation of the DotEita image board workflow.
+ThreadForge is a lightweight, customizable thread board engine for posts, media, and community archives. It started as a modernization of a legacy image board workflow and is being generalized for broader self-hosted board use.
 
 ## Repository Contents
 
 - `client/`: React, TypeScript, Vite frontend
 - `server/`: PHP API, SQLite storage, PHPUnit tests
 - `docs/`: architecture, API, DB, and testing notes
-- `DotEitaTypeScript_Spec.md`: current product specification
+- `ThreadForge_Spec.md`: current product specification
 
 Legacy CGI files and historical image/log data are kept out of this Git repository by default. They are useful as migration/reference material, but they are not required to run the current app.
 

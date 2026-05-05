@@ -1,6 +1,6 @@
 {
-  "name": "doteita/board-backend",
-  "description": "Backend storage layer tests for DotEita board.",
+  "name": "threadforge/board-backend",
+  "description": "Backend storage layer tests for ThreadForge.",
   "require-dev": {
     "phpunit/phpunit": "^9.6"
   },

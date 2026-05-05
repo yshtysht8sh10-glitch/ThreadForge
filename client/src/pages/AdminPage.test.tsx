@@ -47,7 +47,7 @@ describe('AdminPage', () => {
     vi.mocked(api.getSettings).mockResolvedValue({
       success: true,
       settings: {
-        config: { bbsTitle: 'DotEita Board' },
+        config: { bbsTitle: 'ThreadForge' },
         skin: { normalFrameColor: '#a23dff' },
       },
     });

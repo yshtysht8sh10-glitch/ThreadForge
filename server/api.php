@@ -157,9 +157,9 @@ function rssFeed(PDO $pdo): void
     header('Content-Type: application/rss+xml; charset=utf-8');
     echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     echo '<rss version="2.0"><channel>';
-    echo '<title>DotEita Board</title>';
+    echo '<title>ThreadForge</title>';
     echo '<link>' . htmlspecialchars($baseUrl !== '' ? $baseUrl : '/', ENT_XML1) . '</link>';
-    echo '<description>DotEita latest posts</description>';
+    echo '<description>ThreadForge latest posts</description>';
 
     foreach ($posts as $row) {
         $post = buildPost($row);
@@ -525,7 +525,7 @@ function exportBackup(PDO $pdo): void
     ];
 
     header('Content-Type: application/json; charset=utf-8');
-    header('Content-Disposition: attachment; filename="doteita-backup-' . date('Ymd-His') . '.json"');
+    header('Content-Disposition: attachment; filename="threadforge-backup-' . date('Ymd-His') . '.json"');
     echo json_encode($payload, JSON_UNESCAPED_UNICODE);
     exit;
 }
@@ -617,8 +617,8 @@ function defaultSettings(): array
 {
     return [
         'config' => [
-            'bbsTitle' => 'DotEita Board',
-            'homePageUrl' => 'https://mugendoteita.main.jp/DotoEita/index.html',
+            'bbsTitle' => 'ThreadForge',
+            'homePageUrl' => '/',
             'logView' => 20,
             'maxUploadBytes' => 5100000,
             'maxImageWidth' => 1280,

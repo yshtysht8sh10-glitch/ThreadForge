@@ -1,4 +1,4 @@
-# DotEitaTypeScript Documentation
+# ThreadForge Documentation
 
 This directory contains documentation for the current React + PHP implementation.
 
@@ -8,7 +8,7 @@ This directory contains documentation for the current React + PHP implementation
 - `server/`: PHP + SQLite API currently used by the app
 - `server/laravel/`: Laravel migration skeleton, not used by the current runtime
 - `docs/`: project documentation
-- `DotEitaTypeScript_Spec.md`: current product specification
+- `ThreadForge_Spec.md`: current product specification
 
 Legacy CGI files and old data directories are migration/reference material. They are not required to run the current app.
 
@@ -41,7 +41,7 @@ Legacy CGI files and old data directories are migration/reference material. They
 
 ## Documentation Index
 
-- `../DotEitaTypeScript_Spec.md`: product specification
+- `../ThreadForge_Spec.md`: product specification
 - `ARCHITECTURE.md`: system architecture
 - `API.md`: PHP API reference
 - `DB.md`: SQLite schema and storage notes
