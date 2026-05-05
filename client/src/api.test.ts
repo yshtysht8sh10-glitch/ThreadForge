@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // テスト対象の API モジュール
-import { api, fetchJson, isMockMode, mediaUrl } from './api';
+import { api, DEFAULT_ADMIN_SETTINGS, DEFAULT_PUBLIC_SETTINGS, fetchJson, isMockMode, mediaUrl } from './api';
 
 /**
  * API モジュールのテストスイート
@@ -188,12 +188,37 @@ describe('API Module', () => {
       const result = await api.restorePost('1', 'admin');
       expect(result).toEqual({ success: true, message: '操作が完了しました（モック）' });
     });
+
+    it('should return settings from mock API', async () => {
+      const result = await api.getSettings('admin');
+      expect(result).toEqual({ success: true, settings: DEFAULT_ADMIN_SETTINGS });
+      expect(result.settings.config.manualBody).toContain('返信に画像投稿はありません。');
+    });
+
+    it('should return integrity details from mock API', async () => {
+      const result = await api.adminCheckIntegrity('admin');
+      expect(result).toEqual({
+        success: true,
+        message: 'DBを確認しました（モック）',
+        orphan_replies: 0,
+        missing_image_post_ids: [],
+      });
+    });
   });
 
   describe('version API', () => {
     it('should return the application version from mock API', async () => {
       const result = await api.version();
       expect(result).toEqual({ name: 'ThreadForge', version: '0.1.0' });
+    });
+  });
+
+  describe('public settings API', () => {
+    it('should return HOME and manual settings from mock API', async () => {
+      const result = await api.publicSettings();
+      expect(result).toEqual({ success: true, settings: DEFAULT_PUBLIC_SETTINGS });
+      expect(result.settings.config.homePageUrl).toBe('/');
+      expect(result.settings.config.manualBody).toContain('返信に画像投稿はありません。');
     });
   });
 });

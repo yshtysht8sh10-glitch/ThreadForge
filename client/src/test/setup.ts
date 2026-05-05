@@ -1,1 +1,3 @@
 import '@testing-library/jest-dom';
+
+import.meta.env.VITE_USE_MOCK = 'true';

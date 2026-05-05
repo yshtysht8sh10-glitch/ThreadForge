@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api';
+import { api, DEFAULT_PUBLIC_SETTINGS, PublicSettings } from '../api';
 import { NewPostData } from '../types';
 import { countTweetLength, createTweetText, TWEET_LIMIT } from '../tweet';
 
@@ -12,10 +12,18 @@ const PostFormPage = () => {
   const [message, setMessage] = useState('');
   const [gdgd, setGdgd] = useState(false);
   const [tweetOff, setTweetOff] = useState(false);
+  const [tweetUrl, setTweetUrl] = useState('');
+  const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
   const [password, setPassword] = useState('');
   const [file, setFile] = useState<File | undefined>(undefined);
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.publicSettings()
+      .then((response) => response.success && setSettings(response.settings))
+      .catch(() => setSettings(DEFAULT_PUBLIC_SETTINGS));
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -29,8 +37,9 @@ const PostFormPage = () => {
       message,
       password,
       file,
-      gdgd,
-      tweet_off: tweetOff,
+      gdgd: settings.config.gdgdEnabled ? gdgd : false,
+      tweet_off: settings.config.tweetEnabled ? tweetOff : true,
+      tweet_url: settings.config.tweetEnabled ? tweetUrl : '',
     };
 
     try {
@@ -50,9 +59,10 @@ const PostFormPage = () => {
 
   const tweetText = tweetOff ? '' : createTweetText(name, title, message);
   const tweetLength = countTweetLength(tweetText);
+  const frameClassName = `post-form-page ${tweetOff && settings.config.tweetEnabled ? 'post-form-tweet-off' : gdgd && settings.config.gdgdEnabled ? 'post-form-gdgd' : ''}`;
 
   return (
-    <div className="post-form-page">
+    <div className={frameClassName}>
       <form onSubmit={handleSubmit} className="legacy-post-form">
         <div className="post-form-mode">+ 通常投稿 +</div>
 
@@ -61,14 +71,18 @@ const PostFormPage = () => {
             名前 (_/30文字)<span className="required">*</span>
             <input value={name} onChange={(event) => setName(event.target.value)} required />
           </label>
-          <label className="legacy-checkbox">
-            gdgd投稿
-            <input type="checkbox" checked={gdgd} onChange={(event) => setGdgd(event.target.checked)} />
-          </label>
-          <label className="legacy-checkbox">
-            Tweet OFF
-            <input type="checkbox" checked={tweetOff} onChange={(event) => setTweetOff(event.target.checked)} />
-          </label>
+          {settings.config.gdgdEnabled && (
+            <label className="legacy-checkbox">
+              {settings.config.gdgdLabel}
+              <input type="checkbox" checked={gdgd} onChange={(event) => setGdgd(event.target.checked)} />
+            </label>
+          )}
+          {settings.config.tweetEnabled && (
+            <label className="legacy-checkbox">
+              Tweet OFF
+              <input type="checkbox" checked={tweetOff} onChange={(event) => setTweetOff(event.target.checked)} />
+            </label>
+          )}
         </div>
 
         <label>
@@ -91,10 +105,18 @@ const PostFormPage = () => {
           <textarea value={message} onChange={(event) => setMessage(event.target.value)} required />
         </label>
 
-        <label>
-          ツイートされる文言 ({tweetLength}/{TWEET_LIMIT}文字)　* この項目は編集できません。
-          <pre className="legacy-tweet-preview">{tweetOff ? 'Tweet OFF' : tweetText}</pre>
-        </label>
+        {settings.config.tweetEnabled && !tweetOff && (
+          <>
+            <label>
+              Tweet先 URL
+              <input value={tweetUrl} onChange={(event) => setTweetUrl(event.target.value)} placeholder="https://x.com/..." />
+            </label>
+            <label>
+              ツイートされる文言 ({tweetLength}/{TWEET_LIMIT}文字)　* この項目は編集できません。
+              <pre className="legacy-tweet-preview">{tweetText}</pre>
+            </label>
+          </>
+        )}
 
         <div className="post-form-bottom-row">
           <label>
@@ -108,7 +130,8 @@ const PostFormPage = () => {
       <p className="post-form-notes">
         * 受信できる画像の最大データサイズは 5100 KB までです。<br />
         * 画像ファイルには PNG・GIF が使用できます。<br />
-        * パスワードは半角英数で8文字まで有効です。
+        * パスワードは半角英数で8文字まで有効です。<br />
+        * Tweet機能は投稿時のみ反映され、編集では更新されません。
       </p>
       {status && <p className="status">{status}</p>}
     </div>

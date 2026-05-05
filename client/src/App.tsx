@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Link, Route, Routes } from 'react-router-dom';
+import { api, DEFAULT_PUBLIC_SETTINGS, PublicSettings } from './api';
 import HomePage from './pages/HomePage';
 import ThreadPage from './pages/ThreadPage';
 import PostFormPage from './pages/PostFormPage';
@@ -11,13 +13,32 @@ import ManualPage from './pages/ManualPage';
 import { APP_NAME, APP_VERSION } from './version';
 
 const App = () => {
+  const [publicSettings, setPublicSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
+
+  useEffect(() => {
+    let ignore = false;
+    api.publicSettings()
+      .then((response) => {
+        if (!ignore && response.success) {
+          setPublicSettings(response.settings);
+        }
+      })
+      .catch(() => {
+        setPublicSettings(DEFAULT_PUBLIC_SETTINGS);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <nav className="board-nav" aria-label="メインメニュー">
           <span className="nav-square" aria-hidden="true">■</span>
           <span className="nav-separator">|</span>
-          <Link to="/">HOME</Link>
+          <a href={publicSettings.config.homePageUrl || '/'}>HOME</a>
           <span className="nav-separator">|</span>
           <Link to="/" reloadDocument>一覧</Link>
           <span className="nav-separator">|</span>

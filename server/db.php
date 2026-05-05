@@ -102,10 +102,6 @@ function buildPost(array $row): array
         'tweet_off' => (bool)($row['tweet_off'] ?? false),
         'tweet_text' => $row['tweet_text'] ?? null,
         'tweet_url' => $row['tweet_url'] ?? null,
-        'tweet_like_count' => (int)($row['tweet_like_count'] ?? 0),
-        'tweet_retweet_count' => (int)($row['tweet_retweet_count'] ?? 0),
-        'tweet_comment_count' => (int)($row['tweet_comment_count'] ?? 0),
-        'tweet_impression_count' => (int)($row['tweet_impression_count'] ?? 0),
     ];
 }
 

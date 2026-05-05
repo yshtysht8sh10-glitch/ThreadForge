@@ -111,7 +111,7 @@ nav {
 
 .app-main {
   flex: 1;
-  padding: 1.5rem 1rem;
+  padding: 1.35rem 1rem 2.5rem;
   max-width: 760px;
   width: 100%;
   margin: 0 auto;
@@ -124,16 +124,23 @@ nav {
 }
 
 .card {
-  background: rgba(17, 25, 36, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  padding: 1rem;
+  background: #101923;
+  border: 1px solid #263445;
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
   margin-bottom: 1rem;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
 }
 
 .card h2,
 .card h3 {
   margin: 0 0 0.75rem;
+}
+
+.card h1 {
+  margin: 0 0 1rem;
+  color: #fff;
+  font-size: 1.8rem;
 }
 
 button,
@@ -147,10 +154,10 @@ input,
 textarea,
 select {
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  padding: 0.75rem;
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #3b4655;
+  border-radius: 6px;
+  padding: 0.66rem 0.75rem;
+  background: #1a2330;
   color: #f8fafc;
 }
 
@@ -163,10 +170,10 @@ textarea:focus {
 
 button {
   border: none;
-  border-radius: 10px;
-  background: #4d8fff;
+  border-radius: 8px;
+  background: #4f83f1;
   color: white;
-  padding: 0.85rem 1.25rem;
+  padding: 0.75rem 1.15rem;
   cursor: pointer;
 }
 
@@ -235,10 +242,10 @@ textarea {
 
 .tweet-preview,
 .tweet-meta {
-  border: 1px solid rgba(130, 199, 255, 0.25);
-  border-radius: 8px;
+  border: 1px solid #355777;
+  border-radius: 6px;
   padding: 0.75rem;
-  background: rgba(130, 199, 255, 0.08);
+  background: #0b1118;
 }
 
 .tweet-preview pre,
@@ -412,9 +419,14 @@ img.thumbnail {
 
 .mode-page {
   max-width: 660px;
-  margin: 0 auto 2rem;
+  margin: 0 auto 1.4rem;
   text-align: center;
   color: #fff;
+  background: #101923;
+  border: 1px solid #263445;
+  border-radius: 8px;
+  padding: 1.1rem;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
 }
 
 .mode-page h1 {
@@ -447,17 +459,17 @@ img.thumbnail {
 
 .mode-inline-form input {
   width: 8rem;
-  border-radius: 0;
-  padding: 0.25rem 0.35rem;
-  background: #444;
-  border-color: #888;
+  border-radius: 4px;
+  padding: 0.35rem 0.45rem;
+  background: #30343b;
+  border-color: #6a7480;
 }
 
 .mode-inline-form button {
-  border-radius: 0;
-  padding: 0.28rem 0.55rem;
-  background: #555;
-  border: 1px solid #888;
+  border-radius: 4px;
+  padding: 0.4rem 0.7rem;
+  background: #555d68;
+  border: 1px solid #7d8794;
   color: #ddd;
 }
 
@@ -483,7 +495,7 @@ img.thumbnail {
 }
 
 .admin-page {
-  max-width: 980px;
+  max-width: 760px;
   margin: 0 auto;
 }
 
@@ -500,8 +512,8 @@ img.thumbnail {
   gap: 0.75rem;
   align-items: center;
   padding: 0.55rem;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid #333f4e;
+  background: #0b1118;
 }
 
 .admin-post-row input {
@@ -520,11 +532,33 @@ img.thumbnail {
   margin-bottom: 1rem;
 }
 
+.admin-setting-wide {
+  grid-column: 1 / -1;
+}
+
 .post-form-page {
   max-width: 680px;
   margin: 0 auto;
+  padding: 1rem 1.1rem;
+  background: #101923;
+  border: 1px solid #a23dff;
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
   color: #9ed8ff;
   font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.post-form-page.post-form-gdgd {
+  border-color: #6dffc0;
+}
+
+.post-form-page.post-form-tweet-off {
+  border-color: #888;
+}
+
+.board-tweet-link {
+  color: #48a5ff;
   font-weight: 700;
 }
 
@@ -553,10 +587,10 @@ img.thumbnail {
 
 .legacy-post-form input,
 .legacy-post-form textarea {
-  border-radius: 0;
-  padding: 0.25rem 0.35rem;
-  background: #444;
-  border: 1px solid #888;
+  border-radius: 4px;
+  padding: 0.35rem 0.45rem;
+  background: #30343b;
+  border: 1px solid #6f7885;
   color: #fff;
 }
 
@@ -581,9 +615,10 @@ img.thumbnail {
 .legacy-tweet-preview {
   min-height: 130px;
   margin: 0;
-  padding: 0.35rem;
-  border: 1px solid #888;
-  background: #000;
+  padding: 0.5rem;
+  border: 1px solid #5c6977;
+  border-radius: 4px;
+  background: #050709;
   color: #48a5ff;
   white-space: pre-wrap;
   word-break: break-word;
@@ -607,10 +642,10 @@ img.thumbnail {
 }
 
 .post-form-bottom-row button {
-  border-radius: 0;
-  padding: 0.28rem 0.75rem;
-  background: #555;
-  border: 1px solid #888;
+  border-radius: 4px;
+  padding: 0.4rem 0.8rem;
+  background: #555d68;
+  border: 1px solid #7d8794;
   color: #ddd;
 }
 
@@ -640,10 +675,10 @@ img.thumbnail {
 
 .eejanaika-form input[type='text'],
 .eejanaika-form input:not([type]) {
-  border-radius: 0;
-  padding: 0.25rem 0.35rem;
-  background: #444;
-  border: 1px solid #888;
+  border-radius: 4px;
+  padding: 0.35rem 0.45rem;
+  background: #30343b;
+  border: 1px solid #6f7885;
   color: #fff;
 }
 
@@ -668,26 +703,29 @@ img.thumbnail {
 }
 
 .eejanaika-form button {
-  border-radius: 0;
-  padding: 0.28rem 1.25rem;
-  background: #555;
-  border: 1px solid #888;
+  border-radius: 4px;
+  padding: 0.4rem 1.25rem;
+  background: #555d68;
+  border: 1px solid #7d8794;
   color: #ddd;
 }
 
 .manual-page {
-  border: 1px solid #888;
-  background: #000;
-  padding: 1rem;
+  border: 1px solid #263445;
+  border-radius: 8px;
+  background: #101923;
+  padding: 1rem 1.1rem;
   color: #fff;
   line-height: 1.65;
   font-weight: 700;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
 }
 
 .manual-page h1 {
   margin: 0 0 1rem;
-  padding: 0.35rem 0.5rem;
-  background: #176f9c;
+  padding: 0.45rem 0.65rem;
+  background: #142337;
+  border-left: 4px solid #4f83f1;
   color: #fff;
   font-size: 1.35rem;
 }
@@ -709,6 +747,11 @@ img.thumbnail {
 .manual-page ul {
   margin: 0.25rem 0 0.25rem 1.25rem;
   padding: 0;
+}
+
+.manual-body p {
+  margin: 0.25rem 0;
+  white-space: pre-wrap;
 }
 
 @media (max-width: 640px) {

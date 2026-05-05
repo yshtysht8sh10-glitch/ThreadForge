@@ -35,6 +35,9 @@ switch ($action) {
     case 'version':
         versionInfo();
         break;
+    case 'publicSettings':
+        publicSettings($pdo);
+        break;
     case 'createPost':
         createPost($pdo);
         break;
@@ -68,6 +71,9 @@ switch ($action) {
     case 'updateSettings':
         updateSettings($pdo);
         break;
+    case 'changeAdminPassword':
+        changeAdminPassword($pdo);
+        break;
     default:
         jsonResponse(['success' => false, 'message' => 'アクションが無効です。'], 400);
 }
@@ -91,6 +97,7 @@ function listThreads(PDO $pdo): void
 function buildThreadSummary(PDO $pdo, array $thread, int $replyLimit): array
 {
     $post = buildPost($thread);
+    $post['display_no'] = threadDisplayNo($pdo, (int)$thread['id']);
 
     $replyStmt = $pdo->prepare('SELECT * FROM posts WHERE thread_id = :thread_id AND id != :thread_id AND deleted_at IS NULL ORDER BY created_at ASC LIMIT :limit');
     $replyStmt->bindValue(':thread_id', (int)$thread['id'], PDO::PARAM_INT);
@@ -100,7 +107,10 @@ function buildThreadSummary(PDO $pdo, array $thread, int $replyLimit): array
     $countStmt = $pdo->prepare('SELECT COUNT(*) FROM posts WHERE thread_id = :thread_id AND id != :thread_id AND deleted_at IS NULL');
     $countStmt->execute([':thread_id' => (int)$thread['id']]);
 
-    $post['replies'] = array_map('buildPost', $replyStmt->fetchAll(PDO::FETCH_ASSOC));
+    $post['replies'] = array_map(
+        fn (array $reply): array => withReplyNo($pdo, buildPost($reply), (int)$thread['id'], (int)$reply['id']),
+        $replyStmt->fetchAll(PDO::FETCH_ASSOC)
+    );
     $post['reply_count'] = (int)$countStmt->fetchColumn();
 
     return $post;
@@ -126,9 +136,33 @@ function getThread(PDO $pdo): void
     $replies = $replyStmt->fetchAll(PDO::FETCH_ASSOC);
 
     jsonResponse([
-        'thread' => buildPost($thread),
-        'replies' => array_map('buildPost', $replies),
+        'thread' => withDisplayNo($pdo, buildPost($thread), (int)$thread['id']),
+        'replies' => array_map(
+            fn (array $reply): array => withReplyNo($pdo, buildPost($reply), $id, (int)$reply['id']),
+            $replies
+        ),
     ]);
+}
+
+function withDisplayNo(PDO $pdo, array $post, int $threadId): array
+{
+    $post['display_no'] = threadDisplayNo($pdo, $threadId);
+    return $post;
+}
+
+function withReplyNo(PDO $pdo, array $post, int $threadId, int $replyId): array
+{
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM posts WHERE thread_id = :thread_id AND id != thread_id AND id <= :reply_id');
+    $stmt->execute([':thread_id' => $threadId, ':reply_id' => $replyId]);
+    $post['reply_no'] = (int)$stmt->fetchColumn();
+    return $post;
+}
+
+function threadDisplayNo(PDO $pdo, int $threadId): int
+{
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM posts WHERE parent_id = 0 AND id <= :id');
+    $stmt->execute([':id' => $threadId]);
+    return (int)$stmt->fetchColumn();
 }
 
 function searchPosts(PDO $pdo): void
@@ -140,7 +174,14 @@ function searchPosts(PDO $pdo): void
 
     [$limit, $offset] = paginationParams();
     $pattern = '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%';
-    $stmt = $pdo->prepare('SELECT * FROM posts WHERE deleted_at IS NULL AND (title LIKE :q ESCAPE "\\" OR message LIKE :q ESCAPE "\\" OR name LIKE :q ESCAPE "\\") ORDER BY created_at DESC LIMIT :limit OFFSET :offset');
+    $scope = $_GET['scope'] ?? 'all';
+    $where = match ($scope) {
+        'title' => 'title LIKE :q ESCAPE "\\"',
+        'message' => 'message LIKE :q ESCAPE "\\"',
+        'name' => 'name LIKE :q ESCAPE "\\"',
+        default => '(title LIKE :q ESCAPE "\\" OR message LIKE :q ESCAPE "\\" OR name LIKE :q ESCAPE "\\")',
+    };
+    $stmt = $pdo->prepare('SELECT * FROM posts WHERE deleted_at IS NULL AND ' . $where . ' ORDER BY created_at DESC LIMIT :limit OFFSET :offset');
     $stmt->bindValue(':q', $pattern, PDO::PARAM_STR);
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
@@ -199,6 +240,10 @@ function appVersion(): string
 
 function createPost(PDO $pdo): void
 {
+    $settings = loadSettings($pdo);
+    $config = $settings['config'] ?? [];
+    $tweetEnabled = toBoolFlag($config['tweetEnabled'] ?? true);
+    $gdgdEnabled = toBoolFlag($config['gdgdEnabled'] ?? true);
     $name = normalizeString($_POST['name'] ?? '');
     $url = normalizeUrl($_POST['url'] ?? null);
     $title = normalizeString($_POST['title'] ?? '');
@@ -207,13 +252,9 @@ function createPost(PDO $pdo): void
     $threadId = filter_input(INPUT_POST, 'thread_id', FILTER_VALIDATE_INT) ?: 0;
     $parentId = filter_input(INPUT_POST, 'parent_id', FILTER_VALIDATE_INT) ?: 0;
     $isReply = $threadId !== 0 || $parentId !== 0;
-    $gdgd = $isReply ? false : toBoolFlag($_POST['gdgd'] ?? $_POST['gdgd_post'] ?? false);
-    $tweetOff = $isReply ? true : toBoolFlag($_POST['tweet_off'] ?? $_POST['TweetOFF'] ?? false);
-    $tweetUrl = $isReply ? null : normalizeUrl($_POST['tweet_url'] ?? null);
-    $tweetLikeCount = $isReply ? 0 : normalizeCount($_POST['tweet_like_count'] ?? 0);
-    $tweetRetweetCount = $isReply ? 0 : normalizeCount($_POST['tweet_retweet_count'] ?? 0);
-    $tweetCommentCount = $isReply ? 0 : normalizeCount($_POST['tweet_comment_count'] ?? 0);
-    $tweetImpressionCount = $isReply ? 0 : normalizeCount($_POST['tweet_impression_count'] ?? 0);
+    $gdgd = $isReply || !$gdgdEnabled ? false : toBoolFlag($_POST['gdgd'] ?? $_POST['gdgd_post'] ?? false);
+    $tweetOff = $isReply || !$tweetEnabled ? true : toBoolFlag($_POST['tweet_off'] ?? $_POST['TweetOFF'] ?? false);
+    $tweetUrl = $isReply || !$tweetEnabled ? null : normalizeUrl($_POST['tweet_url'] ?? null);
 
     if ($name === '' || $title === '' || $message === '' || $password === '') {
         jsonResponse(['success' => false, 'message' => '名前・タイトル・本文・パスワードは必須です。'], 400);
@@ -258,10 +299,10 @@ function createPost(PDO $pdo): void
         ':tweet_off' => $tweetOff ? 1 : 0,
         ':tweet_text' => $tweetText,
         ':tweet_url' => $tweetUrl,
-        ':tweet_like_count' => $tweetLikeCount,
-        ':tweet_retweet_count' => $tweetRetweetCount,
-        ':tweet_comment_count' => $tweetCommentCount,
-        ':tweet_impression_count' => $tweetImpressionCount,
+        ':tweet_like_count' => 0,
+        ':tweet_retweet_count' => 0,
+        ':tweet_comment_count' => 0,
+        ':tweet_impression_count' => 0,
     ]);
 
     $insertedId = (int)$pdo->lastInsertId();
@@ -327,14 +368,12 @@ function updatePost(PDO $pdo): void
         jsonResponse(['success' => false, 'message' => 'パスワードが一致しません。'], 403);
     }
 
+    $settings = loadSettings($pdo);
+    $gdgdEnabled = toBoolFlag(($settings['config'] ?? [])['gdgdEnabled'] ?? true);
     $isReply = (int)($post['parent_id'] ?? 0) !== 0;
-    $gdgd = $isReply ? false : toBoolFlag($_POST['gdgd'] ?? $_POST['gdgd_post'] ?? false);
-    $tweetOff = $isReply ? true : toBoolFlag($_POST['tweet_off'] ?? $_POST['TweetOFF'] ?? false);
-    $tweetUrl = $isReply ? null : normalizeUrl($_POST['tweet_url'] ?? null);
-    $tweetLikeCount = $isReply ? 0 : normalizeCount($_POST['tweet_like_count'] ?? 0);
-    $tweetRetweetCount = $isReply ? 0 : normalizeCount($_POST['tweet_retweet_count'] ?? 0);
-    $tweetCommentCount = $isReply ? 0 : normalizeCount($_POST['tweet_comment_count'] ?? 0);
-    $tweetImpressionCount = $isReply ? 0 : normalizeCount($_POST['tweet_impression_count'] ?? 0);
+    $gdgd = $isReply || !$gdgdEnabled ? false : toBoolFlag($_POST['gdgd'] ?? $post['gdgd'] ?? false);
+    $tweetOff = (bool)($post['tweet_off'] ?? true);
+    $tweetUrl = $post['tweet_url'] ?? null;
 
     $imagePath = $post['image_path'];
     if (!$isReply && !empty($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
@@ -345,7 +384,7 @@ function updatePost(PDO $pdo): void
         $imagePath = $newImage;
     }
 
-    $tweetText = $tweetOff ? null : buildTweetText($name, $title, $message, normalizeUrl($_POST['source_url'] ?? null));
+    $tweetText = $post['tweet_text'] ?? null;
 
     $stmt = $pdo->prepare(
         'UPDATE posts SET
@@ -375,10 +414,10 @@ function updatePost(PDO $pdo): void
         ':tweet_off' => $tweetOff ? 1 : 0,
         ':tweet_text' => $tweetText,
         ':tweet_url' => $tweetUrl,
-        ':tweet_like_count' => $tweetLikeCount,
-        ':tweet_retweet_count' => $tweetRetweetCount,
-        ':tweet_comment_count' => $tweetCommentCount,
-        ':tweet_impression_count' => $tweetImpressionCount,
+        ':tweet_like_count' => 0,
+        ':tweet_retweet_count' => 0,
+        ':tweet_comment_count' => 0,
+        ':tweet_impression_count' => 0,
     ]);
 
     jsonResponse(['success' => true, 'message' => '投稿を更新しました。']);
@@ -459,9 +498,19 @@ function restorePost(PDO $pdo): void
 
 function requireAdmin(): void
 {
-    $configured = getenv('DOTEITA_ADMIN_PASSWORD') ?: '';
+    $pdo = getConnection();
+    $settings = loadSettings($pdo);
+    $hash = $settings['security']['adminPasswordHash'] ?? null;
     $provided = $_POST['admin_password'] ?? $_GET['admin_password'] ?? '';
 
+    if (is_string($hash) && $hash !== '') {
+        if (!password_verify((string)$provided, $hash)) {
+            jsonResponse(['success' => false, 'message' => '管理者認証に失敗しました。'], 403);
+        }
+        return;
+    }
+
+    $configured = getenv('DOTEITA_ADMIN_PASSWORD') ?: '';
     if ($configured === '' || !hash_equals($configured, (string)$provided)) {
         jsonResponse(['success' => false, 'message' => '管理者認証に失敗しました。'], 403);
     }
@@ -622,6 +671,27 @@ function getSettings(PDO $pdo): void
     jsonResponse(['success' => true, 'settings' => loadSettings($pdo)]);
 }
 
+function publicSettings(PDO $pdo): void
+{
+    $settings = loadSettings($pdo);
+    $config = $settings['config'] ?? [];
+
+    jsonResponse([
+        'success' => true,
+        'settings' => [
+            'config' => [
+                'bbsTitle' => (string)($config['bbsTitle'] ?? 'ThreadForge'),
+                'homePageUrl' => (string)($config['homePageUrl'] ?? '/'),
+                'manualTitle' => (string)($config['manualTitle'] ?? 'ThreadForge 取扱説明書'),
+                'manualBody' => (string)($config['manualBody'] ?? defaultManualBody()),
+                'tweetEnabled' => toBoolFlag($config['tweetEnabled'] ?? true),
+                'gdgdEnabled' => toBoolFlag($config['gdgdEnabled'] ?? true),
+                'gdgdLabel' => (string)($config['gdgdLabel'] ?? 'gdgd投稿'),
+            ],
+        ],
+    ]);
+}
+
 function updateSettings(PDO $pdo): void
 {
     requireAdmin();
@@ -633,12 +703,31 @@ function updateSettings(PDO $pdo): void
     jsonResponse(['success' => true, 'message' => '設定を保存しました。']);
 }
 
+function changeAdminPassword(PDO $pdo): void
+{
+    requireAdmin();
+    $newPassword = trim((string)($_POST['new_admin_password'] ?? ''));
+    if ($newPassword === '') {
+        jsonResponse(['success' => false, 'message' => '新しい管理パスワードを入力してください。'], 400);
+    }
+
+    $settings = loadSettings($pdo);
+    $settings['security']['adminPasswordHash'] = password_hash($newPassword, PASSWORD_DEFAULT);
+    saveSettings($pdo, $settings);
+    jsonResponse(['success' => true, 'message' => '管理パスワードを変更しました。']);
+}
+
 function defaultSettings(): array
 {
     return [
         'config' => [
             'bbsTitle' => 'ThreadForge',
             'homePageUrl' => '/',
+            'manualTitle' => 'ThreadForge 取扱説明書',
+            'manualBody' => defaultManualBody(),
+            'tweetEnabled' => true,
+            'gdgdEnabled' => true,
+            'gdgdLabel' => 'gdgd投稿',
             'logView' => 20,
             'maxUploadBytes' => 5100000,
             'maxImageWidth' => 1280,
@@ -650,7 +739,32 @@ function defaultSettings(): array
             'tweetOffFrameColor' => '#888888',
             'backgroundColor' => '#000000',
         ],
+        'security' => [
+            'adminPasswordHash' => '',
+        ],
     ];
+}
+
+function defaultManualBody(): string
+{
+    return implode("\n", [
+        'ThreadForge は、スレッド形式で作品や記事を投稿できる掲示板です。',
+        '',
+        '投稿',
+        '新規投稿ではタイトル、本文、画像、gdgd投稿、Tweet OFFを指定できます。',
+        'Tweet関連の項目は新規投稿だけで使います。返信では表示されません。',
+        '',
+        '返信',
+        '返信では名前、URL / HOME、本文、パスワードを入力できます。',
+        '返信に画像投稿はありません。',
+        '',
+        '削除と編集',
+        '削除は画面上から非表示にしますが、内部データは保持します。',
+        '投稿と返信は、投稿時のパスワードで編集または削除できます。',
+        '',
+        '管理',
+        '管理画面では一括削除、バックアップ、インポート、設定変更を行えます。',
+    ]);
 }
 
 function loadSettings(PDO $pdo): array
@@ -669,7 +783,7 @@ function loadSettings(PDO $pdo): array
 function saveSettings(PDO $pdo, array $settings): void
 {
     $stmt = $pdo->prepare('REPLACE INTO settings (key, value) VALUES (:key, :value)');
-    foreach (['config', 'skin'] as $key) {
+    foreach (['config', 'skin', 'security'] as $key) {
         if (isset($settings[$key]) && is_array($settings[$key])) {
             $stmt->execute([
                 ':key' => $key,

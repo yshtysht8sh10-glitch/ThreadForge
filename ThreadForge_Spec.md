@@ -33,8 +33,10 @@ This project began as a modernization of a legacy image board, but the public di
 - Image upload for top-level posts only
 - Reply image upload disabled
 - Tweet text generation for top-level posts only
+- Tweet destination URL storage and display for top-level posts
 - Tweet OFF mode
 - gdgd post mode
+- Thread display numbers are assigned only to top-level threads; replies use child reply numbers under their thread.
 - Old-board-style top navigation
 - Top page shows up to 10 replies per thread
 - Thread detail hides Tweet text
@@ -45,7 +47,9 @@ This project began as a modernization of a legacy image board, but the public di
 - Admin DB integrity check
 - Admin backup export/import for DB, images, and settings
 - Admin settings storage for `config.cgi` and `skincfg.cgi` equivalents
-- Search by title, body, and author
+- Admin-configurable HOME link target
+- Admin-configurable embedded manual title and body
+- Search by all fields, title, body, or author
 - RSS feed
 
 ## Admin Features
@@ -61,12 +65,20 @@ Implemented:
 - Export backup JSON containing DB rows, images, and settings
 - Import backup JSON and restore DB/images/settings
 - Edit and save current app settings
+- Configure the top navigation HOME link target
+- Configure the SPA manual title and body
+- Enable or disable Tweet UI
+- Enable or disable gdgd posting UI
+- Configure the gdgd posting label
+- Change the admin password
 
 Notes:
 
 - The legacy CGI "system index repair" is not required in the SQLite version.
 - The replacement maintenance function checks DB consistency and missing image references.
-- Saved `config` and `skin` settings currently persist through the admin API; applying every setting to runtime behavior and live styling is still in progress.
+- Saved `config` and `skin` settings currently persist through the admin API.
+- `homePageUrl`, `manualTitle`, `manualBody`, `tweetEnabled`, `gdgdEnabled`, and `gdgdLabel` are applied to runtime UI through the public settings API.
+- Applying every remaining saved setting to runtime behavior and live styling is still in progress.
 
 ## Data Model
 
@@ -89,9 +101,19 @@ Important columns:
 - `tweet_off`
 - `tweet_text`
 - `tweet_url`
-- Tweet statistic columns
+- Legacy Tweet statistic columns may exist in the database for compatibility, but they are not exposed in the UI.
 
 The `settings` table stores admin-managed configuration sections as JSON.
+
+Public UI reads a safe subset of settings through `?action=publicSettings`:
+
+- `config.bbsTitle`
+- `config.homePageUrl`
+- `config.manualTitle`
+- `config.manualBody`
+- `config.tweetEnabled`
+- `config.gdgdEnabled`
+- `config.gdgdLabel`
 
 ## Storage Rules
 

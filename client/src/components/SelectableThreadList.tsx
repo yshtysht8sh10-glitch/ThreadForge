@@ -21,11 +21,11 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle }: SelectableThre
               checked={selectedIds.includes(String(thread.id))}
               onChange={() => onToggle(String(thread.id))}
             />
-            No.{thread.id} を選択
+            No.{thread.display_no ?? thread.id} を選択
           </label>
 
           <header className="board-thread-title">
-            <Link to={`/thread/${thread.id}`}>[No・{thread.id}] {thread.title || '無題'}</Link>
+            <Link to={`/thread/${thread.id}`}>[No・{thread.display_no ?? thread.id}] {thread.title || '無題'}</Link>
           </header>
 
           <div className="board-thread-body">
@@ -53,7 +53,7 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle }: SelectableThre
                     checked={selectedIds.includes(String(reply.id))}
                     onChange={() => onToggle(String(reply.id))}
                   />
-                  No.{reply.id} を選択
+                  返信No.{thread.display_no ?? thread.id}-{reply.reply_no ?? reply.id} を選択
                 </label>
                 <p className="board-meta">
                   NAME：<strong>{reply.name}</strong>

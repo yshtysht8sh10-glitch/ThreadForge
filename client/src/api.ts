@@ -1,5 +1,62 @@
 import { NewPostData, Post, ThreadResponse, SearchResult } from './types';
 
+export type PublicSettings = {
+  config: {
+    bbsTitle: string;
+    homePageUrl: string;
+    manualTitle: string;
+    manualBody: string;
+    tweetEnabled: boolean;
+    gdgdEnabled: boolean;
+    gdgdLabel: string;
+  };
+};
+
+export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
+  config: {
+    bbsTitle: 'ThreadForge',
+    homePageUrl: '/',
+    manualTitle: 'ThreadForge 取扱説明書',
+    tweetEnabled: true,
+    gdgdEnabled: true,
+    gdgdLabel: 'gdgd投稿',
+    manualBody: [
+      'ThreadForge は、スレッド形式で作品や記事を投稿できる掲示板です。',
+      '',
+      '投稿',
+      '新規投稿ではタイトル、本文、画像、gdgd投稿、Tweet OFFを指定できます。',
+      'Tweet関連の項目は新規投稿だけで使います。返信では表示されません。',
+      '',
+      '返信',
+      '返信では名前、URL / HOME、本文、パスワードを入力できます。',
+      '返信に画像投稿はありません。',
+      '',
+      '削除と編集',
+      '削除は画面上から非表示にしますが、内部データは保持します。',
+      '投稿と返信は、投稿時のパスワードで編集または削除できます。',
+      '',
+      '管理',
+      '管理画面では一括削除、バックアップ、インポート、設定変更を行えます。',
+    ].join('\n'),
+  },
+};
+
+export const DEFAULT_ADMIN_SETTINGS = {
+  config: {
+    ...DEFAULT_PUBLIC_SETTINGS.config,
+    logView: 20,
+    maxUploadBytes: 5100000,
+    maxImageWidth: 1280,
+    maxImageHeight: 960,
+  },
+  skin: {
+    normalFrameColor: '#a23dff',
+    gdgdFrameColor: '#6dffc0',
+    tweetOffFrameColor: '#888888',
+    backgroundColor: '#000000',
+  },
+};
+
 export function apiBase(): string {
   return import.meta.env.VITE_API_BASE_URL || '/api.php';
 }
@@ -63,10 +120,7 @@ const mockPosts: Post[] = [
     tweet_off: false,
     tweet_text: '[DT000000：テストスレッド]\n作者：テストユーザー\n\nこれはテストの投稿です。\n\n#ドット絵 #pixelart',
     tweet_url: null,
-    tweet_like_count: 0,
-    tweet_retweet_count: 0,
-    tweet_comment_count: 0,
-    tweet_impression_count: 0,
+    display_no: 1,
     replies: [
       {
         id: 3,
@@ -82,10 +136,7 @@ const mockPosts: Post[] = [
         tweet_off: true,
         tweet_text: null,
         tweet_url: null,
-        tweet_like_count: 0,
-        tweet_retweet_count: 0,
-        tweet_comment_count: 0,
-        tweet_impression_count: 0,
+        reply_no: 1,
       },
     ],
     reply_count: 1,
@@ -104,10 +155,7 @@ const mockPosts: Post[] = [
     tweet_off: true,
     tweet_text: null,
     tweet_url: null,
-    tweet_like_count: 0,
-    tweet_retweet_count: 0,
-    tweet_comment_count: 0,
-    tweet_impression_count: 0,
+    display_no: 2,
     replies: [],
     reply_count: 0,
   },
@@ -129,21 +177,40 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
       return [] as T;
     case 'version':
       return { name: 'ThreadForge', version: '0.1.0' } as T;
+    case 'publicSettings':
+      return { success: true, settings: DEFAULT_PUBLIC_SETTINGS } as T;
+    case 'getSettings':
+      return { success: true, settings: DEFAULT_ADMIN_SETTINGS } as T;
     case 'getThread':
       const threadId = params.get('id');
       const thread = mockPosts.find(p => p.id === Number(threadId));
       return { thread, replies: [] } as T;
     case 'search':
       const q = params.get('q') || '';
+      const scope = params.get('scope') || 'all';
       const results = mockPosts.filter(p =>
-        p.title.includes(q) || p.message.includes(q) || p.name.includes(q)
+        scope === 'title' ? p.title.includes(q)
+          : scope === 'message' ? p.message.includes(q)
+            : scope === 'name' ? p.name.includes(q)
+              : p.title.includes(q) || p.message.includes(q) || p.name.includes(q)
       );
       return results as T;
     case 'createPost':
     case 'updatePost':
     case 'deletePost':
     case 'restorePost':
+    case 'adminDeletePosts':
+    case 'updateSettings':
+    case 'changeAdminPassword':
+    case 'importBackup':
       return { success: true, message: '操作が完了しました（モック）' } as T;
+    case 'adminCheckIntegrity':
+      return {
+        success: true,
+        message: 'DBを確認しました（モック）',
+        orphan_replies: 0,
+        missing_image_post_ids: [],
+      } as T;
     default:
       return { success: false, message: 'アクションが無効です（モック）' } as T;
   }
@@ -163,14 +230,17 @@ export const api = {
   version: async (): Promise<{ name: string; version: string }> => {
     return fetchJson<{ name: string; version: string }>(`${apiBase()}?action=version`);
   },
+  publicSettings: async (): Promise<{ success: boolean; settings: PublicSettings }> => {
+    return fetchJson<{ success: boolean; settings: PublicSettings }>(`${apiBase()}?action=publicSettings`);
+  },
   getThread: async (id: string): Promise<ThreadResponse> => {
     return fetchJson<ThreadResponse>(`${apiBase()}?action=getThread&id=${encodeURIComponent(id)}`);
   },
   getPost: async (id: string): Promise<Post> => {
     return fetchJson<Post>(`${apiBase()}?action=getPost&id=${encodeURIComponent(id)}`);
   },
-  search: async (q: string): Promise<SearchResult[]> => {
-    return fetchJson<SearchResult[]>(`${apiBase()}?action=search&q=${encodeURIComponent(q)}`);
+  search: async (q: string, scope = 'all'): Promise<SearchResult[]> => {
+    return fetchJson<SearchResult[]>(`${apiBase()}?action=search&q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scope)}`);
   },
   createPost: async (payload: NewPostData): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();
@@ -251,6 +321,16 @@ export const api = {
     formData.append('action', 'updateSettings');
     formData.append('admin_password', adminPassword);
     formData.append('settings', JSON.stringify(settings));
+    return fetchJson(`${apiBase()}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
+  changeAdminPassword: async (currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+    const formData = new FormData();
+    formData.append('action', 'changeAdminPassword');
+    formData.append('admin_password', currentPassword);
+    formData.append('new_admin_password', newPassword);
     return fetchJson(`${apiBase()}`, {
       method: 'POST',
       body: formData,

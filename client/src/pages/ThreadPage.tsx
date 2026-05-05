@@ -117,20 +117,23 @@ const ThreadPage = () => {
             <div className="card">スレッドが見つかりません。</div>
           )}
 
-          <div className="card">
-            <h2>返信</h2>
-            {threadData.replies.length === 0 && <p>返信はありません。</p>}
-            {threadData.replies.map((reply: Post) => (
-              <div key={reply.id} className="card" style={{ marginBottom: '0.75rem' }}>
-                <p className={replyTextClassName(reply.message)}><LinkedText text={reply.message} /></p>
-                <p>
-                  <strong>{reply.name}</strong>
-                  {reply.url && <> ・ <a href={reply.url} target="_blank" rel="noreferrer">HOME</a></>}
-                  {' ・ '}{new Date(reply.created_at).toLocaleString()}
-                </p>
-              </div>
-            ))}
-          </div>
+          {!isEejanaikaMode && (
+            <div className="card">
+              <h2>返信</h2>
+              {threadData.replies.length === 0 && <p>返信はありません。</p>}
+              {threadData.replies.map((reply: Post) => (
+                <div key={reply.id} className="card" style={{ marginBottom: '0.75rem' }}>
+                  <p className={replyTextClassName(reply.message)}><LinkedText text={reply.message} /></p>
+                  <p>
+                    <strong>{reply.name}</strong>
+                    {reply.url && <> ・ <a href={reply.url} target="_blank" rel="noreferrer">HOME</a></>}
+                    {' ・ '}{new Date(reply.created_at).toLocaleString()}
+                    {reply.reply_no && <> ・ 返信No.{threadData.thread?.display_no ?? threadData.thread?.id}-{reply.reply_no}</>}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
 
           {isEejanaikaMode ? (
             <div id="eejanaika-form" className="eejanaika-panel">

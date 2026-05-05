@@ -14,6 +14,7 @@ vi.mock('../api', () => ({
     importBackup: vi.fn(),
     updateSettings: vi.fn(),
     restorePost: vi.fn(),
+    changeAdminPassword: vi.fn(),
   },
 }));
 
@@ -47,7 +48,15 @@ describe('AdminPage', () => {
     vi.mocked(api.getSettings).mockResolvedValue({
       success: true,
       settings: {
-        config: { bbsTitle: 'ThreadForge' },
+        config: {
+          bbsTitle: 'ThreadForge',
+          homePageUrl: 'https://example.com/home',
+          manualTitle: '取説タイトル',
+          manualBody: '取説本文',
+          tweetEnabled: true,
+          gdgdEnabled: true,
+          gdgdLabel: 'gdgd投稿',
+        },
         skin: { normalFrameColor: '#a23dff' },
       },
     });
@@ -61,8 +70,8 @@ describe('AdminPage', () => {
     expect(screen.getByLabelText('管理パスワード')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '投稿管理' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'バックアップ / インポート' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'config.cgi 相当' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'skincfg.cgi 相当' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '管理パスワード変更' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '掲示板設定' })).toBeInTheDocument();
   });
 
   it('loads posts and deletes checked items without post passwords', async () => {
@@ -79,5 +88,28 @@ describe('AdminPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を一括削除' }));
 
     await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['1', '2'], 'admin'));
+  });
+
+  it('edits HOME and manual settings from the admin screen', async () => {
+    vi.mocked(api.updateSettings).mockResolvedValue({ success: true, message: '設定を保存しました。' });
+    render(<AdminPage />);
+
+    fireEvent.change(screen.getByLabelText('管理パスワード'), { target: { value: 'admin' } });
+    fireEvent.click(screen.getByRole('button', { name: '管理データを読み込む' }));
+
+    const homeInput = await screen.findByLabelText('HOMEリンク先');
+    fireEvent.change(homeInput, { target: { value: 'https://threadforge.example/' } });
+    fireEvent.change(screen.getByLabelText('取説本文'), { target: { value: '管理画面で編集した取説です。' } });
+    fireEvent.click(screen.getByRole('button', { name: '設定を保存' }));
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          homePageUrl: 'https://threadforge.example/',
+          manualBody: '管理画面で編集した取説です。',
+        }),
+      }),
+      'admin',
+    ));
   });
 });

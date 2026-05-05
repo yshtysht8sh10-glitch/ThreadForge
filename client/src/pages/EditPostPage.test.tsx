@@ -5,10 +5,14 @@ import EditPostPage from './EditPostPage';
 import { api } from '../api';
 
 vi.mock('../api', () => ({
+  DEFAULT_PUBLIC_SETTINGS: {
+    config: { tweetEnabled: true, gdgdEnabled: true, gdgdLabel: 'gdgd投稿' },
+  },
   api: {
     getPost: vi.fn(),
     updatePost: vi.fn(),
     deletePost: vi.fn(),
+    publicSettings: vi.fn(),
   },
 }));
 
@@ -37,6 +41,10 @@ describe('EditPostPage', () => {
     vi.clearAllMocks();
     vi.mocked(api.getPost).mockResolvedValue(replyPost);
     vi.mocked(api.updatePost).mockResolvedValue({ success: true, message: 'ok' });
+    vi.mocked(api.publicSettings).mockResolvedValue({
+      success: true,
+      settings: { config: { tweetEnabled: true, gdgdEnabled: true, gdgdLabel: 'gdgd投稿' } },
+    } as any);
   });
 
   it('hides tweet controls and image replacement when editing a reply', async () => {
@@ -56,7 +64,6 @@ describe('EditPostPage', () => {
 
     await screen.findByDisplayValue('Reply body');
 
-    fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: '更新する' }));
 
     await waitFor(() => expect(api.updatePost).toHaveBeenCalled());
@@ -75,7 +82,7 @@ describe('EditPostPage', () => {
 
 function renderEditPostPage() {
   render(
-    <MemoryRouter initialEntries={['/edit/2']}>
+    <MemoryRouter initialEntries={[{ pathname: '/edit/2', state: { password: 'secret' } }]}>
       <Routes>
         <Route path="/edit/:id" element={<EditPostPage />} />
       </Routes>

@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { mediaUrl } from '../api';
+import { api, DEFAULT_PUBLIC_SETTINGS, mediaUrl, PublicSettings } from '../api';
 import { Post } from '../types';
 import LinkedText from './LinkedText';
 
@@ -9,13 +10,21 @@ type ThreadListProps = {
 };
 
 const ThreadList = ({ threads, action }: ThreadListProps) => {
+  const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
+
+  useEffect(() => {
+    api.publicSettings()
+      .then((response) => response.success && setSettings(response.settings))
+      .catch(() => setSettings(DEFAULT_PUBLIC_SETTINGS));
+  }, []);
+
   return (
     <div className="thread-list">
       {threads.length === 0 && <div className="board-message">投稿はまだありません。</div>}
       {threads.map((thread) => (
         <article key={thread.id} id={`post-${thread.id}`} className={threadClassName(thread)}>
           <header className="board-thread-title">
-            <Link to={`/thread/${thread.id}`}>[No・{thread.id}] {thread.title || '無題'}</Link>
+            <Link to={`/thread/${thread.id}`}>[No・{thread.display_no ?? thread.id}] {thread.title || '無題'}</Link>
           </header>
 
           <div className="board-thread-body">
@@ -34,6 +43,11 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
             <div className="board-message-text">
               <LinkedText text={thread.message} />
             </div>
+            {settings.config.tweetEnabled && thread.tweet_url && (
+              <p className="board-tweet-link">
+                Tweet先：<a href={thread.tweet_url} target="_blank" rel="noreferrer">{thread.tweet_url}</a>
+              </p>
+            )}
 
             {(thread.replies ?? []).slice(0, 10).map((reply) => (
               <section key={reply.id} className="board-reply">
@@ -41,6 +55,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
                   NAME：<strong>{reply.name}</strong>
                   {reply.url && <> <a href={reply.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                   {' '} - {formatDate(reply.created_at)}
+                  {reply.reply_no && <> / 返信No.{thread.display_no ?? thread.id}-{reply.reply_no}</>}
                 </p>
                 <div className={replyTextClassName(reply.message)}>
                   <LinkedText text={reply.message} />

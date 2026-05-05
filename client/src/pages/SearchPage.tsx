@@ -6,6 +6,7 @@ import LinkedText from '../components/LinkedText';
 
 const SearchPage = () => {
   const [query, setQuery] = useState('');
+  const [scope, setScope] = useState('all');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +17,7 @@ const SearchPage = () => {
     setError(null);
 
     try {
-      const data = await api.search(query);
+      const data = await api.search(query, scope);
       setResults(data);
     } catch (err) {
       setError((err as Error).message);
@@ -33,6 +34,15 @@ const SearchPage = () => {
           <div className="field">
             <label htmlFor="search">キーワード</label>
             <input id="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="タイトル・本文・投稿者名を検索" />
+          </div>
+          <div className="field">
+            <label htmlFor="search-scope">検索対象</label>
+            <select id="search-scope" value={scope} onChange={(event) => setScope(event.target.value)}>
+              <option value="all">全て</option>
+              <option value="title">タイトル</option>
+              <option value="message">本文</option>
+              <option value="name">投稿者名</option>
+            </select>
           </div>
           <button type="submit">検索する</button>
         </form>

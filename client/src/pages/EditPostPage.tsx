@@ -1,8 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { api } from '../api';
+import { api, DEFAULT_PUBLIC_SETTINGS, PublicSettings } from '../api';
 import { Post } from '../types';
-import { countTweetLength, createTweetText, TWEET_LIMIT } from '../tweet';
 
 const EditPostPage = () => {
   const { id } = useParams();
@@ -14,12 +13,7 @@ const EditPostPage = () => {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [gdgd, setGdgd] = useState(false);
-  const [tweetOff, setTweetOff] = useState(false);
-  const [tweetUrl, setTweetUrl] = useState('');
-  const [tweetLikeCount, setTweetLikeCount] = useState(0);
-  const [tweetRetweetCount, setTweetRetweetCount] = useState(0);
-  const [tweetCommentCount, setTweetCommentCount] = useState(0);
-  const [tweetImpressionCount, setTweetImpressionCount] = useState(0);
+  const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
   const [password, setPassword] = useState(() => {
     const state = location.state as { password?: string } | null;
     return state?.password ?? '';
@@ -39,15 +33,15 @@ const EditPostPage = () => {
         setTitle(data.title);
         setMessage(data.message);
         setGdgd(Boolean(data.gdgd));
-        setTweetOff(Boolean(data.tweet_off));
-        setTweetUrl(data.tweet_url ?? '');
-        setTweetLikeCount(data.tweet_like_count ?? 0);
-        setTweetRetweetCount(data.tweet_retweet_count ?? 0);
-        setTweetCommentCount(data.tweet_comment_count ?? 0);
-        setTweetImpressionCount(data.tweet_impression_count ?? 0);
       })
       .catch((err) => setError(err.message));
   }, [id]);
+
+  useEffect(() => {
+    api.publicSettings()
+      .then((response) => response.success && setSettings(response.settings))
+      .catch(() => setSettings(DEFAULT_PUBLIC_SETTINGS));
+  }, []);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -64,14 +58,8 @@ const EditPostPage = () => {
     formData.append('title', title);
     formData.append('message', message);
     formData.append('password', password);
-    if (!isReply) {
+    if (!isReply && settings.config.gdgdEnabled) {
       formData.append('gdgd', gdgd ? '1' : '0');
-      formData.append('tweet_off', tweetOff ? '1' : '0');
-      formData.append('tweet_url', tweetUrl);
-      formData.append('tweet_like_count', String(tweetLikeCount));
-      formData.append('tweet_retweet_count', String(tweetRetweetCount));
-      formData.append('tweet_comment_count', String(tweetCommentCount));
-      formData.append('tweet_impression_count', String(tweetImpressionCount));
     }
     if (!isReply && file) {
       formData.append('file', file);
@@ -94,15 +82,13 @@ const EditPostPage = () => {
     }
   };
 
-  const tweetText = tweetOff ? '' : createTweetText(name, title, message);
-  const tweetLength = countTweetLength(tweetText);
-
   return (
     <div>
       <div className="card">
         <h1>投稿編集</h1>
         {error && <div className="error">エラー: {error}</div>}
         {status && <div className="status">{status}</div>}
+        {!password.trim() && <div className="error">編集モードから投稿を選択してください。</div>}
         {!post && !error && <p>投稿を読み込み中...</p>}
         {post && (
           <form onSubmit={onSubmit} className="form-card">
@@ -122,52 +108,14 @@ const EditPostPage = () => {
               本文
               <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={6} />
             </label>
-            {!isReply && (
+            {!isReply && settings.config.gdgdEnabled && (
               <>
                 <label className="checkbox-field">
                   <input type="checkbox" checked={gdgd} onChange={(e) => setGdgd(e.target.checked)} />
-                  gdgd投稿
+                  {settings.config.gdgdLabel}
                 </label>
-                <label className="checkbox-field">
-                  <input type="checkbox" checked={tweetOff} onChange={(e) => setTweetOff(e.target.checked)} />
-                  Tweet OFF
-                </label>
-                {!tweetOff && (
-                  <div className="tweet-preview">
-                    <div className={tweetLength > TWEET_LIMIT ? 'error' : 'status'}>
-                      Tweet文言 ({tweetLength}/{TWEET_LIMIT})
-                    </div>
-                    <pre>{tweetText}</pre>
-                  </div>
-                )}
-                <label>
-                  Tweet先 URL
-                  <input value={tweetUrl} onChange={(e) => setTweetUrl(e.target.value)} />
-                </label>
-                <div className="stats-grid">
-                  <label>
-                    いいね数
-                    <input type="number" min="0" value={tweetLikeCount} onChange={(e) => setTweetLikeCount(Number(e.target.value))} />
-                  </label>
-                  <label>
-                    リツイート数
-                    <input type="number" min="0" value={tweetRetweetCount} onChange={(e) => setTweetRetweetCount(Number(e.target.value))} />
-                  </label>
-                  <label>
-                    コメント数
-                    <input type="number" min="0" value={tweetCommentCount} onChange={(e) => setTweetCommentCount(Number(e.target.value))} />
-                  </label>
-                  <label>
-                    インプレッション数
-                    <input type="number" min="0" value={tweetImpressionCount} onChange={(e) => setTweetImpressionCount(Number(e.target.value))} />
-                  </label>
-                </div>
               </>
             )}
-            <label>
-              パスワード
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            </label>
             {!isReply && (
               <label>
                 画像置換 (任意)

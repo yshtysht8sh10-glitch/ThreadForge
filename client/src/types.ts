@@ -1,5 +1,7 @@
 export type Post = {
   id: number;
+  display_no?: number;
+  reply_no?: number;
   thread_id: number;
   parent_id: number;
   name: string;
@@ -13,10 +15,6 @@ export type Post = {
   tweet_off?: boolean;
   tweet_text?: string | null;
   tweet_url?: string | null;
-  tweet_like_count?: number;
-  tweet_retweet_count?: number;
-  tweet_comment_count?: number;
-  tweet_impression_count?: number;
   replies?: Post[];
   reply_count?: number;
 };
@@ -40,10 +38,6 @@ export type NewPostData = {
   gdgd?: boolean;
   tweet_off?: boolean;
   tweet_url?: string;
-  tweet_like_count?: number;
-  tweet_retweet_count?: number;
-  tweet_comment_count?: number;
-  tweet_impression_count?: number;
 };
 
 export type EditPostData = {
@@ -57,8 +51,4 @@ export type EditPostData = {
   gdgd?: boolean;
   tweet_off?: boolean;
   tweet_url?: string;
-  tweet_like_count?: number;
-  tweet_retweet_count?: number;
-  tweet_comment_count?: number;
-  tweet_impression_count?: number;
 };

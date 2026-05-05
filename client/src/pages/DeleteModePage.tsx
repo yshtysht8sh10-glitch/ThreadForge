@@ -31,9 +31,7 @@ const DeleteModePage = () => {
 
   const toggleSelected = (targetId: string) => {
     setSelectedIds((current) => (
-      current.includes(targetId)
-        ? current.filter((item) => item !== targetId)
-        : [...current, targetId]
+      current.includes(targetId) ? [] : [targetId]
     ));
   };
 
@@ -52,15 +50,14 @@ const DeleteModePage = () => {
     }
 
     try {
-      for (const targetId of selectedIds) {
-        const response = await api.deletePost(targetId, password);
-        if (!response.success) {
-          setError(`No・${targetId}: ${response.message}`);
-          setStatus(null);
-          return;
-        }
+      const targetId = selectedIds[0];
+      const response = await api.deletePost(targetId, password);
+      if (!response.success) {
+        setError(`No・${targetId}: ${response.message}`);
+        setStatus(null);
+        return;
       }
-      setStatus(`${selectedIds.length}件を削除しました。`);
+      setStatus('1件を削除しました。');
       setSelectedIds([]);
       await loadThreads();
     } catch (err) {
@@ -81,7 +78,7 @@ const DeleteModePage = () => {
           <button type="submit">チェックした項目を削除する</button>
           <button type="button" onClick={() => navigate('/')}>戻る</button>
         </form>
-        {selectedIds.length > 0 && <p className="status">選択中: {selectedIds.map((item) => `No・${item}`).join('、')}</p>}
+        {selectedIds.length > 0 && <p className="status">選択中: No・{selectedIds[0]}</p>}
         {status && <p className="status">{status}</p>}
         {error && <p className="error">エラー: {error}</p>}
       </section>

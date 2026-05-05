@@ -19,21 +19,28 @@ Legacy CGI files and old data directories are migration/reference material. They
 - Reply creation without Tweet or image controls
 - "ええじゃないか" fixed-comment replies
 - Up to 10 replies shown on the top page
+- Thread-only display numbers with reply child numbers
 - Edit and soft-delete flows
 - Admin restore for soft-deleted posts
 - Admin bulk delete without per-post passwords
 - Admin DB integrity check
 - Admin backup export/import for DB, images, and settings
-- Search by title, body, and author
+- Search by all fields, title, body, or author
 - RSS output
 - Tweet text generation for new top-level posts
+- Tweet destination URL storage and display
 - Tweet OFF and gdgd visual modes
 - Old-board-style top navigation and board layout
 - Embedded manual page
+- Admin-configurable HOME link target
+- Admin-configurable manual title and body
+- Admin-configurable Tweet and gdgd feature switches
+- Admin-configurable gdgd label
+- Admin password change
 
 ## Not Yet Fully Implemented
 
-- Applying saved admin `config.cgi`-equivalent settings to all runtime limits
+- Applying remaining saved admin `config.cgi`-equivalent settings to runtime limits
 - Applying saved admin `skincfg.cgi`-equivalent settings to live styling
 - CSRF protection
 - Full legacy CGI data migration tooling

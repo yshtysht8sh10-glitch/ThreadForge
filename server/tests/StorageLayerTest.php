@@ -87,7 +87,7 @@ final class StorageLayerTest extends TestCase
         $this->assertSame('https://example.com', $post['url']);
         $this->assertTrue($post['gdgd']);
         $this->assertFalse($post['tweet_off']);
-        $this->assertSame(4, $post['tweet_impression_count']);
+        $this->assertArrayNotHasKey('tweet_impression_count', $post);
     }
 
     // #sym:describe normalizeString

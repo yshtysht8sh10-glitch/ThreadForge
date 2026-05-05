@@ -6,9 +6,13 @@ import EditModePage from './EditModePage';
 import { api } from '../api';
 
 vi.mock('../api', () => ({
+  DEFAULT_PUBLIC_SETTINGS: {
+    config: { tweetEnabled: true, gdgdEnabled: true, gdgdLabel: 'gdgd投稿' },
+  },
   api: {
     listThreads: vi.fn(),
     deletePost: vi.fn(),
+    publicSettings: vi.fn(),
   },
   mediaUrl: (path?: string | null) => path,
 }));
@@ -45,10 +49,7 @@ const threads = [{
     tweet_off: true,
     tweet_text: null,
     tweet_url: null,
-    tweet_like_count: 0,
-    tweet_retweet_count: 0,
-    tweet_comment_count: 0,
-    tweet_impression_count: 0,
+    reply_no: 1,
   }],
   reply_count: 1,
 }];
@@ -58,6 +59,10 @@ describe('mode pages', () => {
     vi.clearAllMocks();
     vi.mocked(api.listThreads).mockResolvedValue(threads);
     vi.mocked(api.deletePost).mockResolvedValue({ success: true, message: 'ok' });
+    vi.mocked(api.publicSettings).mockResolvedValue({
+      success: true,
+      settings: { config: { tweetEnabled: true, gdgdEnabled: true, gdgdLabel: 'gdgd投稿' } },
+    } as any);
   });
 
   it('shows posts and replies with checkboxes on the delete mode page', async () => {
@@ -71,7 +76,7 @@ describe('mode pages', () => {
     expect(screen.getByText('投稿本文')).toBeInTheDocument();
     expect(screen.getByText('返信本文')).toBeInTheDocument();
     expect(screen.getByLabelText('No.7 を選択')).toBeInTheDocument();
-    expect(screen.getByLabelText('No.8 を選択')).toBeInTheDocument();
+    expect(screen.getByLabelText('返信No.7-1 を選択')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^削除$/ })).not.toBeInTheDocument();
   });
 
@@ -83,13 +88,12 @@ describe('mode pages', () => {
     );
 
     await screen.findByRole('link', { name: /\[No・7\]/ });
-    fireEvent.click(screen.getByLabelText('No.7 を選択'));
-    fireEvent.click(screen.getByLabelText('No.8 を選択'));
+    fireEvent.click(screen.getByLabelText('返信No.7-1 を選択'));
     fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を削除する' }));
 
-    await waitFor(() => expect(api.deletePost).toHaveBeenCalledWith('7', 'secret'));
-    expect(api.deletePost).toHaveBeenCalledWith('8', 'secret');
+    await waitFor(() => expect(api.deletePost).toHaveBeenCalledWith('8', 'secret'));
+    expect(api.deletePost).toHaveBeenCalledTimes(1);
   });
 
   it('shows posts and replies with checkboxes on the edit mode page', async () => {
@@ -98,7 +102,7 @@ describe('mode pages', () => {
     expect(await screen.findByRole('link', { name: /\[No・7\]/ })).toBeInTheDocument();
     expect(screen.getByText('返信本文')).toBeInTheDocument();
     expect(screen.getByLabelText('No.7 を選択')).toBeInTheDocument();
-    expect(screen.getByLabelText('No.8 を選択')).toBeInTheDocument();
+    expect(screen.getByLabelText('返信No.7-1 を選択')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^編集$/ })).not.toBeInTheDocument();
   });
 
@@ -106,7 +110,7 @@ describe('mode pages', () => {
     renderEditMode();
 
     await screen.findByRole('link', { name: /\[No・7\]/ });
-    fireEvent.click(screen.getByLabelText('No.8 を選択'));
+    fireEvent.click(screen.getByLabelText('返信No.7-1 を選択'));
     fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を編集する' }));
 
