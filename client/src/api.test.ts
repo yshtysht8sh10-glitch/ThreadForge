@@ -189,4 +189,11 @@ describe('API Module', () => {
       expect(result).toEqual({ success: true, message: '操作が完了しました（モック）' });
     });
   });
+
+  describe('version API', () => {
+    it('should return the application version from mock API', async () => {
+      const result = await api.version();
+      expect(result).toEqual({ name: 'ThreadForge', version: '0.1.0' });
+    });
+  });
 });

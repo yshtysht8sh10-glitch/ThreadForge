@@ -33,4 +33,14 @@ describe('App navigation', () => {
 
     expect(screen.getByRole('link', { name: '取説' })).toHaveAttribute('href', '/manual');
   });
+
+  it('shows the application version', () => {
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>,
+    );
+
+    expect(screen.getByText(/ThreadForge v0\.1\.0/)).toBeInTheDocument();
+  });
 });

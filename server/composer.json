@@ -1,5 +1,6 @@
 {
   "name": "threadforge/board-backend",
+  "version": "0.1.0",
   "description": "Backend storage layer tests for ThreadForge.",
   "require-dev": {
     "phpunit/phpunit": "^9.6"

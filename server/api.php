@@ -32,6 +32,9 @@ switch ($action) {
     case 'rss':
         rssFeed($pdo);
         break;
+    case 'version':
+        versionInfo();
+        break;
     case 'createPost':
         createPost($pdo);
         break;
@@ -175,6 +178,23 @@ function rssFeed(PDO $pdo): void
 
     echo '</channel></rss>';
     exit;
+}
+
+function versionInfo(): void
+{
+    jsonResponse([
+        'name' => 'ThreadForge',
+        'version' => appVersion(),
+    ]);
+}
+
+function appVersion(): string
+{
+    $versionFile = dirname(__DIR__) . '/VERSION';
+    if (is_file($versionFile)) {
+        return trim((string)file_get_contents($versionFile));
+    }
+    return '0.0.0-dev';
 }
 
 function createPost(PDO $pdo): void

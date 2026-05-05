@@ -8,6 +8,7 @@ import AdminPage from './pages/AdminPage';
 import DeleteModePage from './pages/DeleteModePage';
 import EditModePage from './pages/EditModePage';
 import ManualPage from './pages/ManualPage';
+import { APP_NAME, APP_VERSION } from './version';
 
 const App = () => {
   return (
@@ -49,7 +50,7 @@ const App = () => {
       </main>
 
       <footer className="app-footer">
-        <p>Powered by React + PHP API</p>
+        <p>{APP_NAME} v{APP_VERSION} / Powered by React + PHP API</p>
       </footer>
     </div>
   );

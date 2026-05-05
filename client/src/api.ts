@@ -127,6 +127,8 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
       return mockPosts as T;
     case 'listDeletedPosts':
       return [] as T;
+    case 'version':
+      return { name: 'ThreadForge', version: '0.1.0' } as T;
     case 'getThread':
       const threadId = params.get('id');
       const thread = mockPosts.find(p => p.id === Number(threadId));
@@ -157,6 +159,9 @@ export const api = {
       throw new Error(`${response.status} ${response.statusText}`);
     }
     return response.text();
+  },
+  version: async (): Promise<{ name: string; version: string }> => {
+    return fetchJson<{ name: string; version: string }>(`${apiBase()}?action=version`);
   },
   getThread: async (id: string): Promise<ThreadResponse> => {
     return fetchJson<ThreadResponse>(`${apiBase()}?action=getThread&id=${encodeURIComponent(id)}`);

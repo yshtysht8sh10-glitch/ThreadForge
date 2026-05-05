@@ -54,6 +54,17 @@ cd server
 vendor/bin/phpunit
 ```
 
+## Versioning
+
+The project version is tracked in:
+
+- `VERSION`
+- `CHANGELOG.md`
+- `client/package.json`
+- `client/src/version.ts`
+
+Use semantic versioning. Update all version references and the changelog in the same commit.
+
 ## Runtime Data
 
 The backend creates runtime files locally:

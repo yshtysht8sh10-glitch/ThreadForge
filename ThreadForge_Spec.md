@@ -115,6 +115,21 @@ The public project name is `ThreadForge`.
 
 Legacy names and references may appear only in migration notes or compatibility documentation. New UI, package metadata, repository metadata, and public documentation should use `ThreadForge`.
 
+## Version Management
+
+The project version is managed with semantic versioning.
+
+Current version: `0.1.0`
+
+Version references must be updated together:
+
+- `VERSION`
+- `CHANGELOG.md`
+- `client/package.json`
+- `client/src/version.ts`
+
+The PHP API exposes the current version through `?action=version`.
+
 ## Not Yet Fully Implemented
 
 - Apply all saved `config.cgi`-equivalent settings to runtime limits.
