@@ -1,0 +1,18 @@
+{
+  "name": "doteita/board-backend",
+  "description": "Backend storage layer tests for DotEita board.",
+  "require-dev": {
+    "phpunit/phpunit": "^9.6"
+  },
+  "autoload": {
+    "files": ["db.php"]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": ".\\.php\\php.exe .\\vendor\\bin\\phpunit"
+  }
+}

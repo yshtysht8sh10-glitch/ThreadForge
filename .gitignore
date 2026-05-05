@@ -1,0 +1,41 @@
+# Dependencies
+client/node_modules/
+server/vendor/
+
+# Build output
+client/dist/
+
+# Local environment
+client/.env
+client/.env.local
+server/.env
+server/.php/
+server/composer.phar
+
+# Runtime data
+server/database.sqlite
+server/storage/data/*
+!server/storage/data/.gitkeep
+server/tests/runtime/
+server/.phpunit.result.cache
+server/laravel/
+
+# Legacy/runtime data not required for the TypeScript/PHP app
+/data/
+/images/
+/res/
+/sys/
+legacy/
+legacy/LOG_*.cgi
+*.bak
+*.arb
+data_SkinPostForm.txt
+/index.html
+event.js
+function.js
+jcode.pl
+
+# OS/editor
+Thumbs.db
+.DS_Store
+.vscode/
