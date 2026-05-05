@@ -14,14 +14,14 @@ describe('App navigation', () => {
     expect(screen.getByRole('link', { name: '管理者モード' })).toHaveAttribute('href', '/admin');
   });
 
-  it('links refresh to the board top', () => {
+  it('links the post list item to the board top', () => {
     render(
       <BrowserRouter>
         <App />
       </BrowserRouter>,
     );
 
-    expect(screen.getByRole('link', { name: '更新' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: '一覧' })).toHaveAttribute('href', '/');
   });
 
   it('links manual to the SPA manual page', () => {

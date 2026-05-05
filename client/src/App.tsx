@@ -19,7 +19,7 @@ const App = () => {
           <span className="nav-separator">|</span>
           <Link to="/">HOME</Link>
           <span className="nav-separator">|</span>
-          <Link to="/" reloadDocument>更新</Link>
+          <Link to="/" reloadDocument>一覧</Link>
           <span className="nav-separator">|</span>
           <Link to="/post">投稿</Link>
           <span className="nav-separator">|</span>
