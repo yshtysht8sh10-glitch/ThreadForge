@@ -12,7 +12,6 @@ vi.mock('../api', () => ({
     listDeletedPosts: vi.fn(),
     getSettings: vi.fn(),
     adminDeletePosts: vi.fn(),
-    adminCheckIntegrity: vi.fn(),
     importBackup: vi.fn(),
     importLegacyBbsnote: vi.fn(),
     updateSettings: vi.fn(),
@@ -62,6 +61,7 @@ const deletedReply = {
 describe('AdminPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     vi.mocked(api.listThreads).mockResolvedValue([thread as any]);
     vi.mocked(api.listDeletedPosts).mockResolvedValue([deletedReply as any]);
     vi.mocked(api.getSettings).mockResolvedValue({
@@ -92,29 +92,18 @@ describe('AdminPage', () => {
     });
   });
 
-  it('shows only the password loader before admin data is loaded', () => {
-    render(<AdminPage />);
-
-    expect(screen.getByRole('heading', { name: '管理' })).toBeInTheDocument();
-    expect(screen.getByLabelText('管理パスワード')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: '投稿管理' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '掲示板設定' })).not.toBeInTheDocument();
-  });
-
-  it('unlocks admin tabs after successful password load', async () => {
+  it('loads admin data automatically without showing a password form', async () => {
     render(
       <MemoryRouter>
         <AdminPage />
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText('管理パスワード'), { target: { value: 'admin' } });
-    fireEvent.click(screen.getByRole('button', { name: '管理データを読み込む' }));
-
+    expect(screen.getByRole('heading', { name: '管理' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('管理パスワード')).not.toBeInTheDocument();
     expect(await screen.findByRole('button', { name: '投稿管理' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '保守' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'バックアップ' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '掲示板設定' })).toBeInTheDocument();
+    expect(api.listDeletedPosts).toHaveBeenCalledWith('admin');
+    expect(api.getSettings).toHaveBeenCalledWith('admin');
   });
 
   it('bulk deletes multiple checked posts without post passwords', async () => {
@@ -123,9 +112,6 @@ describe('AdminPage', () => {
         <AdminPage />
       </MemoryRouter>,
     );
-
-    fireEvent.change(screen.getByLabelText('管理パスワード'), { target: { value: 'admin' } });
-    fireEvent.click(screen.getByRole('button', { name: '管理データを読み込む' }));
 
     expect(await screen.findByText('Body')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('No.1 を選択'));
@@ -143,8 +129,6 @@ describe('AdminPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText('管理パスワード'), { target: { value: 'admin' } });
-    fireEvent.click(screen.getByRole('button', { name: '管理データを読み込む' }));
     fireEvent.click(await screen.findByRole('button', { name: '掲示板設定' }));
 
     const settingsPanel = screen.getByRole('heading', { name: '掲示板設定' }).closest('section')!;
@@ -170,10 +154,7 @@ describe('AdminPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText('管理パスワード'), { target: { value: 'admin' } });
-    fireEvent.click(screen.getByRole('button', { name: '管理データを読み込む' }));
     fireEvent.click(await screen.findByRole('button', { name: 'バックアップ' }));
-
     fireEvent.change(screen.getByLabelText('旧BBSnoteログディレクトリ'), { target: { value: 'data' } });
     fireEvent.click(screen.getByRole('button', { name: '旧BBSnoteログを追加インポート' }));
 
@@ -187,8 +168,6 @@ describe('AdminPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText('管理パスワード'), { target: { value: 'admin' } });
-    fireEvent.click(screen.getByRole('button', { name: '管理データを読み込む' }));
     fireEvent.click(await screen.findByRole('button', { name: '削除済み' }));
 
     expect(screen.getByText(/No\.12-2/)).toBeInTheDocument();

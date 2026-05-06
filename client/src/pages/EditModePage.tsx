@@ -52,7 +52,7 @@ const EditModePage = () => {
             <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
           </label>
           <button type="submit">チェックした項目を編集する</button>
-          <button type="button" onClick={() => navigate('/')}>戻る</button>
+          <button type="button" className="post-reset-button" onClick={() => navigate('/')}>戻る</button>
         </form>
         {selectedIds.length > 0 && <p className="status">選択中: No.{selectedIds[0]}</p>}
         {error && <p className="error">エラー: {error}</p>}

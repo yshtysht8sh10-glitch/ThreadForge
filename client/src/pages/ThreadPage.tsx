@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, mediaUrl } from '../api';
 import { NewPostData, Post, ThreadResponse } from '../types';
 import LinkedText from '../components/LinkedText';
+import { replyTextClassName } from '../components/ThreadList';
 
 const EEJAIKA_OPTIONS = [
   'お美事にございまする',
@@ -14,7 +15,7 @@ const ThreadPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const isEejanaikaMode = searchParams.get('mode') === 'eejanaika';
+  const shouldFocusEejanaika = searchParams.get('mode') === 'eejanaika';
   const [threadData, setThreadData] = useState<ThreadResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,16 +31,19 @@ const ThreadPage = () => {
     if (!id) return;
     setLoading(true);
     api.getThread(id)
-      .then((data) => setThreadData(data))
+      .then((data) => {
+        setThreadData(data);
+        setError(null);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [id]);
 
   useEffect(() => {
-    if (isEejanaikaMode) {
+    if (shouldFocusEejanaika) {
       document.getElementById('eejanaika-form')?.scrollIntoView({ block: 'center' });
     }
-  }, [isEejanaikaMode, threadData]);
+  }, [shouldFocusEejanaika, threadData]);
 
   const submitReply = async (payload: NewPostData) => {
     if (!id) return;
@@ -60,7 +64,7 @@ const ThreadPage = () => {
     if (!id) return;
 
     if (!replyName || !replyMessage || !replyPassword) {
-      setError('返信には名前・本文・パスワードが必要です。');
+      setError('返信には名前、本文、パスワードが必要です。');
       return;
     }
 
@@ -94,53 +98,95 @@ const ThreadPage = () => {
     });
   };
 
+  const thread = threadData?.thread;
+  const replies = threadData?.replies ?? [];
+
   return (
-    <div>
-      {loading && <div className="card">読み込み中...</div>}
-      {error && <div className="card">エラー: {error}</div>}
+    <div className="thread-detail-page">
+      {loading && <div className="board-message">読み込み中...</div>}
+      {error && <div className="board-message error">エラー: {error}</div>}
+
       {threadData && (
         <>
-          {threadData.thread ? (
-            <div className="card">
-              <h1>{threadData.thread.title || '無題'}</h1>
-              <p><LinkedText text={threadData.thread.message} /></p>
-              {threadData.thread.image_path && (
-                <img className="post-image" src={mediaUrl(threadData.thread.image_path) ?? undefined} alt={threadData.thread.title || '投稿画像'} />
-              )}
-              <p>
-                投稿者: <strong>{threadData.thread.name}</strong>
-                {threadData.thread.url && <> ・ <a href={threadData.thread.url} target="_blank" rel="noreferrer">HOME</a></>}
-                {' ・ '}{new Date(threadData.thread.created_at).toLocaleString()}
-              </p>
-            </div>
-          ) : (
-            <div className="card">スレッドが見つかりません。</div>
-          )}
+          {thread ? (
+            <article id={`post-${thread.id}`} className={threadClassName(thread)}>
+              <header className="board-thread-title">
+                [No・{thread.display_no ?? thread.id}] {thread.title || '無題'}
+              </header>
 
-          {!isEejanaikaMode && (
-            <div className="card">
-              <h2>返信</h2>
-              {threadData.replies.length === 0 && <p>返信はありません。</p>}
-              {threadData.replies.map((reply: Post) => (
-                <div key={reply.id} className="card" style={{ marginBottom: '0.75rem' }}>
-                  <p className={replyTextClassName(reply.message)}><LinkedText text={reply.message} /></p>
-                  <p>
-                    <strong>{reply.name}</strong>
-                    {reply.url && <> ・ <a href={reply.url} target="_blank" rel="noreferrer">HOME</a></>}
-                    {' ・ '}{new Date(reply.created_at).toLocaleString()}
-                    {reply.reply_no && <> ・ 返信No.{threadData.thread?.display_no ?? threadData.thread?.id}-{reply.reply_no}</>}
-                  </p>
+              <div className="board-thread-body">
+                <p className="board-meta">
+                  NAME：<strong>{thread.name}</strong>
+                  {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
+                  {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
+                </p>
+
+                {mediaUrl(thread.image_path) && (
+                  <a href={mediaUrl(thread.image_path) ?? undefined} className="board-image-link" target="_blank" rel="noreferrer">
+                    <img className="board-post-image" src={mediaUrl(thread.image_path) ?? undefined} alt={thread.title || '投稿画像'} />
+                  </a>
+                )}
+
+                <div className="board-message-text">
+                  <LinkedText text={thread.message} />
                 </div>
-              ))}
-            </div>
+
+                {replies.length === 0 && (
+                  <div className="board-reply">
+                    <div className="board-reply-text">返信はありません。</div>
+                  </div>
+                )}
+
+                {replies.map((reply: Post) => (
+                  <section key={reply.id} className="board-reply">
+                    <p className="board-meta">
+                      NAME：<strong>{reply.name}</strong>
+                      {reply.url && <> <a href={reply.url} target="_blank" rel="noreferrer">[HOME]</a></>}
+                      {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>
+                      {reply.reply_no && <> <span className="board-meta-sub">/ 返信No.{thread.display_no ?? thread.id}-{reply.reply_no}</span></>}
+                    </p>
+                    <div className={replyTextClassName(reply.message)}>
+                      <LinkedText text={reply.message} />
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </article>
+          ) : (
+            <div className="board-message">スレッドが見つかりません。</div>
           )}
 
-          {isEejanaikaMode ? (
-            <div id="eejanaika-form" className="eejanaika-panel">
-              <form onSubmit={onEejanaikaSubmit} className="eejanaika-form">
-                <div className="post-form-mode">+ No.{id}へのええじゃないか +</div>
+          {thread && (
+            <div className="thread-detail-forms">
+              {replyStatus && <div className="status thread-detail-status">{replyStatus}</div>}
+
+              <form aria-label="返信フォーム" onSubmit={onReplySubmit} className="inline-reply-form thread-detail-form">
+                <h3>返信を書く</h3>
                 <label>
-                  名前 (_/30文字)
+                  名前
+                  <input value={replyName} onChange={(e) => setReplyName(e.target.value)} />
+                </label>
+                <label>
+                  URL / HOME
+                  <input value={replyUrl} onChange={(e) => setReplyUrl(e.target.value)} placeholder="https://example.com" />
+                </label>
+                <label>
+                  本文
+                  <textarea value={replyMessage} onChange={(e) => setReplyMessage(e.target.value)} rows={5} />
+                </label>
+                <div className="inline-form-bottom-row">
+                  <label>
+                    パスワード
+                    <input type="password" value={replyPassword} onChange={(e) => setReplyPassword(e.target.value)} />
+                  </label>
+                  <button type="submit" className="post-submit-button">返信を投稿</button>
+                </div>
+              </form>
+
+              <form id="eejanaika-form" aria-label="ええじゃないかフォーム" onSubmit={onEejanaikaSubmit} className="inline-eejanaika-form thread-detail-form">
+                <h3>No.{thread.display_no ?? thread.id}へのええじゃないか</h3>
+                <label>
+                  名前
                   <input value={eejanaikaName} onChange={(e) => setEejanaikaName(e.target.value)} />
                 </label>
                 <div className="eejanaika-options">
@@ -157,31 +203,10 @@ const ThreadPage = () => {
                     </label>
                   ))}
                 </div>
-                <button type="submit">送 信</button>
-              </form>
-            </div>
-          ) : (
-            <div className="card">
-              <h2>返信を書く</h2>
-              {replyStatus && <div className="status">{replyStatus}</div>}
-              <form onSubmit={onReplySubmit} className="form-card">
-                <label>
-                  名前
-                  <input value={replyName} onChange={(e) => setReplyName(e.target.value)} />
-                </label>
-                <label>
-                  URL / HOME
-                  <input value={replyUrl} onChange={(e) => setReplyUrl(e.target.value)} placeholder="https://example.com" />
-                </label>
-                <label>
-                  本文
-                  <textarea value={replyMessage} onChange={(e) => setReplyMessage(e.target.value)} rows={4} />
-                </label>
-                <label>
-                  パスワード
-                  <input type="password" value={replyPassword} onChange={(e) => setReplyPassword(e.target.value)} />
-                </label>
-                <button type="submit">返信を投稿</button>
+                <div className="inline-form-bottom-row">
+                  <span aria-hidden="true" />
+                  <button type="submit" className="post-submit-button">送信</button>
+                </div>
               </form>
             </div>
           )}
@@ -191,16 +216,25 @@ const ThreadPage = () => {
   );
 };
 
-function replyTextClassName(message: string): string {
-  const classes = ['eejanaika-reply-text'];
-  if (message === 'お美事にございまする') {
-    classes.push('eejanaika-reply-omigoto');
-  } else if (message === 'いい仕事してますねぇ') {
-    classes.push('eejanaika-reply-goodjob');
-  } else if (message === 'ええじゃないか') {
-    classes.push('eejanaika-reply-eejanaika');
+function threadClassName(thread: Post): string {
+  const classes = ['board-thread'];
+  if (thread.gdgd) {
+    classes.push('board-thread-gdgd');
+  }
+  if (thread.tweet_off) {
+    classes.push('board-thread-tweet-off');
   }
   return classes.join(' ');
+}
+
+function formatDate(value: string): string {
+  return new Date(value).toLocaleString('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 export default ThreadPage;

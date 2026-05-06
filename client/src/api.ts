@@ -45,6 +45,11 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
 export const DEFAULT_ADMIN_SETTINGS = {
   config: {
     ...DEFAULT_PUBLIC_SETTINGS.config,
+    tweetBaseUrl: 'https://twitter.com/MUGEN87112020/status/',
+    tweetConsumerKey: '',
+    tweetConsumerSecret: '',
+    tweetAccessToken: '',
+    tweetAccessTokenSecret: '',
     logView: 20,
     maxUploadBytes: 5100000,
     maxImageWidth: 1280,

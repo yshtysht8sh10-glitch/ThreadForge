@@ -36,7 +36,7 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
             <p className="board-meta">
               NAME：<strong>{thread.name}</strong>
               {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
-              {' '}投稿日時：{formatDate(thread.created_at)}
+              {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
             </p>
 
             {mediaUrl(thread.image_path) && (
@@ -63,7 +63,7 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
                 <p className="board-meta">
                   NAME：<strong>{reply.name}</strong>
                   {reply.url && <> <a href={reply.url} target="_blank" rel="noreferrer">[HOME]</a></>}
-                  {' '} - {formatDate(reply.created_at)}
+                  {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>
                 </p>
                 <div className={replyTextClassName(reply.message)}>
                   <LinkedText text={reply.message} />

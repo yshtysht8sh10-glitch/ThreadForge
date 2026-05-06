@@ -236,7 +236,7 @@ function createPost(PDO $pdo): void
     $isReply = $threadId !== 0 || $parentId !== 0;
     $gdgd = $isReply || !$gdgdEnabled ? false : toBoolFlag($_POST['gdgd'] ?? $_POST['gdgd_post'] ?? false);
     $tweetOff = $isReply || !$tweetEnabled ? true : toBoolFlag($_POST['tweet_off'] ?? $_POST['TweetOFF'] ?? false);
-    $tweetUrl = $isReply || !$tweetEnabled ? null : normalizeUrl($_POST['tweet_url'] ?? null);
+    $tweetUrl = null;
 
     if ($name === '' || $title === '' || $message === '' || $password === '') {
         jsonResponse(['success' => false, 'message' => '名前・タイトル・本文・パスワードは必須です。'], 400);
@@ -280,7 +280,7 @@ function createPost(PDO $pdo): void
         ':gdgd' => $gdgd ? 1 : 0,
         ':tweet_off' => $tweetOff ? 1 : 0,
         ':tweet_text' => $tweetText,
-        ':tweet_url' => $tweetUrl,
+        ':tweet_url' => null,
         ':tweet_like_count' => 0,
         ':tweet_retweet_count' => 0,
         ':tweet_comment_count' => 0,
@@ -294,6 +294,7 @@ function createPost(PDO $pdo): void
         $update->execute([':id' => $insertedId]);
     }
 
+    $imagePath = null;
     if (allowsImageUpload($threadId, $parentId) && !empty($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
         $imagePath = saveUploadedImage($_FILES['file'], $insertedId);
         if ($imagePath === null) {
@@ -308,9 +309,233 @@ function createPost(PDO $pdo): void
         ]);
     }
 
+    if ($tweetText !== null) {
+        $tweetText = fillTweetPostId($tweetText, $insertedId);
+        $updateTweetText = $pdo->prepare('UPDATE posts SET tweet_text = :tweet_text WHERE id = :id');
+        $updateTweetText->execute([
+            ':id' => $insertedId,
+            ':tweet_text' => $tweetText,
+        ]);
+    }
+
     $pdo->commit();
 
-    jsonResponse(['success' => true, 'message' => '投稿が完了しました。']);
+    $responseMessage = '投稿が完了しました。';
+    if (!$tweetOff && $tweetText !== null) {
+        $tweetResult = publishTweetFromSettings($settings, $tweetText, $imagePath);
+        if ($tweetResult['success']) {
+            $tweetUrl = $tweetResult['url'];
+            $updateTweetUrl = $pdo->prepare('UPDATE posts SET tweet_url = :tweet_url WHERE id = :id');
+            $updateTweetUrl->execute([
+                ':id' => $insertedId,
+                ':tweet_url' => $tweetUrl,
+            ]);
+            $responseMessage .= ' Tweetしました。';
+        } else {
+            $responseMessage .= ' Tweetは失敗しました: ' . $tweetResult['message'];
+        }
+    }
+
+    jsonResponse(['success' => true, 'message' => $responseMessage, 'tweet_url' => $tweetUrl]);
+}
+
+function fillTweetPostId(string $tweetText, int $postId): string
+{
+    return preg_replace('/000000/', str_pad((string)$postId, 6, '0', STR_PAD_LEFT), $tweetText, 1) ?? $tweetText;
+}
+
+function publishTweetFromSettings(array $settings, string $text, ?string $imagePath): array
+{
+    $config = $settings['config'] ?? [];
+    $consumerKey = trim((string)($config['tweetConsumerKey'] ?? ''));
+    $consumerSecret = trim((string)($config['tweetConsumerSecret'] ?? ''));
+    $accessToken = trim((string)($config['tweetAccessToken'] ?? ''));
+    $accessTokenSecret = trim((string)($config['tweetAccessTokenSecret'] ?? ''));
+    $baseUrl = trim((string)($config['tweetBaseUrl'] ?? 'https://twitter.com/MUGEN87112020/status/'));
+
+    if ($consumerKey === '' || $consumerSecret === '' || $accessToken === '' || $accessTokenSecret === '') {
+        return ['success' => false, 'message' => 'Twitter API設定が未入力です。', 'url' => null];
+    }
+
+    if (!function_exists('curl_init')) {
+        return ['success' => false, 'message' => 'PHP cURL拡張が有効ではありません。', 'url' => null];
+    }
+
+    $mediaIds = [];
+    if ($imagePath !== null && is_file($imagePath)) {
+        $upload = twitterUploadMedia($consumerKey, $consumerSecret, $accessToken, $accessTokenSecret, $imagePath);
+        if (!$upload['success']) {
+            return ['success' => false, 'message' => $upload['message'], 'url' => null];
+        }
+        $mediaIds[] = $upload['media_id'];
+    }
+
+    $tweet = twitterCreateTweet($consumerKey, $consumerSecret, $accessToken, $accessTokenSecret, $text, $mediaIds);
+    if (!$tweet['success']) {
+        return ['success' => false, 'message' => $tweet['message'], 'url' => null];
+    }
+
+    if ($baseUrl === '') {
+        $baseUrl = 'https://twitter.com/i/web/status/';
+    }
+    if (substr($baseUrl, -1) !== '/') {
+        $baseUrl .= '/';
+    }
+
+    return ['success' => true, 'message' => 'Tweetしました。', 'url' => $baseUrl . $tweet['tweet_id']];
+}
+
+function twitterUploadMedia(
+    string $consumerKey,
+    string $consumerSecret,
+    string $accessToken,
+    string $accessTokenSecret,
+    string $imagePath
+): array {
+    $url = 'https://upload.twitter.com/1.1/media/upload.json';
+    $response = twitterRequest(
+        'POST',
+        $url,
+        $consumerKey,
+        $consumerSecret,
+        $accessToken,
+        $accessTokenSecret,
+        ['media' => new CURLFile($imagePath)],
+        false
+    );
+
+    if (!$response['success']) {
+        return $response;
+    }
+
+    $mediaId = $response['body']['media_id_string'] ?? $response['body']['media_id'] ?? null;
+    if ($mediaId === null || $mediaId === '') {
+        return ['success' => false, 'message' => 'Twitterの画像アップロード応答にmedia_idがありません。'];
+    }
+
+    return ['success' => true, 'media_id' => (string)$mediaId];
+}
+
+function twitterCreateTweet(
+    string $consumerKey,
+    string $consumerSecret,
+    string $accessToken,
+    string $accessTokenSecret,
+    string $text,
+    array $mediaIds
+): array {
+    $payload = ['text' => $text];
+    if (count($mediaIds) > 0) {
+        $payload['media'] = ['media_ids' => $mediaIds];
+    }
+
+    $response = twitterRequest(
+        'POST',
+        'https://api.twitter.com/2/tweets',
+        $consumerKey,
+        $consumerSecret,
+        $accessToken,
+        $accessTokenSecret,
+        $payload,
+        true
+    );
+
+    if (!$response['success']) {
+        return $response;
+    }
+
+    $tweetId = $response['body']['data']['id'] ?? null;
+    if ($tweetId === null || $tweetId === '') {
+        return ['success' => false, 'message' => 'Twitterの投稿応答にTweet IDがありません。'];
+    }
+
+    return ['success' => true, 'tweet_id' => (string)$tweetId];
+}
+
+function twitterRequest(
+    string $method,
+    string $url,
+    string $consumerKey,
+    string $consumerSecret,
+    string $accessToken,
+    string $accessTokenSecret,
+    array $payload,
+    bool $jsonBody
+): array {
+    $headers = [
+        'Authorization: ' . twitterOAuthHeader($method, $url, $consumerKey, $consumerSecret, $accessToken, $accessTokenSecret),
+    ];
+    $body = $payload;
+    if ($jsonBody) {
+        $headers[] = 'Content-Type: application/json';
+        $body = json_encode($payload, JSON_UNESCAPED_UNICODE);
+    }
+
+    $curl = curl_init($url);
+    curl_setopt_array($curl, [
+        CURLOPT_CUSTOMREQUEST => strtoupper($method),
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_POSTFIELDS => $body,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+    ]);
+
+    $raw = curl_exec($curl);
+    $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    $error = curl_error($curl);
+    curl_close($curl);
+
+    if ($raw === false) {
+        return ['success' => false, 'message' => 'Twitter API通信に失敗しました: ' . $error];
+    }
+
+    $decoded = json_decode((string)$raw, true);
+    if ($status < 200 || $status >= 300) {
+        $detail = is_array($decoded) ? json_encode($decoded, JSON_UNESCAPED_UNICODE) : (string)$raw;
+        return ['success' => false, 'message' => 'Twitter APIがエラーを返しました。HTTP ' . $status . ' ' . $detail];
+    }
+
+    if (!is_array($decoded)) {
+        return ['success' => false, 'message' => 'Twitter API応答がJSONではありません。'];
+    }
+
+    return ['success' => true, 'body' => $decoded];
+}
+
+function twitterOAuthHeader(
+    string $method,
+    string $url,
+    string $consumerKey,
+    string $consumerSecret,
+    string $accessToken,
+    string $accessTokenSecret
+): string {
+    $oauth = [
+        'oauth_consumer_key' => $consumerKey,
+        'oauth_nonce' => bin2hex(random_bytes(16)),
+        'oauth_signature_method' => 'HMAC-SHA1',
+        'oauth_timestamp' => (string)time(),
+        'oauth_token' => $accessToken,
+        'oauth_version' => '1.0',
+    ];
+
+    $baseParams = $oauth;
+    ksort($baseParams);
+    $encodedParams = [];
+    foreach ($baseParams as $key => $value) {
+        $encodedParams[] = rawurlencode($key) . '=' . rawurlencode((string)$value);
+    }
+
+    $baseString = strtoupper($method) . '&' . rawurlencode($url) . '&' . rawurlencode(implode('&', $encodedParams));
+    $signingKey = rawurlencode($consumerSecret) . '&' . rawurlencode($accessTokenSecret);
+    $oauth['oauth_signature'] = base64_encode(hash_hmac('sha1', $baseString, $signingKey, true));
+
+    $header = [];
+    foreach ($oauth as $key => $value) {
+        $header[] = rawurlencode($key) . '="' . rawurlencode((string)$value) . '"';
+    }
+
+    return 'OAuth ' . implode(', ', $header);
 }
 
 function getPost(PDO $pdo): void
@@ -723,6 +948,11 @@ function defaultSettings(): array
             'manualTitle' => 'ThreadForge 取扱説明書',
             'manualBody' => defaultManualBody(),
             'tweetEnabled' => true,
+            'tweetBaseUrl' => 'https://twitter.com/MUGEN87112020/status/',
+            'tweetConsumerKey' => '',
+            'tweetConsumerSecret' => '',
+            'tweetAccessToken' => '',
+            'tweetAccessTokenSecret' => '',
             'gdgdEnabled' => true,
             'gdgdLabel' => 'gdgd投稿',
             'logView' => 20,

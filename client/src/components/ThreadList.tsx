@@ -103,8 +103,11 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
     <div className="thread-list">
       {threads.length === 0 && <div className="board-message">投稿はまだありません。</div>}
       {threads.map((thread) => {
-        const replies = expandedReplies[thread.id] ?? (thread.replies ?? []).slice(0, 10);
+        const previewReplies = thread.replies ?? [];
+        const replies = expandedReplies[thread.id] ?? previewReplies.slice(0, 10);
         const hiddenReplyCount = Math.max(0, Number(thread.reply_count ?? 0) - replies.length);
+        const omittedStart = 1;
+        const omittedEnd = hiddenReplyCount;
         const panelMode = activePanel?.threadId === thread.id ? activePanel.mode : null;
 
         return (
@@ -117,7 +120,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
               <p className="board-meta">
                 NAME：<strong>{thread.name}</strong>
                 {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
-                {' '}投稿日時：{formatDate(thread.created_at)}
+                {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
               </p>
 
               {mediaUrl(thread.image_path) && (
@@ -135,14 +138,23 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
                   <p className="board-meta">
                     NAME：<strong>{reply.name}</strong>
                     {reply.url && <> <a href={reply.url} target="_blank" rel="noreferrer">[HOME]</a></>}
-                    {' '} - {formatDate(reply.created_at)}
-                    {reply.reply_no && <> / 返信No.{thread.display_no ?? thread.id}-{reply.reply_no}</>}
+                    {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>
+                    {reply.reply_no && <> <span className="board-meta-sub">/ 返信No.{thread.display_no ?? thread.id}-{reply.reply_no}</span></>}
                   </p>
                   <div className={replyTextClassName(reply.message)}>
                     <LinkedText text={reply.message} />
                   </div>
                 </section>
               ))}
+
+              {hiddenReplyCount > 0 && (
+                <div className="board-reply-omitted">
+                  ※コメント{omittedStart}-{omittedEnd}は省略されています
+                  <button type="button" onClick={() => loadFullReplies(thread.id)}>
+                    [全て表示]
+                  </button>
+                </div>
+              )}
 
               {inlineStatus[thread.id] && <p className="status inline-status">{inlineStatus[thread.id]}</p>}
 
@@ -218,11 +230,6 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
                       <button type="button" className="board-action-button" onClick={() => openPanel(thread.id, 'comment')}>コメント</button>
                       <button type="button" className="board-action-button" onClick={() => openPanel(thread.id, 'eejanaika')}>ええじゃないか</button>
                     </>
-                  )}
-                  {hiddenReplyCount > 0 && (
-                    <button type="button" className="board-more-link" onClick={() => loadFullReplies(thread.id)}>
-                      ほか{hiddenReplyCount}件の返信
-                    </button>
                   )}
                 </div>
               </footer>

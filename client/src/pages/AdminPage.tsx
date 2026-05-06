@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { api, apiBase } from '../api';
 import { Post } from '../types';
 import SelectableThreadList from '../components/SelectableThreadList';
@@ -10,9 +10,12 @@ type Settings = {
 
 type AdminTab = 'posts' | 'maintenance' | 'backup' | 'settings' | 'deleted';
 
+const DEFAULT_HIDDEN_ADMIN_PASSWORD = 'admin';
+
 const AdminPage = () => {
-  const [adminPassword, setAdminPassword] = useState('');
-  const [unlocked, setUnlocked] = useState(false);
+  const [adminPassword, setAdminPassword] = useState(() => {
+    return window.localStorage.getItem('threadforgeAdminPassword') || DEFAULT_HIDDEN_ADMIN_PASSWORD;
+  });
   const [activeTab, setActiveTab] = useState<AdminTab>('posts');
   const [threads, setThreads] = useState<Post[]>([]);
   const [deletedPosts, setDeletedPosts] = useState<Post[]>([]);
@@ -21,37 +24,45 @@ const AdminPage = () => {
   const [backupFile, setBackupFile] = useState<File | null>(null);
   const [legacyDir, setLegacyDir] = useState('data');
   const [newAdminPassword, setNewAdminPassword] = useState('');
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>('管理データを読み込み中...');
   const [error, setError] = useState<string | null>(null);
+
+  const loadAll = async () => {
+    setStatus('管理データを読み込み中...');
+    setError(null);
+    try {
+      const [loadedThreads, deleted, settingResponse] = await Promise.all([
+        api.listThreads(),
+        api.listDeletedPosts(adminPassword),
+        api.getSettings(adminPassword),
+      ]);
+      setThreads(loadedThreads);
+      setDeletedPosts(deleted);
+      setSettings(settingResponse.settings);
+      setSelectedIds([]);
+      setStatus('管理データを読み込みました。');
+    } catch (err) {
+      setError((err as Error).message);
+      setStatus(null);
+    }
+  };
+
+  useEffect(() => {
+    loadAll();
+  }, []);
 
   const guarded = (callback: () => Promise<void>) => async (event?: FormEvent) => {
     event?.preventDefault();
-    if (!adminPassword.trim()) {
-      setError('管理パスワードを入力してください。');
-      return;
-    }
     setError(null);
     await callback();
   };
 
-  const loadAll = guarded(async () => {
-    setStatus('読み込み中...');
-    const [loadedThreads, deleted, settingResponse] = await Promise.all([
-      api.listThreads(),
-      api.listDeletedPosts(adminPassword),
-      api.getSettings(adminPassword),
-    ]);
-    setThreads(loadedThreads);
-    setDeletedPosts(deleted);
-    setSettings(settingResponse.settings);
-    setSelectedIds([]);
-    setUnlocked(true);
-    setActiveTab('posts');
-    setStatus(null);
-  });
-
   const reloadThreads = async () => {
     setThreads(await api.listThreads());
+  };
+
+  const reloadDeletedPosts = async () => {
+    setDeletedPosts(await api.listDeletedPosts(adminPassword));
   };
 
   const toggleSelected = (id: string) => {
@@ -70,32 +81,19 @@ const AdminPage = () => {
     setStatus(response.message);
     setSelectedIds([]);
     await reloadThreads();
+    await reloadDeletedPosts();
   });
 
   const restore = async (id: number) => {
-    if (!adminPassword.trim()) {
-      setError('管理パスワードを入力してください。');
-      return;
-    }
+    setError(null);
     setStatus('復元中...');
-    await api.restorePost(String(id), adminPassword);
-    const deleted = await api.listDeletedPosts(adminPassword);
-    setDeletedPosts(deleted);
+    const response = await api.restorePost(String(id), adminPassword);
+    setStatus(response.message);
     await reloadThreads();
-    setStatus('復元しました。');
+    await reloadDeletedPosts();
   };
 
-  const checkIntegrity = guarded(async () => {
-    setStatus('DBを確認中...');
-    const result = await api.adminCheckIntegrity(adminPassword);
-    setStatus(`${result.message} 孤立返信: ${result.orphan_replies}件 / 画像欠損: ${result.missing_image_post_ids.length}件`);
-  });
-
   const exportBackup = () => {
-    if (!adminPassword.trim()) {
-      setError('管理パスワードを入力してください。');
-      return;
-    }
     window.location.href = `${apiBase()}?action=exportBackup&admin_password=${encodeURIComponent(adminPassword)}`;
   };
 
@@ -135,6 +133,7 @@ const AdminPage = () => {
     const response = await api.changeAdminPassword(adminPassword, newAdminPassword);
     setStatus(response.message);
     setAdminPassword(newAdminPassword);
+    window.localStorage.setItem('threadforgeAdminPassword', newAdminPassword);
     setNewAdminPassword('');
   });
 
@@ -153,20 +152,15 @@ const AdminPage = () => {
 
   return (
     <div className="admin-page">
-      <section className="card">
+      <section className="card admin-system-card">
         <h1>管理</h1>
-        <form onSubmit={loadAll} className="form-card">
-          <label>
-            管理パスワード
-            <input type="password" value={adminPassword} onChange={(event) => setAdminPassword(event.target.value)} />
-          </label>
-          <button type="submit">管理データを読み込む</button>
-        </form>
-        {status && <p className="status">{status}</p>}
-        {error && <p className="error">エラー: {error}</p>}
+        <div className="admin-system-message" aria-live="polite">
+          {status && <p className="status">{status}</p>}
+          {error && <p className="error">エラー: {error}</p>}
+        </div>
       </section>
 
-      {unlocked && (
+      {settings && (
         <>
           <nav className="admin-tabs" aria-label="管理メニュー">
             {adminTabs.map((tab) => (
@@ -184,8 +178,8 @@ const AdminPage = () => {
           {activeTab === 'posts' && (
             <section className="card">
               <h2>投稿管理</h2>
-              <p>投稿と返信を複数選択できます。管理者権限では投稿パスワードなしで一括削除できます。</p>
-              <div className="button-row">
+              <p>投稿と返信を複数選択して、管理者権限で一括削除できます。</p>
+              <div className="button-row align-right admin-bulk-actions">
                 <button type="button" className="danger" onClick={bulkDelete}>チェックした項目を一括削除</button>
               </div>
               <SelectableThreadList threads={threads} selectedIds={selectedIds} onToggle={toggleSelected} multiple />
@@ -193,62 +187,67 @@ const AdminPage = () => {
           )}
 
           {activeTab === 'maintenance' && (
-            <>
-              <section className="card">
-                <h2>保守</h2>
-                <div className="button-row">
-                  <button type="button" onClick={checkIntegrity}>DB整合性を確認</button>
-                </div>
-                <p>旧CGIのシステムインデックス修復は、現行DB版では不要です。代わりに孤立返信と画像欠損を確認します。</p>
-              </section>
-              <section className="card">
-                <h2>管理パスワード変更</h2>
-                <form onSubmit={changeAdminPassword} className="form-card">
-                  <label>
-                    新しい管理パスワード
-                    <input type="password" value={newAdminPassword} onChange={(event) => setNewAdminPassword(event.target.value)} />
-                  </label>
+            <section className="card">
+              <h2>管理パスワード変更</h2>
+              <form onSubmit={changeAdminPassword} className="form-card">
+                <label>
+                  新しい管理パスワード
+                  <input type="password" value={newAdminPassword} onChange={(event) => setNewAdminPassword(event.target.value)} />
+                </label>
+                <div className="button-row align-right">
                   <button type="submit">管理パスワードを変更</button>
-                </form>
-              </section>
-            </>
+                </div>
+              </form>
+            </section>
           )}
 
           {activeTab === 'backup' && (
-            <section className="card">
-              <h2>バックアップ / インポート</h2>
-              <div className="button-row">
-                <button type="button" onClick={exportBackup}>DBと画像をエクスポート</button>
-              </div>
-              <form onSubmit={importBackup} className="form-card">
-                <label>
-                  バックアップJSON
-                  <input type="file" accept="application/json,.json" onChange={(event) => setBackupFile(event.target.files?.[0] ?? null)} />
-                </label>
-                <button type="submit">インポートして復元</button>
-              </form>
-              <form onSubmit={importLegacyBbsnote} className="form-card">
-                <label>
-                  旧BBSnoteログディレクトリ
-                  <input value={legacyDir} onChange={(event) => setLegacyDir(event.target.value)} placeholder="data" />
-                </label>
-                <button type="submit">旧BBSnoteログを追加インポート</button>
-              </form>
-              <p className="form-help">旧BBSnoteログの追加インポートは既存DB、画像、管理設定を初期化しません。</p>
-            </section>
+            <div className="admin-backup-stack">
+              <section className="card">
+                <h2>バックアップ</h2>
+                <p>DBと画像をまとめてバックアップJSONとしてダウンロードします。</p>
+                <div className="button-row align-right">
+                  <button type="button" onClick={exportBackup}>DBと画像をエクスポート</button>
+                </div>
+              </section>
+              <section className="card">
+                <h2>インポート</h2>
+                <p>バックアップJSONをアップロードしてDBと画像を復元します。</p>
+                <form onSubmit={importBackup} className="form-card">
+                  <label>
+                    バックアップJSON
+                    <input type="file" accept="application/json,.json" onChange={(event) => setBackupFile(event.target.files?.[0] ?? null)} />
+                  </label>
+                  <div className="button-row align-right">
+                    <button type="submit">インポートして復元</button>
+                  </div>
+                </form>
+              </section>
+              <section className="card">
+                <h2>旧BBSnoteログ追加インポート</h2>
+                <p className="form-help">既存DB、画像、管理設定は初期化せず、旧ログを追加で取り込みます。</p>
+                <form onSubmit={importLegacyBbsnote} className="form-card">
+                  <label>
+                    旧BBSnoteログディレクトリ
+                    <input value={legacyDir} onChange={(event) => setLegacyDir(event.target.value)} placeholder="data" />
+                  </label>
+                  <div className="button-row align-right">
+                    <button type="submit">旧BBSnoteログを追加インポート</button>
+                  </div>
+                </form>
+              </section>
+            </div>
           )}
 
           {activeTab === 'settings' && (
             <section className="card">
               <h2>掲示板設定</h2>
-              <p>HOMEリンク先、取説、投稿機能、色設定をここで設定できます。保存後、画面表示へ反映されます。</p>
-              {settings && (
-                <>
-                  <SettingsForm values={settings.config} onChange={(key, value) => updateSetting('config', key, value)} />
-                  <SettingsForm values={settings.skin} onChange={(key, value) => updateSetting('skin', key, value)} />
-                  <button type="button" onClick={saveSettings}>設定を保存</button>
-                </>
-              )}
+              <p>HOMEリンク先、取説、投稿機能、色設定をここで設定できます。</p>
+              <SettingsForm values={settings.config} onChange={(key, value) => updateSetting('config', key, value)} />
+              <SettingsForm values={settings.skin} onChange={(key, value) => updateSetting('skin', key, value)} compact />
+              <div className="button-row align-right">
+                <button type="button" onClick={saveSettings}>設定を保存</button>
+              </div>
             </section>
           )}
 
@@ -271,15 +270,23 @@ const AdminPage = () => {
   );
 };
 
-function SettingsForm({ values, onChange }: { values: Record<string, string | number | boolean>; onChange: (key: string, value: string) => void }) {
+function SettingsForm({
+  values,
+  onChange,
+  compact = false,
+}: {
+  values: Record<string, string | number | boolean>;
+  onChange: (key: string, value: string) => void;
+  compact?: boolean;
+}) {
   return (
-    <div className="admin-settings-grid">
+    <div className={compact ? 'admin-settings-grid admin-settings-grid-compact' : 'admin-settings-grid'}>
       {Object.entries(values).map(([key, value]) => {
         const label = settingLabels[key] ?? key;
         const stringValue = String(value);
         return (
           <label key={key} className={key === 'manualBody' ? 'admin-setting-wide' : undefined}>
-            {label}
+            <span>{label}</span>
             {key === 'manualBody' ? (
               <textarea value={stringValue} rows={12} onChange={(event) => onChange(key, event.target.value)} />
             ) : key === 'tweetEnabled' || key === 'gdgdEnabled' ? (
@@ -287,6 +294,8 @@ function SettingsForm({ values, onChange }: { values: Record<string, string | nu
                 <option value="true">ON</option>
                 <option value="false">OFF</option>
               </select>
+            ) : key === 'tweetConsumerSecret' || key === 'tweetAccessTokenSecret' ? (
+              <input type="password" value={stringValue} onChange={(event) => onChange(key, event.target.value)} />
             ) : (
               <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} />
             )}
@@ -311,6 +320,11 @@ const settingLabels: Record<string, string> = {
   manualTitle: '取説タイトル',
   manualBody: '取説本文',
   tweetEnabled: 'Tweet機能',
+  tweetBaseUrl: 'Tweet先URLベース',
+  tweetConsumerKey: 'Consumer Key',
+  tweetConsumerSecret: 'Consumer Secret',
+  tweetAccessToken: 'Access Token',
+  tweetAccessTokenSecret: 'Access Token Secret',
   gdgdEnabled: 'gdgd投稿機能',
   gdgdLabel: 'gdgd投稿の表示名',
   logView: '一覧表示件数',

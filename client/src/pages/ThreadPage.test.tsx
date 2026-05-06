@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import ThreadPage from './ThreadPage';
 import { api } from '../api';
@@ -14,6 +14,7 @@ vi.mock('../api', () => ({
 
 const thread = {
   id: 1,
+  display_no: 1,
   thread_id: 1,
   parent_id: 0,
   name: 'Alice',
@@ -23,12 +24,8 @@ const thread = {
   image_path: null,
   created_at: '2026-05-04 10:00:00',
   tweet_off: false,
-  tweet_text: '[DT000000: Thread title]\n作者： Alice\n\nThread body',
+  tweet_text: '[DT000000: Thread title]\n作者：Alice\n\nThread body',
   tweet_url: 'https://example.com/tweet',
-  tweet_like_count: 0,
-  tweet_retweet_count: 0,
-  tweet_comment_count: 0,
-  tweet_impression_count: 0,
 };
 
 describe('ThreadPage', () => {
@@ -39,43 +36,52 @@ describe('ThreadPage', () => {
     vi.mocked(api.createPost).mockResolvedValue({ success: true, message: 'ok' });
   });
 
-  it('does not show tweet controls in the reply form', async () => {
+  it('uses the board list layout for the parent post and all replies', async () => {
+    vi.mocked(api.getThread).mockResolvedValue({
+      thread,
+      replies: [
+        { ...thread, id: 2, parent_id: 1, message: 'Reply 1', reply_no: 1 },
+        { ...thread, id: 3, parent_id: 1, message: 'Reply 2', reply_no: 2 },
+      ],
+    });
+
     renderThreadPage();
 
-    await screen.findByRole('heading', { name: '返信を書く' });
-
-    expect(screen.queryByLabelText('Tweet OFF')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Tweet文言/)).not.toBeInTheDocument();
+    expect(await screen.findByText('[No・1] Thread title')).toBeInTheDocument();
+    expect(screen.getByText('Thread body')).toBeInTheDocument();
+    expect(screen.getByText('Reply 1')).toBeInTheDocument();
+    expect(screen.getByText('Reply 2')).toBeInTheDocument();
+    expect(screen.queryByText(/省略されています/)).not.toBeInTheDocument();
   });
 
-  it('does not show tweet text on the thread detail screen', async () => {
+  it('does not show tweet controls or tweet text on the thread detail screen', async () => {
     renderThreadPage();
 
-    await screen.findByRole('heading', { name: 'Thread title' });
+    await screen.findByText('[No・1] Thread title');
 
     expect(screen.queryByText('Tweet文言')).not.toBeInTheDocument();
     expect(screen.queryByText(/\[DT000000/)).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Tweet先' })).not.toBeInTheDocument();
   });
 
-  it('does not show image controls in the reply form', async () => {
+  it('does not show tweet or image controls in the reply form', async () => {
     renderThreadPage();
 
-    await screen.findByRole('heading', { name: '返信を書く' });
+    const replyForm = await screen.findByRole('form', { name: '返信フォーム' });
 
-    expect(screen.queryByLabelText(/画像/)).not.toBeInTheDocument();
-    expect(document.querySelector('input[type="file"]')).not.toBeInTheDocument();
+    expect(within(replyForm).queryByLabelText('Tweet OFF')).not.toBeInTheDocument();
+    expect(within(replyForm).queryByText(/Tweet文言/)).not.toBeInTheDocument();
+    expect(within(replyForm).queryByLabelText(/画像/)).not.toBeInTheDocument();
+    expect(replyForm.querySelector('input[type="file"]')).not.toBeInTheDocument();
   });
 
-  it('does not show the eejanaika form on the regular comment screen', async () => {
+  it('shows the reply form and eejanaika form side by side on the same screen', async () => {
     renderThreadPage();
 
-    await screen.findByRole('heading', { name: '返信を書く' });
-
-    expect(screen.queryByText('+ No.1へのええじゃないか +')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('お美事にございまする')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('いい仕事してますねぇ')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('ええじゃないか')).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '返信を書く' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'No.1へのええじゃないか' })).toBeInTheDocument();
+    expect(screen.getByRole('form', { name: '返信フォーム' })).toBeInTheDocument();
+    expect(screen.getByRole('form', { name: 'ええじゃないかフォーム' })).toBeInTheDocument();
   });
 
   it('does not render images attached to replies', async () => {
@@ -103,12 +109,12 @@ describe('ThreadPage', () => {
   it('submits replies without tweet or image fields and returns to the parent post on top', async () => {
     renderThreadPage();
 
-    await screen.findByRole('heading', { name: '返信を書く' });
+    const replyForm = await screen.findByRole('form', { name: '返信フォーム' });
 
-    fireEvent.change(screen.getByLabelText('名前'), { target: { value: 'Bob' } });
-    fireEvent.change(screen.getByLabelText('本文'), { target: { value: 'Reply body' } });
-    fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'secret' } });
-    fireEvent.click(screen.getByRole('button', { name: '返信を投稿' }));
+    fireEvent.change(within(replyForm).getByLabelText('名前'), { target: { value: 'Bob' } });
+    fireEvent.change(within(replyForm).getByLabelText('本文'), { target: { value: 'Reply body' } });
+    fireEvent.change(within(replyForm).getByLabelText('パスワード'), { target: { value: 'secret' } });
+    fireEvent.click(within(replyForm).getByRole('button', { name: '返信を投稿' }));
 
     await waitFor(() => expect(api.createPost).toHaveBeenCalled());
     expect(api.createPost).toHaveBeenCalledWith(expect.not.objectContaining({ tweet_off: expect.anything() }));
@@ -123,15 +129,15 @@ describe('ThreadPage', () => {
     await screen.findByText('/#post-1');
   });
 
-  it('submits the selected eejanaika comment as a reply and hides the regular reply form', async () => {
+  it('submits the selected eejanaika comment as a reply while the regular reply form remains available', async () => {
     renderThreadPage('/thread/1?mode=eejanaika');
 
-    await screen.findByText('+ No.1へのええじゃないか +');
+    const eejanaikaForm = await screen.findByRole('form', { name: 'ええじゃないかフォーム' });
 
-    expect(screen.queryByRole('heading', { name: '返信を書く' })).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('名前 (_/30文字)'), { target: { value: 'Carol' } });
-    fireEvent.click(screen.getByLabelText('いい仕事してますねぇ'));
-    fireEvent.click(screen.getByRole('button', { name: '送 信' }));
+    expect(screen.getByRole('form', { name: '返信フォーム' })).toBeInTheDocument();
+    fireEvent.change(within(eejanaikaForm).getByLabelText('名前'), { target: { value: 'Carol' } });
+    fireEvent.click(within(eejanaikaForm).getByLabelText('いい仕事してますねぇ'));
+    fireEvent.click(within(eejanaikaForm).getByRole('button', { name: '送信' }));
 
     await waitFor(() => expect(api.createPost).toHaveBeenCalledWith(expect.objectContaining({
       thread_id: 1,
@@ -156,9 +162,9 @@ describe('ThreadPage', () => {
 
     renderThreadPage();
 
-    expect((await screen.findAllByText('お美事にございまする'))[0].closest('p')).toHaveClass('eejanaika-reply-omigoto');
-    expect(screen.getAllByText('いい仕事してますねぇ')[0].closest('p')).toHaveClass('eejanaika-reply-goodjob');
-    expect(screen.getAllByText('ええじゃないか')[0].closest('p')).toHaveClass('eejanaika-reply-eejanaika');
+    expect((await screen.findAllByText('お美事にございまする'))[0].closest('.board-reply-text')).toHaveClass('eejanaika-reply-omigoto');
+    expect(screen.getAllByText('いい仕事してますねぇ')[0].closest('.board-reply-text')).toHaveClass('eejanaika-reply-goodjob');
+    expect(screen.getAllByText('ええじゃないか')[0].closest('.board-reply-text')).toHaveClass('eejanaika-reply-eejanaika');
   });
 });
 

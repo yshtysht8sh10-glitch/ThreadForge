@@ -30,7 +30,7 @@ const SearchPage = () => {
     <div>
       <div className="card">
         <h1>検索</h1>
-        <form onSubmit={handleSearch}>
+        <form onSubmit={handleSearch} className="form-card">
           <div className="field">
             <label htmlFor="search">キーワード</label>
             <input id="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="タイトル・本文・投稿者名を検索" />
@@ -44,7 +44,9 @@ const SearchPage = () => {
               <option value="name">投稿者名</option>
             </select>
           </div>
-          <button type="submit">検索する</button>
+          <div className="button-row align-right">
+            <button type="submit">検索する</button>
+          </div>
         </form>
       </div>
 
