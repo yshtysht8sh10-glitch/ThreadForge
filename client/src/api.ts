@@ -1,4 +1,5 @@
 import { NewPostData, Post, ThreadResponse, SearchResult } from './types';
+import { APP_NAME, APP_VERSION } from './version';
 
 export type PublicSettings = {
   config: {
@@ -119,7 +120,7 @@ const mockPosts: Post[] = [
     gdgd: true,
     tweet_off: false,
     tweet_text: '[DT000000：テストスレッド]\n作者：テストユーザー\n\nこれはテストの投稿です。\n\n#ドット絵 #pixelart',
-    tweet_url: null,
+    tweet_url: 'https://x.com/threadforge/status/1',
     display_no: 1,
     replies: [
       {
@@ -159,6 +160,24 @@ const mockPosts: Post[] = [
     replies: [],
     reply_count: 0,
   },
+  {
+    id: 4,
+    thread_id: 4,
+    parent_id: 0,
+    name: 'Tweet譛ｪ逋ｻ録繝ｦ繝ｼ繧ｶ繝ｼ',
+    url: null,
+    title: 'Tweet蜈域悴逋ｻ録縺ｮ繧ｹ繝ｬ繝・ラ',
+    message: 'Tweet先URLがまだ記録されていない投稿です。',
+    image_path: null,
+    created_at: '2024-01-01 14:00:00',
+    gdgd: false,
+    tweet_off: false,
+    tweet_text: null,
+    tweet_url: null,
+    display_no: 3,
+    replies: [],
+    reply_count: 0,
+  },
 ];
 
 function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
@@ -175,16 +194,18 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
       return mockPosts as T;
     case 'listDeletedPosts':
       return [] as T;
-    case 'version':
-      return { name: 'ThreadForge', version: '0.1.0' } as T;
-    case 'publicSettings':
-      return { success: true, settings: DEFAULT_PUBLIC_SETTINGS } as T;
-    case 'getSettings':
-      return { success: true, settings: DEFAULT_ADMIN_SETTINGS } as T;
     case 'getThread':
       const threadId = params.get('id');
       const thread = mockPosts.find(p => p.id === Number(threadId));
       return { thread, replies: [] } as T;
+    case 'getPost':
+      const postId = params.get('id');
+      const post = mockPosts.find(p => p.id === Number(postId)) || mockPosts[0];
+      return post as T;
+    case 'publicSettings':
+      return { success: true, settings: DEFAULT_PUBLIC_SETTINGS } as T;
+    case 'getSettings':
+      return { success: true, settings: DEFAULT_ADMIN_SETTINGS } as T;
     case 'search':
       const q = params.get('q') || '';
       const scope = params.get('scope') || 'all';
@@ -204,6 +225,17 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
     case 'changeAdminPassword':
     case 'importBackup':
       return { success: true, message: '操作が完了しました（モック）' } as T;
+    case 'importLegacyBbsnote':
+      return {
+        success: true,
+        message: '旧BBSnoteログをインポートしました（モック）',
+        imported_threads: 1,
+        imported_replies: 1,
+        skipped_threads: 0,
+        skipped_replies: 0,
+        missing_images: [],
+        files: 1,
+      } as T;
     case 'adminCheckIntegrity':
       return {
         success: true,
@@ -223,21 +255,21 @@ export const api = {
   rss: async (): Promise<string> => {
     const response = await fetch(`${apiBase()}?action=rss`);
     if (!response.ok) {
-      throw new Error(`${response.status} ${response.statusText}`);
+      throw new Error(`${response.status} ${response.statusText || defaultStatusText(response.status)}`);
     }
     return response.text();
-  },
-  version: async (): Promise<{ name: string; version: string }> => {
-    return fetchJson<{ name: string; version: string }>(`${apiBase()}?action=version`);
-  },
-  publicSettings: async (): Promise<{ success: boolean; settings: PublicSettings }> => {
-    return fetchJson<{ success: boolean; settings: PublicSettings }>(`${apiBase()}?action=publicSettings`);
   },
   getThread: async (id: string): Promise<ThreadResponse> => {
     return fetchJson<ThreadResponse>(`${apiBase()}?action=getThread&id=${encodeURIComponent(id)}`);
   },
   getPost: async (id: string): Promise<Post> => {
     return fetchJson<Post>(`${apiBase()}?action=getPost&id=${encodeURIComponent(id)}`);
+  },
+  version: async (): Promise<{ name: string; version: string }> => {
+    return { name: APP_NAME, version: APP_VERSION };
+  },
+  publicSettings: async (): Promise<{ success: boolean; settings: PublicSettings }> => {
+    return fetchJson<{ success: boolean; settings: PublicSettings }>(`${apiBase()}?action=publicSettings`);
   },
   search: async (q: string, scope = 'all'): Promise<SearchResult[]> => {
     return fetchJson<SearchResult[]>(`${apiBase()}?action=search&q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scope)}`);
@@ -313,6 +345,25 @@ export const api = {
       body: formData,
     });
   },
+  importLegacyBbsnote: async (legacyDir: string, adminPassword: string): Promise<{
+    success: boolean;
+    message: string;
+    imported_threads: number;
+    imported_replies: number;
+    skipped_threads: number;
+    skipped_replies: number;
+    missing_images: string[];
+    files: number;
+  }> => {
+    const formData = new FormData();
+    formData.append('action', 'importLegacyBbsnote');
+    formData.append('admin_password', adminPassword);
+    formData.append('legacy_dir', legacyDir);
+    return fetchJson(`${apiBase()}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
   getSettings: async (adminPassword: string): Promise<{ success: boolean; settings: any }> => {
     return fetchJson(`${apiBase()}?action=getSettings&admin_password=${encodeURIComponent(adminPassword)}`);
   },
@@ -337,3 +388,7 @@ export const api = {
     });
   },
 };
+
+function defaultStatusText(status: number): string {
+  return status === 500 ? 'Internal Server Error' : '';
+}

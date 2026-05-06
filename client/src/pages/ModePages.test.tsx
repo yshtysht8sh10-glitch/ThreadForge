@@ -6,9 +6,6 @@ import EditModePage from './EditModePage';
 import { api } from '../api';
 
 vi.mock('../api', () => ({
-  DEFAULT_PUBLIC_SETTINGS: {
-    config: { tweetEnabled: true, gdgdEnabled: true, gdgdLabel: 'gdgd投稿' },
-  },
   api: {
     listThreads: vi.fn(),
     deletePost: vi.fn(),
@@ -19,6 +16,7 @@ vi.mock('../api', () => ({
 
 const threads = [{
   id: 7,
+  display_no: 7,
   thread_id: 7,
   parent_id: 0,
   name: 'Alice',
@@ -31,10 +29,6 @@ const threads = [{
   tweet_off: false,
   tweet_text: null,
   tweet_url: null,
-  tweet_like_count: 0,
-  tweet_retweet_count: 0,
-  tweet_comment_count: 0,
-  tweet_impression_count: 0,
   replies: [{
     id: 8,
     thread_id: 7,
@@ -42,7 +36,7 @@ const threads = [{
     name: 'Bob',
     url: null,
     title: 'Re: 投稿タイトル',
-    message: '返信本文',
+    message: 'ええじゃないか',
     image_path: null,
     created_at: '2026-05-05 02:05:00',
     gdgd: false,
@@ -57,12 +51,8 @@ const threads = [{
 describe('mode pages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(api.listThreads).mockResolvedValue(threads);
+    vi.mocked(api.listThreads).mockResolvedValue(threads as any);
     vi.mocked(api.deletePost).mockResolvedValue({ success: true, message: 'ok' });
-    vi.mocked(api.publicSettings).mockResolvedValue({
-      success: true,
-      settings: { config: { tweetEnabled: true, gdgdEnabled: true, gdgdLabel: 'gdgd投稿' } },
-    } as any);
   });
 
   it('shows posts and replies with checkboxes on the delete mode page', async () => {
@@ -74,13 +64,13 @@ describe('mode pages', () => {
 
     expect(await screen.findByRole('link', { name: /\[No・7\]/ })).toBeInTheDocument();
     expect(screen.getByText('投稿本文')).toBeInTheDocument();
-    expect(screen.getByText('返信本文')).toBeInTheDocument();
+    expect(screen.getByText('ええじゃないか').closest('.board-reply-text')).toHaveClass('eejanaika-reply-eejanaika');
     expect(screen.getByLabelText('No.7 を選択')).toBeInTheDocument();
     expect(screen.getByLabelText('返信No.7-1 を選択')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^削除$/ })).not.toBeInTheDocument();
   });
 
-  it('deletes checked posts and replies using the shared password field', async () => {
+  it('deletes the checked item using the shared password field', async () => {
     render(
       <MemoryRouter>
         <DeleteModePage />
@@ -100,7 +90,7 @@ describe('mode pages', () => {
     renderEditMode();
 
     expect(await screen.findByRole('link', { name: /\[No・7\]/ })).toBeInTheDocument();
-    expect(screen.getByText('返信本文')).toBeInTheDocument();
+    expect(screen.getByText('ええじゃないか').closest('.board-reply-text')).toHaveClass('eejanaika-reply-eejanaika');
     expect(screen.getByLabelText('No.7 を選択')).toBeInTheDocument();
     expect(screen.getByLabelText('返信No.7-1 を選択')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^編集$/ })).not.toBeInTheDocument();

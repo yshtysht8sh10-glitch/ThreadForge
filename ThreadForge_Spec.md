@@ -46,6 +46,7 @@ This project began as a modernization of a legacy image board, but the public di
 - Admin bulk delete without per-post passwords
 - Admin DB integrity check
 - Admin backup export/import for DB, images, and settings
+- Admin non-destructive import for old BBSnote `LOG_*.cgi` data
 - Admin settings storage for `config.cgi` and `skincfg.cgi` equivalents
 - Admin-configurable HOME link target
 - Admin-configurable embedded manual title and body
@@ -64,6 +65,7 @@ Implemented:
 - Check DB consistency
 - Export backup JSON containing DB rows, images, and settings
 - Import backup JSON and restore DB/images/settings
+- Import old BBSnote logs from a local directory without resetting existing DB rows, images, or settings
 - Edit and save current app settings
 - Configure the top navigation HOME link target
 - Configure the SPA manual title and body
@@ -121,6 +123,8 @@ Public UI reads a safe subset of settings through `?action=publicSettings`:
 - Runtime DB and uploaded media are excluded from Git.
 - Backups should be made through the admin export feature.
 - Replacing an existing post image keeps old image files archived rather than deleting them immediately.
+- Old BBSnote log import copies legacy images into storage and skips already imported posts/replies by matching name, content, and timestamp.
+- Intentional clean initialization is done by stopping the server, deleting `server/database.sqlite`, and deleting files under `server/storage/data/`. See `docs/DB.md`.
 
 ## Deletion Rules
 
@@ -158,4 +162,4 @@ The PHP API exposes the current version through `?action=version`.
 - Apply all saved `skincfg.cgi`-equivalent settings to live styling.
 - CSRF protection.
 - Production deployment packaging.
-- Full legacy CGI migration tooling.
+- Richer legacy CGI migration options beyond local BBSnote log import.

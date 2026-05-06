@@ -285,7 +285,7 @@ img.thumbnail {
 
 .thread-list {
   display: grid;
-  gap: 2.25rem;
+  gap: 1.65rem;
 }
 
 .board-message {
@@ -297,6 +297,9 @@ img.thumbnail {
 .board-thread {
   border: 1px solid #a23dff;
   background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
 }
 
 .board-thread.board-thread-gdgd {
@@ -316,7 +319,7 @@ img.thumbnail {
   padding: 0.35rem 0.45rem;
   background: #6f069a;
   color: #fff;
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 800;
   line-height: 1.25;
 }
@@ -326,7 +329,7 @@ img.thumbnail {
 }
 
 .board-thread-body {
-  padding: 0.5rem;
+  padding: 0.75rem 1rem 0.85rem;
 }
 
 .board-meta {
@@ -343,7 +346,7 @@ img.thumbnail {
 .board-image-link {
   display: block;
   text-align: center;
-  margin: 0.5rem 0 0.8rem;
+  margin: 0.65rem 0 0.9rem;
 }
 
 .board-post-image {
@@ -394,27 +397,163 @@ img.thumbnail {
 
 .board-thread-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
   border-top: 1px solid #aaa;
   padding-top: 0.55rem;
 }
 
+.board-action-group {
+  display: inline-flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
 .board-action-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 1.8rem;
-  padding: 0.2rem 0.75rem;
-  border: 1px solid #777;
-  background: #444;
-  color: #ddd;
+  min-height: 2.35rem;
+  padding: 0.48rem 1rem;
+  border: 1px solid #6a7480;
+  border-radius: 8px;
+  background: #30343b;
+  color: #e5e7eb;
   font-weight: 700;
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.18);
+}
+
+.board-action-button:first-child {
+  background: #4f83f1;
+  border-color: #78a4ff;
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(79, 131, 241, 0.24);
+}
+
+.board-action-button:hover {
+  background: #3b424d;
+  color: #fff;
+  text-decoration: none;
+}
+
+.board-action-button:first-child:hover {
+  background: #306ce8;
 }
 
 .board-more-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #48a5ff;
   font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.board-more-link:hover {
+  color: #9ed8ff;
+  background: transparent;
+  text-decoration: underline;
+}
+
+.inline-status {
+  margin: 0.75rem 0;
+}
+
+.inline-reply-form,
+.inline-eejanaika-form {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0.85rem 0;
+  padding: 0.85rem;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #101923;
+}
+
+.inline-reply-form h3,
+.inline-eejanaika-form h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.05rem;
+}
+
+.inline-reply-form label,
+.inline-eejanaika-form label {
+  color: #9ed8ff;
+  font-size: 0.86rem;
+  margin: 0;
+}
+
+.inline-reply-form input,
+.inline-reply-form textarea,
+.inline-eejanaika-form input {
+  border-radius: 4px;
+  padding: 0.4rem 0.5rem;
+  background: #30343b;
+  border: 1px solid #6f7885;
+  color: #fff;
+}
+
+.inline-form-bottom-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: end;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.inline-form-bottom-row label {
+  min-width: min(16rem, 100%);
+}
+
+.inline-form-bottom-row > span[aria-hidden='true'] {
+  min-width: min(16rem, 100%);
+}
+
+.inline-reply-form .post-submit-button,
+.inline-eejanaika-form .post-submit-button {
+  min-height: 2.45rem;
+  border-radius: 8px;
+  padding: 0.52rem 1.15rem;
+  background: #4f83f1;
+  border: 1px solid #78a4ff;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 6px 14px rgba(79, 131, 241, 0.24);
+}
+
+.inline-reply-form .post-submit-button:hover,
+.inline-eejanaika-form .post-submit-button:hover {
+  background: #306ce8;
+}
+
+.board-social-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  color: #00a7ff;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.board-tweet-link,
+.board-tweet-placeholder {
+  color: #d8d1bd;
+  font-weight: 700;
+}
+
+.board-tweet-link:hover {
+  color: #fff;
+  text-decoration: none;
+}
+
+.board-tweet-placeholder {
+  opacity: 0.82;
 }
 
 .mode-page {
@@ -499,6 +638,27 @@ img.thumbnail {
   margin: 0 auto;
 }
 
+.admin-tabs {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin: 0 0 1rem;
+}
+
+.admin-tabs button {
+  border-radius: 4px;
+  padding: 0.45rem 0.75rem;
+  background: #30343b;
+  border: 1px solid #6a7480;
+  color: #ddd;
+}
+
+.admin-tabs button.active {
+  background: #4f83f1;
+  border-color: #78a4ff;
+  color: #fff;
+}
+
 .admin-post-list {
   display: grid;
   gap: 0.45rem;
@@ -539,10 +699,11 @@ img.thumbnail {
 .post-form-page {
   max-width: 680px;
   margin: 0 auto;
-  padding: 1rem 1.1rem;
+  padding: 0 1.1rem 1rem;
   background: #101923;
   border: 1px solid #a23dff;
   border-radius: 8px;
+  overflow: hidden;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
   color: #9ed8ff;
   font-size: 0.86rem;
@@ -553,13 +714,12 @@ img.thumbnail {
   border-color: #6dffc0;
 }
 
-.post-form-page.post-form-tweet-off {
-  border-color: #888;
+.post-form-page.post-form-gdgd .post-form-title {
+  background: #228f89;
 }
 
-.board-tweet-link {
-  color: #48a5ff;
-  font-weight: 700;
+.post-form-page.post-form-tweet-off {
+  border-color: #888;
 }
 
 .legacy-post-form {
@@ -567,9 +727,14 @@ img.thumbnail {
   gap: 0.45rem;
 }
 
-.post-form-mode {
-  text-align: center;
+.post-form-title {
+  margin: 0 -1.1rem 0.7rem;
+  padding: 0.35rem 0.55rem;
+  background: #6f069a;
   color: #fff;
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1.25;
 }
 
 .post-form-top-row {
@@ -642,11 +807,36 @@ img.thumbnail {
 }
 
 .post-form-bottom-row button {
-  border-radius: 4px;
-  padding: 0.4rem 0.8rem;
-  background: #555d68;
-  border: 1px solid #7d8794;
-  color: #ddd;
+  min-height: 2.45rem;
+  border-radius: 8px;
+  padding: 0.52rem 1.15rem;
+  border: 1px solid transparent;
+  color: #fff;
+  font-weight: 700;
+}
+
+.post-form-bottom-row .post-submit-button {
+  background: #4f83f1;
+  box-shadow: 0 6px 14px rgba(79, 131, 241, 0.24);
+}
+
+.post-form-bottom-row .post-submit-button:hover {
+  background: #306ce8;
+}
+
+.post-form-bottom-row .post-submit-button:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.post-form-bottom-row .post-reset-button {
+  background: #30343b;
+  border-color: #6a7480;
+  color: #e5e7eb;
+}
+
+.post-form-bottom-row .post-reset-button:hover {
+  background: #3b424d;
 }
 
 .post-form-notes {

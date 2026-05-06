@@ -38,7 +38,7 @@ const App = () => {
         <nav className="board-nav" aria-label="メインメニュー">
           <span className="nav-square" aria-hidden="true">■</span>
           <span className="nav-separator">|</span>
-          <a href={publicSettings.config.homePageUrl || '/'}>HOME</a>
+          <a href={homeHref(publicSettings.config.homePageUrl)}>HOME</a>
           <span className="nav-separator">|</span>
           <Link to="/" reloadDocument>一覧</Link>
           <span className="nav-separator">|</span>
@@ -76,5 +76,16 @@ const App = () => {
     </div>
   );
 };
+
+export function homeHref(value?: string): string {
+  const raw = (value ?? '').trim();
+  if (raw === '') {
+    return '/';
+  }
+  if (/^https?:\/\//i.test(raw) || raw.startsWith('/')) {
+    return raw;
+  }
+  return `https://${raw}`;
+}
 
 export default App;

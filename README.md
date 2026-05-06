@@ -73,3 +73,14 @@ The backend creates runtime files locally:
 - `server/storage/data/*`
 
 These files are intentionally ignored by Git. Use the admin backup/export feature to move live data between environments.
+
+## Documentation Map
+
+- `ThreadForge_Spec.md`: current product specification and implementation status
+- `CHANGELOG.md`: release history
+- `docs/README.md`: documentation index
+- `docs/API.md`: PHP API reference
+- `docs/DB.md`: SQLite/runtime data, backup, import, and reset notes
+- `docs/MIGRATION.md`: old BBSnote log import notes
+- `docs/ARCHITECTURE.md`: architecture notes
+- `docs/TESTING.md`: test strategy

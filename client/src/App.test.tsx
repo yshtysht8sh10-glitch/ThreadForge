@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import App from './App';
+import App, { homeHref } from './App';
 
 describe('App navigation', () => {
   it('links the right square to admin mode', () => {
@@ -32,6 +32,12 @@ describe('App navigation', () => {
     );
 
     expect(screen.getByRole('link', { name: '取説' })).toHaveAttribute('href', '/manual');
+  });
+
+  it('normalizes configured HOME URLs', () => {
+    expect(homeHref('https://example.com/home')).toBe('https://example.com/home');
+    expect(homeHref('example.com/home')).toBe('https://example.com/home');
+    expect(homeHref('/local-home')).toBe('/local-home');
   });
 
   it('shows the application version', () => {

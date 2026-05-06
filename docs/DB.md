@@ -1,19 +1,21 @@
-# DB / ストレージ仕様
+# DB / Runtime Data
 
-現行バックエンドは SQLite とファイルストレージを使います。
+The current backend uses SQLite plus file storage.
 
-## SQLite
+## Runtime Files
 
-DB ファイル:
+- DB: `server/database.sqlite`
+- Uploaded and imported media: `server/storage/data/`
 
-- `server/database.sqlite`
+Both are ignored by Git. They are local runtime data, not source files.
 
-接続と初期化:
+## Initialization Behavior
 
-- `server/db.php`
-- `getConnection()` が DB ファイルを作成し、`initializeDatabase()` でテーブルと画像保存ディレクトリを初期化します
+`server/db.php` creates the SQLite file, tables, missing columns, and storage directory when the API starts. It does not delete existing rows, images, or settings.
 
-## posts テーブル
+During development, do not delete `server/database.sqlite` or `server/storage/data/` unless you intentionally want a clean board.
+
+## posts Table
 
 ```sql
 CREATE TABLE IF NOT EXISTS posts (
@@ -28,6 +30,7 @@ CREATE TABLE IF NOT EXISTS posts (
   password_hash TEXT,
   created_at TEXT NOT NULL,
   deleted_at TEXT,
+  gdgd INTEGER NOT NULL DEFAULT 0,
   tweet_off INTEGER NOT NULL DEFAULT 0,
   tweet_text TEXT,
   tweet_url TEXT,
@@ -38,66 +41,65 @@ CREATE TABLE IF NOT EXISTS posts (
 )
 ```
 
-## カラム
+Tweet statistic columns are kept for compatibility but are no longer exposed in the UI.
 
-- `id`: 投稿 ID
-- `thread_id`: 所属スレッド ID。親投稿では自身の ID
-- `parent_id`: 親投稿 ID。親投稿では `0`
-- `name`: 投稿者名
-- `url`: 投稿者 URL / HOME
-- `title`: タイトル
-- `message`: 本文
-- `image_path`: サーバ内部の画像保存パス
-- `password_hash`: `password_hash()` で生成した編集、削除用ハッシュ
-- `created_at`: `Asia/Tokyo` の日時文字列
-- `deleted_at`: ソフト削除日時。未削除の場合は `null`
-- `tweet_off`: Tweet OFF フラグ
-- `tweet_text`: 自動生成 Tweet 文言
-- `tweet_url`: Tweet 投稿先 URL
-- `tweet_like_count`: いいね数
-- `tweet_retweet_count`: リツイート数
-- `tweet_comment_count`: コメント数
-- `tweet_impression_count`: インプレッション数
+## settings Table
 
-## ソフト削除
+```sql
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+)
+```
 
-投稿削除時は SQLite レコードを削除しません。`deleted_at` に `Asia/Tokyo` の日時文字列を保存します。
+Settings are stored as JSON sections:
 
-表示系 API は `deleted_at IS NULL` の投稿だけを返します。内部には投稿本文、画像パス、パスワードハッシュ、画像ファイルが残ります。
+- `config`
+- `skin`
+- `security`
 
-スレッド親投稿を削除した場合、同じ `thread_id` の返信もまとめてソフト削除します。返信を削除した場合はその返信だけをソフト削除します。
+## Backups
 
-## 画像保存
+Use the admin screen export button to download one JSON file containing:
 
-保存先:
+- DB rows
+- images as base64 payloads
+- admin settings
 
-- `server/storage/data/`
+Importing this backup JSON is a full restore. It replaces posts and images, then restores settings from the backup.
 
-API 応答時の公開パス:
+## Old BBSnote Import
 
-- `/storage/data/{filename}`
+The admin screen also has `旧BBSnoteログを追加インポート`.
 
-ファイル名:
+This reads old `LOG_*.cgi` files from a local directory, defaulting to root `data/`, and copies referenced image files into `server/storage/data/`.
 
-- 現行画像は投稿 ID と MIME type 由来の拡張子を組み合わせる
-- 例: `123.png`, `123.jpg`, `123.gif`
-- 差し替え時の旧画像は `123_YYYYMMDDHHMMSS.png` のような履歴名へ退避する
-- API が返す `image_path` は最新画像のみを指す
+This import is intentionally non-destructive:
 
-許可 MIME type:
+- It does not delete existing posts.
+- It does not delete existing images.
+- It does not reset admin settings.
+- Re-running it skips posts and replies already imported by matching name, content, and timestamp.
 
-- `image/png`
-- `image/jpeg`
-- `image/gif`
+Imported legacy posts use generated unknown password hashes. They should be managed from the admin screen unless a later password migration is implemented.
 
-## 未実装
+## Intentional Clean Initialization
 
-- 画像サイズ上限の明示的なチェック
-- 画像リサイズ
-- サムネイル生成
-- 画像メタデータ削除
-- 履歴画像の一覧 API
-- 履歴画像の自動削除、容量管理
-- SQLite 以外の DB 本番対応
-- マイグレーション管理
-- 旧 CGI データのインポート
+For public release or a clean local board:
+
+1. Export a backup first if you need the current data.
+2. Stop the PHP server.
+3. Delete `server/database.sqlite`.
+4. Delete files under `server/storage/data/`, keeping the directory or recreating it later.
+5. Start the PHP server again.
+
+The next API request recreates the DB schema and storage directory with default settings.
+
+PowerShell example:
+
+```powershell
+Remove-Item server\database.sqlite
+Get-ChildItem server\storage\data -File | Remove-Item
+```
+
+Use this only when you truly want to reset runtime data.

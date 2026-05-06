@@ -2,14 +2,17 @@ import { Link } from 'react-router-dom';
 import { mediaUrl } from '../api';
 import { Post } from '../types';
 import LinkedText from './LinkedText';
+import { replyTextClassName } from './ThreadList';
 
 type SelectableThreadListProps = {
   threads: Post[];
   selectedIds: string[];
   onToggle: (id: string) => void;
+  multiple?: boolean;
 };
 
-const SelectableThreadList = ({ threads, selectedIds, onToggle }: SelectableThreadListProps) => {
+const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false }: SelectableThreadListProps) => {
+  const inputType = multiple ? 'checkbox' : 'radio';
   return (
     <div className="thread-list">
       {threads.length === 0 && <div className="board-message">投稿はまだありません。</div>}
@@ -17,7 +20,8 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle }: SelectableThre
         <article key={thread.id} id={`post-${thread.id}`} className={threadClassName(thread)}>
           <label className="mode-select-checkbox">
             <input
-              type="checkbox"
+              type={inputType}
+              name={multiple ? undefined : 'selected-post'}
               checked={selectedIds.includes(String(thread.id))}
               onChange={() => onToggle(String(thread.id))}
             />
@@ -49,7 +53,8 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle }: SelectableThre
               <section key={reply.id} className="board-reply selectable-board-reply">
                 <label className="mode-select-checkbox mode-select-checkbox-reply">
                   <input
-                    type="checkbox"
+                    type={inputType}
+                    name={multiple ? undefined : 'selected-post'}
                     checked={selectedIds.includes(String(reply.id))}
                     onChange={() => onToggle(String(reply.id))}
                   />
@@ -60,7 +65,7 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle }: SelectableThre
                   {reply.url && <> <a href={reply.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                   {' '} - {formatDate(reply.created_at)}
                 </p>
-                <div className="board-reply-text">
+                <div className={replyTextClassName(reply.message)}>
                   <LinkedText text={reply.message} />
                 </div>
               </section>

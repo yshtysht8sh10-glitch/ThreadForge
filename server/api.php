@@ -65,6 +65,9 @@ switch ($action) {
     case 'importBackup':
         importBackup($pdo);
         break;
+    case 'importLegacyBbsnote':
+        importLegacyBbsnote($pdo);
+        break;
     case 'getSettings':
         getSettings($pdo);
         break;
@@ -142,27 +145,6 @@ function getThread(PDO $pdo): void
             $replies
         ),
     ]);
-}
-
-function withDisplayNo(PDO $pdo, array $post, int $threadId): array
-{
-    $post['display_no'] = threadDisplayNo($pdo, $threadId);
-    return $post;
-}
-
-function withReplyNo(PDO $pdo, array $post, int $threadId, int $replyId): array
-{
-    $stmt = $pdo->prepare('SELECT COUNT(*) FROM posts WHERE thread_id = :thread_id AND id != thread_id AND id <= :reply_id');
-    $stmt->execute([':thread_id' => $threadId, ':reply_id' => $replyId]);
-    $post['reply_no'] = (int)$stmt->fetchColumn();
-    return $post;
-}
-
-function threadDisplayNo(PDO $pdo, int $threadId): int
-{
-    $stmt = $pdo->prepare('SELECT COUNT(*) FROM posts WHERE parent_id = 0 AND id <= :id');
-    $stmt->execute([':id' => $threadId]);
-    return (int)$stmt->fetchColumn();
 }
 
 function searchPosts(PDO $pdo): void
@@ -469,7 +451,10 @@ function listDeletedPosts(PDO $pdo): void
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
 
-    jsonResponse(array_map('buildPost', $stmt->fetchAll(PDO::FETCH_ASSOC)));
+    jsonResponse(array_map(
+        fn (array $row): array => buildDeletedPost($pdo, $row),
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+    ));
 }
 
 function restorePost(PDO $pdo): void
@@ -663,6 +648,18 @@ function importBackup(PDO $pdo): void
     }
 
     jsonResponse(['success' => true, 'message' => 'バックアップをインポートしました。']);
+}
+
+function importLegacyBbsnote(PDO $pdo): void
+{
+    requireAdmin();
+    $legacyDir = (string)($_POST['legacy_dir'] ?? 'data');
+
+    try {
+        jsonResponse(importLegacyBbsnoteDirectory($pdo, $legacyDir));
+    } catch (InvalidArgumentException $exception) {
+        jsonResponse(['success' => false, 'message' => $exception->getMessage()], 400);
+    }
 }
 
 function getSettings(PDO $pdo): void

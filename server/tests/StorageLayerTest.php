@@ -241,6 +241,98 @@ final class StorageLayerTest extends TestCase
         $this->assertFalse(hasRecentDuplicatePost($pdo, 'Alice', 'Other', 'Body', 60));
     }
 
+    // #sym:describe buildDeletedPost
+    public function testBuildDeletedPostUsesThreadDisplayAndReplyNumbers(): void
+    {
+        $pdo = getConnection();
+        $pdo->exec("INSERT INTO posts (thread_id, parent_id, name, title, message, image_path, created_at, deleted_at) VALUES (0, 0, 'Alice', 'First', 'Body', null, '2026-05-01 12:00:00', null)");
+        $firstId = (int)$pdo->lastInsertId();
+        $pdo->prepare('UPDATE posts SET thread_id = :id WHERE id = :id')->execute([':id' => $firstId]);
+
+        $pdo->exec("INSERT INTO posts (thread_id, parent_id, name, title, message, image_path, created_at, deleted_at) VALUES (0, 0, 'Bob', 'Second', 'Body', null, '2026-05-01 13:00:00', '2026-05-02 12:00:00')");
+        $secondId = (int)$pdo->lastInsertId();
+        $pdo->prepare('UPDATE posts SET thread_id = :id WHERE id = :id')->execute([':id' => $secondId]);
+
+        $pdo->prepare("INSERT INTO posts (thread_id, parent_id, name, title, message, image_path, created_at, deleted_at) VALUES (:thread_id, :parent_id, 'Carol', 'Re: Second', 'Reply', null, '2026-05-01 13:10:00', '2026-05-02 12:00:00')")
+            ->execute([':thread_id' => $secondId, ':parent_id' => $secondId]);
+        $replyId = (int)$pdo->lastInsertId();
+
+        $thread = buildDeletedPost($pdo, findPostById($pdo, $secondId));
+        $reply = buildDeletedPost($pdo, findPostById($pdo, $replyId));
+
+        $this->assertSame(2, $thread['display_no']);
+        $this->assertSame(2, $reply['display_no']);
+        $this->assertSame(1, $reply['reply_no']);
+    }
+
+    // #sym:describe importLegacyBbsnoteDirectory
+    public function testImportLegacyBbsnoteDirectoryAddsThreadsRepliesAndImagesWithoutDuplicates(): void
+    {
+        $pdo = getConnection();
+        $legacyDir = sys_get_temp_dir() . '/threadforge-legacy-' . bin2hex(random_bytes(4));
+        mkdir($legacyDir, 0775, true);
+
+        $main = array_pad([
+            '20403',
+            'Legacy User',
+            '2022/01/16 (Sun) 20:53:30',
+            'Legacy Title',
+            '',
+            'https://example.com/home',
+            'Line1<BR><SPAN class="quot">&gt;quoted</SPAN>',
+            'host',
+            '127.0.0.1',
+            'agent',
+            'DOTIMG_009359_1.gif',
+            '254',
+            '306',
+            '321881',
+            'legacy-password',
+            '',
+            '',
+            '',
+            '',
+            'https://x.com/example/status/1',
+        ], 24, '');
+        $reply = array_pad([
+            '20405',
+            'Reply User',
+            '2022/01/17 (Mon) 01:02:03',
+            'Reply<BR>Body',
+            'reply-password',
+            'host',
+            '',
+            '',
+            'browser',
+            'os',
+        ], 10, '');
+
+        file_put_contents($legacyDir . '/LOG_009359.cgi', implode("\t", $main) . PHP_EOL . implode("\t", $reply) . PHP_EOL);
+        file_put_contents($legacyDir . '/DOTIMG_009359_1.gif', 'gif-data');
+
+        try {
+            $first = importLegacyBbsnoteDirectory($pdo, $legacyDir);
+            $second = importLegacyBbsnoteDirectory($pdo, $legacyDir);
+        } finally {
+            $this->removeDirectory($legacyDir);
+        }
+
+        $this->assertSame(1, $first['imported_threads']);
+        $this->assertSame(1, $first['imported_replies']);
+        $this->assertSame(0, $first['skipped_threads']);
+        $this->assertSame(1, $second['skipped_threads']);
+        $this->assertSame(1, $second['skipped_replies']);
+
+        $rows = $pdo->query('SELECT * FROM posts ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
+        $this->assertCount(2, $rows);
+        $this->assertSame('Legacy Title', $rows[0]['title']);
+        $this->assertSame("Line1\n>quoted", $rows[0]['message']);
+        $this->assertSame('https://x.com/example/status/1', $rows[0]['tweet_url']);
+        $this->assertFileExists((string)$rows[0]['image_path']);
+        $this->assertSame((int)$rows[0]['id'], (int)$rows[1]['thread_id']);
+        $this->assertSame("Reply\nBody", $rows[1]['message']);
+    }
+
     private function removeDirectory(string $directory): void
     {
         $items = new RecursiveIteratorIterator(

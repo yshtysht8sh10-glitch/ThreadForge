@@ -37,7 +37,6 @@ export type NewPostData = {
   file?: File;
   gdgd?: boolean;
   tweet_off?: boolean;
-  tweet_url?: string;
 };
 
 export type EditPostData = {

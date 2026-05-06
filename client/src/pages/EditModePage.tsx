@@ -30,7 +30,7 @@ const EditModePage = () => {
     setError(null);
 
     if (selectedIds.length !== 1) {
-      setError('編集する投稿または返信を1件だけチェックしてください。');
+      setError('編集する投稿または返信を1件だけ選択してください。');
       return;
     }
     if (!password.trim()) {
@@ -45,7 +45,7 @@ const EditModePage = () => {
     <>
       <section className="mode-page">
         <h1>編集モード</h1>
-        <p>編集する投稿または返信を1件チェックし、パスワードを入力して編集してください。</p>
+        <p>編集する投稿または返信を1件選択し、投稿時のパスワードを入力してください。</p>
         <form onSubmit={onSubmit} className="mode-inline-form">
           <label>
             パスワード
@@ -54,7 +54,7 @@ const EditModePage = () => {
           <button type="submit">チェックした項目を編集する</button>
           <button type="button" onClick={() => navigate('/')}>戻る</button>
         </form>
-        {selectedIds.length > 0 && <p className="status">選択中: No・{selectedIds[0]}</p>}
+        {selectedIds.length > 0 && <p className="status">選択中: No.{selectedIds[0]}</p>}
         {error && <p className="error">エラー: {error}</p>}
       </section>
 

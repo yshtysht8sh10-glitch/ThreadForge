@@ -13,7 +13,7 @@ server/.php/
 server/composer.phar
 
 # Runtime data
-server/database.sqlite
+server/database*.sqlite
 server/storage/data/*
 !server/storage/data/.gitkeep
 server/tests/runtime/

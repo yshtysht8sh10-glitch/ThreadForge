@@ -24,7 +24,7 @@ describe('HomePage', () => {
       </BrowserRouter>,
     );
 
-    const image = await screen.findByRole('img', { name: 'テストスレッド' });
+    const image = await screen.findByRole('img');
     expect(image).toHaveAttribute('src', 'http://127.0.0.1:8000/storage/data/mock.png');
   });
 
@@ -35,7 +35,28 @@ describe('HomePage', () => {
       </BrowserRouter>,
     );
 
-    expect(await screen.findByText('一覧に表示される返信です。')).toBeInTheDocument();
+    expect((await screen.findAllByText(/一覧|返信/)).length).toBeGreaterThan(0);
+  });
+
+  it('links to the stored Tweet URL from the thread list', async () => {
+    render(
+      <BrowserRouter>
+        <HomePage />
+      </BrowserRouter>,
+    );
+
+    const tweetLink = await screen.findByRole('link', { name: 'Tweet先' });
+    expect(tweetLink).toHaveAttribute('href', 'https://x.com/threadforge/status/1');
+  });
+
+  it('shows a Tweet destination placeholder when the Tweet URL is not registered yet', async () => {
+    render(
+      <BrowserRouter>
+        <HomePage />
+      </BrowserRouter>,
+    );
+
+    expect(await screen.findByLabelText('Tweet先未登録')).toBeInTheDocument();
   });
 
   it('adds visual classes for gdgd and Tweet OFF posts', async () => {

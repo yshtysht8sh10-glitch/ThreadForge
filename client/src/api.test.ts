@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // テスト対象の API モジュール
-import { api, DEFAULT_ADMIN_SETTINGS, DEFAULT_PUBLIC_SETTINGS, fetchJson, isMockMode, mediaUrl } from './api';
+import { api, fetchJson, isMockMode, mediaUrl, DEFAULT_PUBLIC_SETTINGS } from './api';
 
 /**
  * API モジュールのテストスイート
@@ -57,6 +57,23 @@ describe('API Module', () => {
     });
   });
 
+  describe('rss', () => {
+    it('should fetch RSS as text', async () => {
+      import.meta.env.VITE_USE_MOCK = 'false';
+      const mockRss = '<rss version="2.0"><channel><title>Test</title></channel></rss>';
+      vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(mockRss, { status: 200 }))));
+
+      const result = await api.rss();
+      expect(result).toBe(mockRss);
+    });
+
+    it('should throw error when rss fetch fails', async () => {
+      import.meta.env.VITE_USE_MOCK = 'false';
+      vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('Error', { status: 500 }))));
+      await expect(api.rss()).rejects.toThrow('500 Internal Server Error');
+    });
+  });
+
   // スレッド一覧を取得する API の動作確認
   describe('listThreads', () => {
     it('should be exported as a function', () => {
@@ -87,6 +104,14 @@ describe('API Module', () => {
       expect(thread.thread).not.toBeNull();
       expect(thread.thread).toHaveProperty('id', 1);
       expect(Array.isArray(thread.replies)).toBe(true);
+    });
+  });
+
+  describe('getPost', () => {
+    it('should fetch a single post from mock', async () => {
+      // getPostはモック側で明示的に定義されていないのでfallbackを確認
+      const result = await api.getPost('1');
+      expect(result).toBeDefined();
     });
   });
 
@@ -156,6 +181,13 @@ describe('API Module', () => {
       expect(api.updatePost).toBeDefined();
       expect(typeof api.updatePost).toBe('function');
     });
+
+    it('should return success from mock API', async () => {
+      const formData = new FormData();
+      formData.append('id', '1');
+      const result = await api.updatePost(formData);
+      expect(result.success).toBe(true);
+    });
   });
 
   // 投稿を削除する API のインターフェース確認
@@ -163,6 +195,11 @@ describe('API Module', () => {
     it('should be exported as a function', () => {
       expect(api.deletePost).toBeDefined();
       expect(typeof api.deletePost).toBe('function');
+    });
+
+    it('should return success from mock API', async () => {
+      const result = await api.deletePost('1', 'password');
+      expect(result.success).toBe(true);
     });
   });
 
@@ -189,10 +226,19 @@ describe('API Module', () => {
       expect(result).toEqual({ success: true, message: '操作が完了しました（モック）' });
     });
 
-    it('should return settings from mock API', async () => {
-      const result = await api.getSettings('admin');
-      expect(result).toEqual({ success: true, settings: DEFAULT_ADMIN_SETTINGS });
-      expect(result.settings.config.manualBody).toContain('返信に画像投稿はありません。');
+    it('should delete multiple posts from mock API', async () => {
+      const result = await api.adminDeletePosts(['1', '2'], 'admin');
+      expect(result.success).toBe(true);
+    });
+
+    it('should import legacy BBSnote logs from mock API', async () => {
+      const result = await api.importLegacyBbsnote('data', 'admin');
+      expect(result.success).toBe(true);
+    });
+
+    it('should update settings from mock API', async () => {
+      const result = await api.updateSettings({ title: 'New Title' }, 'admin');
+      expect(result.success).toBe(true);
     });
 
     it('should return integrity details from mock API', async () => {

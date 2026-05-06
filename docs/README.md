@@ -1,55 +1,41 @@
-# ThreadForge Documentation
+# ThreadForge Docs
 
-This directory contains documentation for the current React + PHP implementation.
+This directory is the documentation index. Keep the root `README.md` as the short repository entry point, and keep detailed operational notes here.
 
-## Current Structure
+## Canonical Documents
 
-- `client/`: React + TypeScript + Vite SPA
-- `server/`: PHP + SQLite API currently used by the app
-- `server/laravel/`: Laravel migration skeleton, not used by the current runtime
-- `docs/`: project documentation
-- `ThreadForge_Spec.md`: current product specification
+- `../ThreadForge_Spec.md`: current product specification and implementation status
+- `../CHANGELOG.md`: release history
+- `API.md`: PHP API actions and request/response notes
+- `DB.md`: SQLite schema, runtime data, backups, imports, and reset procedures
+- `MIGRATION.md`: old BBSnote log import notes
+- `ARCHITECTURE.md`: frontend/backend structure
+- `TESTING.md`: test commands and coverage notes
 
-Legacy CGI files and old data directories are migration/reference material. They are not required to run the current app.
+## Current Runtime Features
 
-## Implemented Features
-
-- Thread list and thread detail views
-- New post creation with image upload
-- Reply creation without Tweet or image controls
-- "ええじゃないか" fixed-comment replies
-- Up to 10 replies shown on the top page
+- Thread list and detail pages
+- Top-level posts with images
+- Replies without Tweet or image controls
+- Fixed-comment "ええじゃないか" replies
+- Top page preview of up to 10 replies per thread
 - Thread-only display numbers with reply child numbers
-- Edit and soft-delete flows
-- Admin restore for soft-deleted posts
-- Admin bulk delete without per-post passwords
+- Edit and soft delete
+- Admin restore and passwordless bulk delete
 - Admin DB integrity check
-- Admin backup export/import for DB, images, and settings
+- Admin backup export/import
+- Non-destructive old BBSnote log import
 - Search by all fields, title, body, or author
 - RSS output
-- Tweet text generation for new top-level posts
-- Tweet destination URL storage and display
+- Tweet text generation and Tweet URL storage for top-level posts
 - Tweet OFF and gdgd visual modes
-- Old-board-style top navigation and board layout
 - Embedded manual page
-- Admin-configurable HOME link target
-- Admin-configurable manual title and body
-- Admin-configurable Tweet and gdgd feature switches
-- Admin-configurable gdgd label
+- Admin-configurable HOME link, manual text, Tweet switch, gdgd switch, and gdgd label
 - Admin password change
 
-## Not Yet Fully Implemented
+## Known Gaps
 
-- Applying remaining saved admin `config.cgi`-equivalent settings to runtime limits
-- Applying saved admin `skincfg.cgi`-equivalent settings to live styling
+- Applying every saved `config.cgi`-equivalent setting to runtime limits
+- Applying every saved `skincfg.cgi`-equivalent setting to live styling
 - CSRF protection
-- Full legacy CGI data migration tooling
 - Production deployment packaging
-
-## Documentation Index
-
-- `../ThreadForge_Spec.md`: product specification
-- `ARCHITECTURE.md`: system architecture
-- `API.md`: PHP API reference
-- `DB.md`: SQLite schema and storage notes
-- `TESTING.md`: test strategy
