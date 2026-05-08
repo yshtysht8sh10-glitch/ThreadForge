@@ -18,7 +18,7 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     bbsTitle: 'ThreadForge',
     homePageUrl: '/',
     manualTitle: 'ThreadForge 取扱説明書',
-    tweetEnabled: true,
+    tweetEnabled: false,
     gdgdEnabled: true,
     gdgdLabel: 'gdgd投稿',
     manualBody: [

@@ -224,7 +224,7 @@ function createPost(PDO $pdo): void
 {
     $settings = loadSettings($pdo);
     $config = $settings['config'] ?? [];
-    $tweetEnabled = toBoolFlag($config['tweetEnabled'] ?? true);
+    $tweetEnabled = toBoolFlag($config['tweetEnabled'] ?? false);
     $gdgdEnabled = toBoolFlag($config['gdgdEnabled'] ?? true);
     $name = normalizeString($_POST['name'] ?? '');
     $url = normalizeUrl($_POST['url'] ?? null);
@@ -906,7 +906,7 @@ function publicSettings(PDO $pdo): void
                 'homePageUrl' => (string)($config['homePageUrl'] ?? '/'),
                 'manualTitle' => (string)($config['manualTitle'] ?? 'ThreadForge 取扱説明書'),
                 'manualBody' => (string)($config['manualBody'] ?? defaultManualBody()),
-                'tweetEnabled' => toBoolFlag($config['tweetEnabled'] ?? true),
+                'tweetEnabled' => toBoolFlag($config['tweetEnabled'] ?? false),
                 'gdgdEnabled' => toBoolFlag($config['gdgdEnabled'] ?? true),
                 'gdgdLabel' => (string)($config['gdgdLabel'] ?? 'gdgd投稿'),
             ],
@@ -947,7 +947,7 @@ function defaultSettings(): array
             'homePageUrl' => '/',
             'manualTitle' => 'ThreadForge 取扱説明書',
             'manualBody' => defaultManualBody(),
-            'tweetEnabled' => true,
+            'tweetEnabled' => false,
             'tweetBaseUrl' => 'https://twitter.com/MUGEN87112020/status/',
             'tweetConsumerKey' => '',
             'tweetConsumerSecret' => '',

@@ -147,6 +147,55 @@ describe('AdminPage', () => {
     ));
   });
 
+  it('disables tweet settings while the tweet feature is off', async () => {
+    vi.mocked(api.getSettings).mockResolvedValue({
+      success: true,
+      settings: {
+        config: {
+          bbsTitle: 'ThreadForge',
+          homePageUrl: 'https://example.com/home',
+          manualTitle: 'Manual',
+          manualBody: 'Manual body',
+          tweetEnabled: false,
+          tweetBaseUrl: 'https://twitter.com/example/status/',
+          tweetConsumerKey: 'key',
+          tweetConsumerSecret: 'secret',
+          tweetAccessToken: 'token',
+          tweetAccessTokenSecret: 'token-secret',
+          gdgdEnabled: true,
+          gdgdLabel: 'gdgd',
+        },
+        skin: {
+          normalFrameColor: '#a23dff',
+          tweetOffFrameColor: '#888888',
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    const settingsTab = (await screen.findAllByRole('button'))[3];
+    fireEvent.click(settingsTab);
+
+    const settingsPanel = screen.getByDisplayValue('https://twitter.com/example/status/').closest('section')!;
+    const tweetEnabledSelect = within(settingsPanel)
+      .getAllByRole('combobox')
+      .find((element) => (element as HTMLSelectElement).value === 'false');
+
+    expect(tweetEnabledSelect).toBeDefined();
+    expect(tweetEnabledSelect).not.toBeDisabled();
+    expect(within(settingsPanel).getByDisplayValue('https://twitter.com/example/status/')).toBeDisabled();
+    expect(within(settingsPanel).getByDisplayValue('key')).toBeDisabled();
+    expect(within(settingsPanel).getByDisplayValue('secret')).toBeDisabled();
+    expect(within(settingsPanel).getByDisplayValue('token')).toBeDisabled();
+    expect(within(settingsPanel).getByDisplayValue('token-secret')).toBeDisabled();
+    expect(within(settingsPanel).getByDisplayValue('#888888')).toBeDisabled();
+  });
+
   it('imports legacy BBSnote logs from the backup tab', async () => {
     render(
       <MemoryRouter>

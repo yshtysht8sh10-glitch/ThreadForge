@@ -19,6 +19,8 @@ server/storage/data/*
 server/tests/runtime/
 server/.phpunit.result.cache
 server/laravel/
+client/vite*.log
+server/php-server*.log
 
 # Legacy/runtime data not required for the TypeScript/PHP app
 /data/

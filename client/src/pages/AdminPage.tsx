@@ -279,31 +279,38 @@ function SettingsForm({
   onChange: (key: string, value: string) => void;
   compact?: boolean;
 }) {
+  const tweetEnabled = values.tweetEnabled === true || values.tweetEnabled === 'true';
+
   return (
     <div className={compact ? 'admin-settings-grid admin-settings-grid-compact' : 'admin-settings-grid'}>
       {Object.entries(values).map(([key, value]) => {
         const label = settingLabels[key] ?? key;
         const stringValue = String(value);
+        const disabled = isTweetSetting(key) && key !== 'tweetEnabled' && !tweetEnabled;
         return (
           <label key={key} className={key === 'manualBody' ? 'admin-setting-wide' : undefined}>
             <span>{label}</span>
             {key === 'manualBody' ? (
-              <textarea value={stringValue} rows={12} onChange={(event) => onChange(key, event.target.value)} />
+              <textarea value={stringValue} rows={12} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
             ) : key === 'tweetEnabled' || key === 'gdgdEnabled' ? (
               <select value={stringValue} onChange={(event) => onChange(key, event.target.value)}>
                 <option value="true">ON</option>
                 <option value="false">OFF</option>
               </select>
             ) : key === 'tweetConsumerSecret' || key === 'tweetAccessTokenSecret' ? (
-              <input type="password" value={stringValue} onChange={(event) => onChange(key, event.target.value)} />
+              <input type="password" value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
             ) : (
-              <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} />
+              <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
             )}
           </label>
         );
       })}
     </div>
   );
+}
+
+function isTweetSetting(key: string): boolean {
+  return key.startsWith('tweet');
 }
 
 const adminTabs: Array<{ id: AdminTab; label: string }> = [
