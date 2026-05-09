@@ -37,11 +37,29 @@ CREATE TABLE IF NOT EXISTS posts (
   tweet_like_count INTEGER NOT NULL DEFAULT 0,
   tweet_retweet_count INTEGER NOT NULL DEFAULT 0,
   tweet_comment_count INTEGER NOT NULL DEFAULT 0,
-  tweet_impression_count INTEGER NOT NULL DEFAULT 0
+  tweet_impression_count INTEGER NOT NULL DEFAULT 0,
+  bluesky_uri TEXT,
+  bluesky_cid TEXT,
+  bluesky_url TEXT,
+  bluesky_like_count INTEGER NOT NULL DEFAULT 0,
+  bluesky_repost_count INTEGER NOT NULL DEFAULT 0,
+  bluesky_quote_count INTEGER NOT NULL DEFAULT 0,
+  mastodon_id TEXT,
+  mastodon_url TEXT,
+  mastodon_boost_count INTEGER NOT NULL DEFAULT 0,
+  mastodon_fav_count INTEGER NOT NULL DEFAULT 0,
+  misskey_id TEXT,
+  misskey_url TEXT,
+  misskey_fire_count INTEGER NOT NULL DEFAULT 0,
+  misskey_eyes_count INTEGER NOT NULL DEFAULT 0,
+  misskey_cry_count INTEGER NOT NULL DEFAULT 0,
+  misskey_thinking_count INTEGER NOT NULL DEFAULT 0,
+  misskey_party_count INTEGER NOT NULL DEFAULT 0,
+  misskey_other_count INTEGER NOT NULL DEFAULT 0
 )
 ```
 
-Tweet statistic columns are kept for compatibility but are no longer exposed in the UI.
+Social columns store per-platform destination IDs/URLs and cached reaction counts. X keeps the legacy `tweet_*` column names for compatibility.
 
 ## settings Table
 
@@ -70,9 +88,9 @@ Importing this backup JSON is a full restore. It replaces posts and images, then
 
 ## Old BBSnote Import
 
-The admin screen also has `旧BBSnoteログを追加インポート`.
+Old BBSnote log import is operated from a local batch file instead of the web admin screen.
 
-This reads old `LOG_*.cgi` files from a local directory, defaulting to root `data/`, and copies referenced image files into `server/storage/data/`.
+The importer reads old `LOG_*.cgi` files from a local directory, defaulting to root `data/`, and copies referenced image files into `server/storage/data/`.
 
 This import is intentionally non-destructive:
 

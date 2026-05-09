@@ -15,8 +15,42 @@ export type Post = {
   tweet_off?: boolean;
   tweet_text?: string | null;
   tweet_url?: string | null;
+  social_links?: SocialLinks;
+  social_reactions?: SocialReactions;
   replies?: Post[];
   reply_count?: number;
+};
+
+export type SocialLinks = {
+  x?: string | null;
+  bluesky?: string | null;
+  mastodon?: string | null;
+  misskey?: string | null;
+};
+
+export type SocialReactions = {
+  x?: {
+    likes: number;
+    reposts: number;
+    impressions: number;
+  };
+  bluesky?: {
+    likes: number;
+    reposts: number;
+    quotes: number;
+  };
+  mastodon?: {
+    boosts: number;
+    favs: number;
+  };
+  misskey?: {
+    fire: number;
+    eyes: number;
+    cry: number;
+    thinking: number;
+    party: number;
+    other: number;
+  };
 };
 
 export type ThreadResponse = {

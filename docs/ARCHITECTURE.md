@@ -88,9 +88,9 @@ DB 接続、テーブル作成、画像保存補助、JSON 応答は `server/db.
 
 Tweet:
 
-- 投稿、返信、編集画面で Tweet 文言を自動生成する
+- 投稿画面でSNS転記文言を自動生成する
 - `_TWEND_` 以降は Tweet 対象外
-- Tweet OFF の投稿は Tweet 文言を保存しない
+- SNS転記OFF の投稿は転記文言を保存しない
 - 編集画面で Tweet URL と統計値を管理する
 
 安全な本文表示:

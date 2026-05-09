@@ -74,9 +74,9 @@ The backend creates runtime files locally:
 
 These files are intentionally ignored by Git. Use the admin backup/export feature to move live data between environments.
 
-## Tweet Operation
+## Social Posting Operation
 
-Tweet integration is disabled by default. In this operating mode, posts are saved locally without calling the X API, and the Tweet credential fields in the admin settings screen stay disabled while the Tweet switch is OFF.
+X, Bluesky, Mastodon, and Misskey integrations are disabled by default. In this operating mode, posts are saved locally without calling external APIs. Each platform has its own admin settings group, and credential fields stay disabled while that platform switch is OFF.
 
 ## Documentation Map
 

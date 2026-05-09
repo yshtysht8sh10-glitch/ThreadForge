@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, DEFAULT_PUBLIC_SETTINGS, PublicSettings } from '../api';
 import { NewPostData } from '../types';
-import { countTweetLength, createTweetText, TWEET_LIMIT } from '../tweet';
+import { createSocialPostPreviews } from '../tweet';
 
 const PostFormPage = () => {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ const PostFormPage = () => {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [gdgd, setGdgd] = useState(false);
-  const [tweetOff, setTweetOff] = useState(false);
+  const [socialTransferOff, setSocialTransferOff] = useState(false);
   const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
   const [password, setPassword] = useState('');
   const [file, setFile] = useState<File | undefined>(undefined);
@@ -23,6 +23,22 @@ const PostFormPage = () => {
       .then((response) => response.success && setSettings(response.settings))
       .catch(() => setSettings(DEFAULT_PUBLIC_SETTINGS));
   }, []);
+
+  const enabledSocialPlatforms = {
+    x: settings.config.tweetEnabled,
+    bluesky: settings.config.blueskyEnabled,
+    mastodon: settings.config.mastodonEnabled,
+    misskey: settings.config.misskeyEnabled,
+  };
+  const socialEnabled = Object.values(enabledSocialPlatforms).some(Boolean);
+  const socialPreviews = socialTransferOff ? [] : createSocialPostPreviews(enabledSocialPlatforms, name, title, message);
+  const hasInput = [name, url, title, message, password].some((value) => value.trim() !== '') || gdgd || socialTransferOff || file !== undefined;
+
+  const handleClose = () => {
+    if (!hasInput || window.confirm('入力内容は破棄されます。一覧画面に戻りますか？')) {
+      navigate('/');
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -37,13 +53,13 @@ const PostFormPage = () => {
       password,
       file,
       gdgd: settings.config.gdgdEnabled ? gdgd : false,
-      tweet_off: settings.config.tweetEnabled ? tweetOff : true,
+      tweet_off: socialEnabled ? socialTransferOff : true,
     };
 
     try {
       const result = await api.createPost(payload);
       if (result.success) {
-        setStatus('投稿が完了しました。トップページに戻ります。');
+        setStatus('投稿が完了しました。一覧画面に戻ります。');
         setTimeout(() => navigate('/'), 1000);
       } else {
         setStatus(`エラー: ${result.message}`);
@@ -55,22 +71,22 @@ const PostFormPage = () => {
     }
   };
 
-  const tweetText = tweetOff ? '' : createTweetText(name, title, message);
-  const tweetLength = countTweetLength(tweetText);
   const frameClassName = [
     'post-form-page',
     gdgd && settings.config.gdgdEnabled ? 'post-form-gdgd' : '',
-    tweetOff && settings.config.tweetEnabled ? 'post-form-tweet-off' : '',
   ].filter(Boolean).join(' ');
 
   return (
     <div className={frameClassName}>
       <form onSubmit={handleSubmit} className="legacy-post-form">
-        <div className="post-form-title">通常投稿</div>
+        <div className="post-form-title">
+          <span>通常投稿</span>
+          <button type="button" className="post-form-close-button" onClick={handleClose} aria-label="投稿フォームを閉じる">×</button>
+        </div>
 
         <div className="post-form-top-row">
           <label>
-            名前 (_/30文字)<span className="required">*</span>
+            <span className="post-form-label-title">名前（/30文字）<span className="required">*</span></span>
             <input value={name} onChange={(event) => setName(event.target.value)} required />
           </label>
           {settings.config.gdgdEnabled && (
@@ -79,56 +95,60 @@ const PostFormPage = () => {
               <input type="checkbox" checked={gdgd} onChange={(event) => setGdgd(event.target.checked)} />
             </label>
           )}
-          {settings.config.tweetEnabled && (
+          {socialEnabled && (
             <label className="legacy-checkbox">
-              Tweet OFF
-              <input type="checkbox" checked={tweetOff} onChange={(event) => setTweetOff(event.target.checked)} />
+              SNS転記OFF
+              <input type="checkbox" checked={socialTransferOff} onChange={(event) => setSocialTransferOff(event.target.checked)} />
             </label>
           )}
         </div>
 
         <label>
-          タイトル (_/70文字)<span className="required">*</span>
+          <span className="post-form-label-title">タイトル（/70文字）<span className="required">*</span></span>
           <input value={title} onChange={(event) => setTitle(event.target.value)} required />
         </label>
 
         <label>
-          URL
+          URL / HOME
           <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="http://" />
         </label>
 
         <label>
-          画像アップロード<span className="required">*</span>
+          <span className="post-form-label-title">画像アップロード<span className="required">*</span></span>
           <input type="file" accept="image/png,image/gif" onChange={(event) => setFile(event.target.files?.[0])} />
+          <span className="post-form-field-help">※PNG・GIF が使用できます。最大データサイズは 5100 KB までです。</span>
         </label>
 
         <label>
-          メッセージ (_/100000文字)<span className="required">*</span>
+          <span className="post-form-label-title">メッセージ（/100000文字）<span className="required">*</span></span>
           <textarea value={message} onChange={(event) => setMessage(event.target.value)} required />
         </label>
 
-        {settings.config.tweetEnabled && !tweetOff && (
-          <label>
-            ツイートされる文言 ({tweetLength}/{TWEET_LIMIT}文字) * この項目は編集できません。
-            <pre className="legacy-tweet-preview">{tweetText}</pre>
-          </label>
-        )}
-
         <div className="post-form-bottom-row">
           <label>
-            パスワード<span className="required">*</span>
+            <span className="post-form-label-title">パスワード<span className="required">*</span></span>
             <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+            <span className="post-form-field-help">※半角英数字8文字まで有効です。</span>
           </label>
           <button type="submit" className="post-submit-button" disabled={submitting}>{submitting ? '送信中...' : '送信'}</button>
-          <button type="button" className="post-reset-button" onClick={() => navigate('/')}>やり直し</button>
         </div>
+
+        {socialPreviews.length > 0 && (
+          <section className="social-transfer-preview" aria-label="SNS投稿のプレビュー">
+            <h2>SNS投稿のプレビュー</h2>
+            {socialPreviews.map((preview) => (
+              <article className="social-transfer-preview-item" key={preview.platform}>
+                <h3>
+                  {preview.label}
+                  <span>{preview.limit ? `${preview.length}/${preview.limit}文字` : `${preview.length}文字`}</span>
+                </h3>
+                <pre className="legacy-tweet-preview">{preview.text}</pre>
+              </article>
+            ))}
+            <p className="social-transfer-help">※この項目は編集できません。</p>
+          </section>
+        )}
       </form>
-      <p className="post-form-notes">
-        * 受信できる画像の最大データサイズは 5100 KB までです。<br />
-        * 画像ファイルには PNG・GIF が使用できます。<br />
-        * パスワードは半角英数で8文字まで有効です。<br />
-        * Tweet機能は投稿時のみ反映され、編集では更新されません。Tweet先URLは投稿後にシステムが記録します。
-      </p>
       {status && <p className="status">{status}</p>}
     </div>
   );

@@ -82,9 +82,6 @@ function threadClassName(thread: Post): string {
   if (thread.gdgd) {
     classes.push('board-thread-gdgd');
   }
-  if (thread.tweet_off) {
-    classes.push('board-thread-tweet-off');
-  }
   return classes.join(' ');
 }
 

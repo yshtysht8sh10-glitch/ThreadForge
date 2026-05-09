@@ -6,7 +6,7 @@ import { api } from '../api';
 
 vi.mock('../api', () => ({
   DEFAULT_PUBLIC_SETTINGS: {
-    config: { tweetEnabled: true, gdgdEnabled: true, gdgdLabel: 'gdgd投稿' },
+    config: { tweetEnabled: true, blueskyEnabled: true, mastodonEnabled: false, misskeyEnabled: false, gdgdEnabled: true, gdgdLabel: 'gdgd投稿' },
   },
   api: {
     getPost: vi.fn(),
@@ -36,6 +36,18 @@ const replyPost = {
   tweet_impression_count: 0,
 };
 
+const threadPost = {
+  ...replyPost,
+  id: 1,
+  thread_id: 1,
+  parent_id: 0,
+  name: 'Alice',
+  title: 'Thread title',
+  message: 'Thread body',
+  tweet_off: false,
+  gdgd: true,
+};
+
 describe('EditPostPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -43,7 +55,7 @@ describe('EditPostPage', () => {
     vi.mocked(api.updatePost).mockResolvedValue({ success: true, message: 'ok' });
     vi.mocked(api.publicSettings).mockResolvedValue({
       success: true,
-      settings: { config: { tweetEnabled: true, gdgdEnabled: true, gdgdLabel: 'gdgd投稿' } },
+      settings: { config: { tweetEnabled: true, blueskyEnabled: true, mastodonEnabled: false, misskeyEnabled: false, gdgdEnabled: true, gdgdLabel: 'gdgd投稿' } },
     } as any);
   });
 
@@ -52,9 +64,8 @@ describe('EditPostPage', () => {
 
     await screen.findByDisplayValue('Reply body');
 
-    expect(screen.queryByLabelText('Tweet OFF')).not.toBeInTheDocument();
-    expect(screen.queryByText(/Tweet文言/)).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('Tweet先 URL')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('SNS転記OFF')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('SNS投稿のプレビュー')).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/画像置換/)).not.toBeInTheDocument();
     expect(document.querySelector('input[type="file"]')).not.toBeInTheDocument();
   });
@@ -78,11 +89,29 @@ describe('EditPostPage', () => {
     expect(formData.has('tweet_impression_count')).toBe(false);
     expect(formData.has('file')).toBe(false);
   });
+
+  it('shows social previews and sends the transfer switch when editing a thread', async () => {
+    vi.mocked(api.getPost).mockResolvedValue(threadPost);
+    renderEditPostPage('1');
+
+    expect(await screen.findByLabelText('SNS投稿のプレビュー')).toBeInTheDocument();
+    expect(screen.getByText('SNS投稿のプレビュー')).toBeInTheDocument();
+    expect(screen.getByText('※この項目は編集できません。')).toBeInTheDocument();
+    expect(screen.getByText('X')).toBeInTheDocument();
+    expect(screen.getByText('Bluesky')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '更新する' }));
+
+    await waitFor(() => expect(api.updatePost).toHaveBeenCalled());
+    const formData = vi.mocked(api.updatePost).mock.calls[0][0] as FormData;
+    expect(formData.get('tweet_off')).toBe('0');
+    expect(formData.get('gdgd')).toBe('1');
+  });
 });
 
-function renderEditPostPage() {
+function renderEditPostPage(id = '2') {
   render(
-    <MemoryRouter initialEntries={[{ pathname: '/edit/2', state: { password: 'secret' } }]}>
+    <MemoryRouter initialEntries={[{ pathname: `/edit/${id}`, state: { password: 'secret' } }]}>
       <Routes>
         <Route path="/edit/:id" element={<EditPostPage />} />
       </Routes>

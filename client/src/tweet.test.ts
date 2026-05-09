@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countTweetLength, createTweetText, TWEET_LIMIT } from './tweet';
+import { BLUESKY_LIMIT, countTweetLength, createSocialPostPreviews, createTweetText, TWEET_LIMIT } from './tweet';
 
 describe('tweet utilities', () => {
   it('creates tweet text from post fields', () => {
@@ -23,6 +23,24 @@ describe('tweet utilities', () => {
 
     const text = createTweetText('Alice', 'Title', 'あ'.repeat(400), 'https://example.com/thread/1');
     expect(countTweetLength(text)).toBeLessThanOrEqual(TWEET_LIMIT);
-    expect(text).toContain('...');
+    expect(text).toContain('..');
+  });
+
+  it('trims each social preview to its own posting limit', () => {
+    const previews = createSocialPostPreviews(
+      { x: true, bluesky: true, mastodon: false, misskey: false },
+      'Alice',
+      'Title',
+      'あ'.repeat(400),
+      'https://example.com/thread/1',
+    );
+    const x = previews.find((preview) => preview.platform === 'x');
+    const bluesky = previews.find((preview) => preview.platform === 'bluesky');
+
+    expect(x?.limit).toBe(TWEET_LIMIT);
+    expect(x && countTweetLength(x.text)).toBeLessThanOrEqual(TWEET_LIMIT);
+    expect(bluesky?.limit).toBe(BLUESKY_LIMIT);
+    expect(bluesky?.length).toBeLessThanOrEqual(BLUESKY_LIMIT);
+    expect(bluesky?.text).toContain('..');
   });
 });

@@ -78,10 +78,16 @@ describe('ThreadPage', () => {
   it('shows the reply form and eejanaika form side by side on the same screen', async () => {
     renderThreadPage();
 
-    expect(await screen.findByRole('heading', { name: '返信を書く' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'No.1へのええじゃないか' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'コメント' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'ええじゃないか' })).toBeInTheDocument();
     expect(screen.getByRole('form', { name: '返信フォーム' })).toBeInTheDocument();
     expect(screen.getByRole('form', { name: 'ええじゃないかフォーム' })).toBeInTheDocument();
+    expect(screen.getAllByText('名前（/30文字）')).toHaveLength(2);
+    expect(screen.getByText('本文（/100000文字）')).toBeInTheDocument();
+    expect(screen.getByText('※半角英数字8文字まで有効です。')).toBeInTheDocument();
+    expect(within(screen.getByRole('form', { name: 'ええじゃないかフォーム' })).getByLabelText('名前')).toHaveAttribute('maxlength', '30');
+    expect(within(screen.getByRole('form', { name: 'ええじゃないかフォーム' })).getByLabelText('名前')).toBeRequired();
+    expect(screen.getByRole('button', { name: '一覧に戻る' })).toBeInTheDocument();
   });
 
   it('does not render images attached to replies', async () => {
@@ -106,7 +112,7 @@ describe('ThreadPage', () => {
     expect(document.querySelector('img[src="/storage/data/2.png"]')).not.toBeInTheDocument();
   });
 
-  it('submits replies without tweet or image fields and returns to the parent post on top', async () => {
+  it('submits replies without tweet or image fields and stays on the thread detail screen', async () => {
     renderThreadPage();
 
     const replyForm = await screen.findByRole('form', { name: '返信フォーム' });
@@ -114,7 +120,7 @@ describe('ThreadPage', () => {
     fireEvent.change(within(replyForm).getByLabelText('名前'), { target: { value: 'Bob' } });
     fireEvent.change(within(replyForm).getByLabelText('本文'), { target: { value: 'Reply body' } });
     fireEvent.change(within(replyForm).getByLabelText('パスワード'), { target: { value: 'secret' } });
-    fireEvent.click(within(replyForm).getByRole('button', { name: '返信を投稿' }));
+    fireEvent.click(within(replyForm).getByRole('button', { name: '送信' }));
 
     await waitFor(() => expect(api.createPost).toHaveBeenCalled());
     expect(api.createPost).toHaveBeenCalledWith(expect.not.objectContaining({ tweet_off: expect.anything() }));
@@ -126,7 +132,17 @@ describe('ThreadPage', () => {
       message: 'Reply body',
       password: 'secret',
     }));
-    await screen.findByText('/#post-1');
+    await screen.findByText('/thread/1');
+    expect(screen.queryByText('/#post-1')).not.toBeInTheDocument();
+  });
+
+  it('returns to the list from the thread detail form area', async () => {
+    renderThreadPage();
+
+    await screen.findByText('[No・1] Thread title');
+    fireEvent.click(screen.getByRole('button', { name: '一覧に戻る' }));
+
+    await screen.findByText('/');
   });
 
   it('submits the selected eejanaika comment as a reply while the regular reply form remains available', async () => {
@@ -147,7 +163,8 @@ describe('ThreadPage', () => {
       message: 'いい仕事してますねぇ',
       password: 'eejanaika',
     })));
-    await screen.findByText('/#post-1');
+    await screen.findByText('/thread/1');
+    expect(screen.queryByText('/#post-1')).not.toBeInTheDocument();
   });
 
   it('colors eejanaika replies by selected message', async () => {

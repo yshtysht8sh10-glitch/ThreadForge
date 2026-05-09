@@ -27,16 +27,22 @@ const ThreadPage = () => {
   const [eejanaikaMessage, setEejanaikaMessage] = useState(EEJAIKA_OPTIONS[2]);
   const [replyStatus, setReplyStatus] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadThread = async () => {
     if (!id) return;
     setLoading(true);
-    api.getThread(id)
-      .then((data) => {
-        setThreadData(data);
-        setError(null);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+    try {
+      const data = await api.getThread(id);
+      setThreadData(data);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadThread();
   }, [id]);
 
   useEffect(() => {
@@ -52,7 +58,14 @@ const ThreadPage = () => {
 
     try {
       await api.createPost(payload);
-      navigate(`/#post-${id}`);
+      await loadThread();
+      setReplyStatus('返信を投稿しました。');
+      setReplyName('');
+      setReplyUrl('');
+      setReplyMessage('');
+      setReplyPassword('');
+      setEejanaikaName('');
+      setEejanaikaMessage(EEJAIKA_OPTIONS[2]);
     } catch (err: any) {
       setError(err.message);
       setReplyStatus(null);
@@ -161,33 +174,34 @@ const ThreadPage = () => {
               {replyStatus && <div className="status thread-detail-status">{replyStatus}</div>}
 
               <form aria-label="返信フォーム" onSubmit={onReplySubmit} className="inline-reply-form thread-detail-form">
-                <h3>返信を書く</h3>
+                <h3>コメント</h3>
                 <label>
-                  名前
-                  <input value={replyName} onChange={(e) => setReplyName(e.target.value)} />
+                  <span>名前（/30文字）<span className="required" aria-hidden="true">*</span></span>
+                  <input aria-label="名前" value={replyName} maxLength={30} onChange={(e) => setReplyName(e.target.value)} required />
                 </label>
                 <label>
                   URL / HOME
                   <input value={replyUrl} onChange={(e) => setReplyUrl(e.target.value)} placeholder="https://example.com" />
                 </label>
                 <label>
-                  本文
-                  <textarea value={replyMessage} onChange={(e) => setReplyMessage(e.target.value)} rows={5} />
+                  <span>本文（/100000文字）<span className="required" aria-hidden="true">*</span></span>
+                  <textarea aria-label="本文" value={replyMessage} maxLength={100000} onChange={(e) => setReplyMessage(e.target.value)} rows={5} required />
                 </label>
                 <div className="inline-form-bottom-row">
                   <label>
-                    パスワード
-                    <input type="password" value={replyPassword} onChange={(e) => setReplyPassword(e.target.value)} />
+                    <span>パスワード<span className="required" aria-hidden="true">*</span></span>
+                    <input aria-label="パスワード" type="password" value={replyPassword} maxLength={8} onChange={(e) => setReplyPassword(e.target.value)} required />
+                    <span className="inline-form-field-help">※半角英数字8文字まで有効です。</span>
                   </label>
-                  <button type="submit" className="post-submit-button">返信を投稿</button>
+                  <button type="submit" className="post-submit-button">送信</button>
                 </div>
               </form>
 
               <form id="eejanaika-form" aria-label="ええじゃないかフォーム" onSubmit={onEejanaikaSubmit} className="inline-eejanaika-form thread-detail-form">
-                <h3>No.{thread.display_no ?? thread.id}へのええじゃないか</h3>
+                <h3>ええじゃないか</h3>
                 <label>
-                  名前
-                  <input value={eejanaikaName} onChange={(e) => setEejanaikaName(e.target.value)} />
+                  <span>名前（/30文字）<span className="required" aria-hidden="true">*</span></span>
+                  <input aria-label="名前" value={eejanaikaName} maxLength={30} onChange={(e) => setEejanaikaName(e.target.value)} required />
                 </label>
                 <div className="eejanaika-options">
                   {EEJAIKA_OPTIONS.map((option) => (
@@ -208,6 +222,9 @@ const ThreadPage = () => {
                   <button type="submit" className="post-submit-button">送信</button>
                 </div>
               </form>
+              <div className="thread-detail-back-row">
+                <button type="button" className="thread-detail-back-button" onClick={() => navigate('/')}>一覧に戻る</button>
+              </div>
             </div>
           )}
         </>
@@ -220,9 +237,6 @@ function threadClassName(thread: Post): string {
   const classes = ['board-thread'];
   if (thread.gdgd) {
     classes.push('board-thread-gdgd');
-  }
-  if (thread.tweet_off) {
-    classes.push('board-thread-tweet-off');
   }
   return classes.join(' ');
 }

@@ -8,6 +8,9 @@ export type PublicSettings = {
     manualTitle: string;
     manualBody: string;
     tweetEnabled: boolean;
+    blueskyEnabled: boolean;
+    mastodonEnabled: boolean;
+    misskeyEnabled: boolean;
     gdgdEnabled: boolean;
     gdgdLabel: string;
   };
@@ -19,14 +22,17 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     homePageUrl: '/',
     manualTitle: 'ThreadForge 取扱説明書',
     tweetEnabled: false,
+    blueskyEnabled: false,
+    mastodonEnabled: false,
+    misskeyEnabled: false,
     gdgdEnabled: true,
     gdgdLabel: 'gdgd投稿',
     manualBody: [
       'ThreadForge は、スレッド形式で作品や記事を投稿できる掲示板です。',
       '',
       '投稿',
-      '新規投稿ではタイトル、本文、画像、gdgd投稿、Tweet OFFを指定できます。',
-      'Tweet関連の項目は新規投稿だけで使います。返信では表示されません。',
+      '新規投稿ではタイトル、本文、画像、gdgd投稿、SNS転記OFFを指定できます。',
+      'SNS転記関連の項目は新規投稿と投稿編集で使います。返信では表示されません。',
       '',
       '返信',
       '返信では名前、URL / HOME、本文、パスワードを入力できます。',
@@ -50,6 +56,18 @@ export const DEFAULT_ADMIN_SETTINGS = {
     tweetConsumerSecret: '',
     tweetAccessToken: '',
     tweetAccessTokenSecret: '',
+    blueskyEnabled: false,
+    blueskyServiceUrl: 'https://bsky.social',
+    blueskyPublicApiUrl: 'https://public.api.bsky.app',
+    blueskyHandle: '',
+    blueskyAppPassword: '',
+    mastodonEnabled: false,
+    mastodonInstanceUrl: '',
+    mastodonAccessToken: '',
+    mastodonVisibility: 'public',
+    misskeyEnabled: false,
+    misskeyInstanceUrl: '',
+    misskeyAccessToken: '',
     logView: 20,
     maxUploadBytes: 5100000,
     maxImageWidth: 1280,
@@ -58,7 +76,6 @@ export const DEFAULT_ADMIN_SETTINGS = {
   skin: {
     normalFrameColor: '#a23dff',
     gdgdFrameColor: '#6dffc0',
-    tweetOffFrameColor: '#888888',
     backgroundColor: '#000000',
   },
 };
@@ -230,23 +247,19 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
     case 'changeAdminPassword':
     case 'importBackup':
       return { success: true, message: '操作が完了しました（モック）' } as T;
-    case 'importLegacyBbsnote':
-      return {
-        success: true,
-        message: '旧BBSnoteログをインポートしました（モック）',
-        imported_threads: 1,
-        imported_replies: 1,
-        skipped_threads: 0,
-        skipped_replies: 0,
-        missing_images: [],
-        files: 1,
-      } as T;
     case 'adminCheckIntegrity':
       return {
         success: true,
         message: 'DBを確認しました（モック）',
         orphan_replies: 0,
         missing_image_post_ids: [],
+      } as T;
+    case 'refreshSocialReactions':
+      return {
+        success: true,
+        message: 'SNSリアクションを更新しました（モック）',
+        updated: 0,
+        errors: [],
       } as T;
     default:
       return { success: false, message: 'アクションが無効です（モック）' } as T;
@@ -340,30 +353,14 @@ export const api = {
   adminCheckIntegrity: async (adminPassword: string): Promise<{ success: boolean; message: string; orphan_replies: number; missing_image_post_ids: number[] }> => {
     return fetchJson(`${apiBase()}?action=adminCheckIntegrity&admin_password=${encodeURIComponent(adminPassword)}`);
   },
+  refreshSocialReactions: async (adminPassword: string): Promise<{ success: boolean; message: string; updated: number; errors: string[] }> => {
+    return fetchJson(`${apiBase()}?action=refreshSocialReactions&admin_password=${encodeURIComponent(adminPassword)}`);
+  },
   importBackup: async (file: File, adminPassword: string): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();
     formData.append('action', 'importBackup');
     formData.append('admin_password', adminPassword);
     formData.append('backup', file);
-    return fetchJson(`${apiBase()}`, {
-      method: 'POST',
-      body: formData,
-    });
-  },
-  importLegacyBbsnote: async (legacyDir: string, adminPassword: string): Promise<{
-    success: boolean;
-    message: string;
-    imported_threads: number;
-    imported_replies: number;
-    skipped_threads: number;
-    skipped_replies: number;
-    missing_images: string[];
-    files: number;
-  }> => {
-    const formData = new FormData();
-    formData.append('action', 'importLegacyBbsnote');
-    formData.append('admin_password', adminPassword);
-    formData.append('legacy_dir', legacyDir);
     return fetchJson(`${apiBase()}`, {
       method: 'POST',
       body: formData,

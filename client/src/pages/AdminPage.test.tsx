@@ -13,10 +13,10 @@ vi.mock('../api', () => ({
     getSettings: vi.fn(),
     adminDeletePosts: vi.fn(),
     importBackup: vi.fn(),
-    importLegacyBbsnote: vi.fn(),
     updateSettings: vi.fn(),
     restorePost: vi.fn(),
     changeAdminPassword: vi.fn(),
+    refreshSocialReactions: vi.fn(),
   },
 }));
 
@@ -80,15 +80,11 @@ describe('AdminPage', () => {
       },
     });
     vi.mocked(api.adminDeletePosts).mockResolvedValue({ success: true, message: '2件を削除しました。' });
-    vi.mocked(api.importLegacyBbsnote).mockResolvedValue({
+    vi.mocked(api.refreshSocialReactions).mockResolvedValue({
       success: true,
-      message: '旧BBSnoteログをインポートしました。',
-      imported_threads: 1,
-      imported_replies: 2,
-      skipped_threads: 0,
-      skipped_replies: 0,
-      missing_images: [],
-      files: 1,
+      message: 'SNSリアクションを更新しました。',
+      updated: 0,
+      errors: [],
     });
   });
 
@@ -167,7 +163,6 @@ describe('AdminPage', () => {
         },
         skin: {
           normalFrameColor: '#a23dff',
-          tweetOffFrameColor: '#888888',
         },
       },
     });
@@ -193,10 +188,9 @@ describe('AdminPage', () => {
     expect(within(settingsPanel).getByDisplayValue('secret')).toBeDisabled();
     expect(within(settingsPanel).getByDisplayValue('token')).toBeDisabled();
     expect(within(settingsPanel).getByDisplayValue('token-secret')).toBeDisabled();
-    expect(within(settingsPanel).getByDisplayValue('#888888')).toBeDisabled();
   });
 
-  it('imports legacy BBSnote logs from the backup tab', async () => {
+  it('does not expose legacy BBSnote import in the backup tab', async () => {
     render(
       <MemoryRouter>
         <AdminPage />
@@ -204,10 +198,9 @@ describe('AdminPage', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: 'バックアップ' }));
-    fireEvent.change(screen.getByLabelText('旧BBSnoteログディレクトリ'), { target: { value: 'data' } });
-    fireEvent.click(screen.getByRole('button', { name: '旧BBSnoteログを追加インポート' }));
 
-    await waitFor(() => expect(api.importLegacyBbsnote).toHaveBeenCalledWith('data', 'admin'));
+    expect(screen.queryByText('旧BBSnoteログ追加インポート')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('旧BBSnoteログディレクトリ')).not.toBeInTheDocument();
   });
 
   it('shows board display numbers for deleted replies instead of raw database ids', async () => {

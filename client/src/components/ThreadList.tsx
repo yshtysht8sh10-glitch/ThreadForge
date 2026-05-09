@@ -50,17 +50,40 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
     ));
   };
 
+  const resetReplyDraft = () => {
+    setReplyName('');
+    setReplyUrl('');
+    setReplyMessage('');
+    setReplyPassword('');
+  };
+
+  const resetEejanaikaDraft = () => {
+    setEejanaikaName('');
+    setEejanaikaMessage(EEJAIKA_OPTIONS[2]);
+  };
+
+  const closePanel = (mode: InlineMode) => {
+    const hasDraft = mode === 'comment'
+      ? [replyName, replyUrl, replyMessage, replyPassword].some((value) => value.trim() !== '')
+      : eejanaikaName.trim() !== '' || eejanaikaMessage !== EEJAIKA_OPTIONS[2];
+    if (hasDraft && !window.confirm('入力内容は破棄されます。閉じますか？')) {
+      return;
+    }
+    if (mode === 'comment') {
+      resetReplyDraft();
+    } else {
+      resetEejanaikaDraft();
+    }
+    setActivePanel(null);
+  };
+
   const submitReply = async (thread: Post, payload: NewPostData) => {
     setInlineStatus((current) => ({ ...current, [thread.id]: '返信を投稿中...' }));
     await api.createPost(payload);
     await loadFullReplies(thread.id);
     setInlineStatus((current) => ({ ...current, [thread.id]: '返信を投稿しました。' }));
-    setReplyName('');
-    setReplyUrl('');
-    setReplyMessage('');
-    setReplyPassword('');
-    setEejanaikaName('');
-    setEejanaikaMessage(EEJAIKA_OPTIONS[2]);
+    resetReplyDraft();
+    resetEejanaikaDraft();
     setActivePanel(null);
   };
 
@@ -160,23 +183,27 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
 
               {panelMode === 'comment' && (
                 <form className="inline-reply-form" onSubmit={(event) => onCommentSubmit(event, thread)}>
-                  <h3>コメント</h3>
+                  <div className="inline-form-heading">
+                    <h3>コメント</h3>
+                    <button type="button" className="inline-form-close-button" onClick={() => closePanel('comment')} aria-label="コメントフォームを閉じる">×</button>
+                  </div>
                   <label>
-                    名前
-                    <input value={replyName} onChange={(event) => setReplyName(event.target.value)} />
+                    <span>名前（/30文字）<span className="required" aria-hidden="true">*</span></span>
+                    <input aria-label="名前" value={replyName} maxLength={30} onChange={(event) => setReplyName(event.target.value)} required />
                   </label>
                   <label>
                     URL / HOME
                     <input value={replyUrl} onChange={(event) => setReplyUrl(event.target.value)} placeholder="https://example.com" />
                   </label>
                   <label>
-                    本文
-                    <textarea value={replyMessage} onChange={(event) => setReplyMessage(event.target.value)} rows={4} />
+                    <span>本文（/100000文字）<span className="required" aria-hidden="true">*</span></span>
+                    <textarea aria-label="本文" value={replyMessage} maxLength={100000} onChange={(event) => setReplyMessage(event.target.value)} rows={4} required />
                   </label>
                   <div className="inline-form-bottom-row">
                     <label>
-                      パスワード
-                      <input type="password" value={replyPassword} onChange={(event) => setReplyPassword(event.target.value)} />
+                      <span>パスワード<span className="required" aria-hidden="true">*</span></span>
+                      <input aria-label="パスワード" type="password" value={replyPassword} maxLength={8} onChange={(event) => setReplyPassword(event.target.value)} required />
+                      <span className="inline-form-field-help">※半角英数字8文字まで有効です。</span>
                     </label>
                     <button type="submit" className="post-submit-button">送信</button>
                   </div>
@@ -185,10 +212,13 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
 
               {panelMode === 'eejanaika' && (
                 <form className="inline-eejanaika-form" onSubmit={(event) => onEejanaikaSubmit(event, thread)}>
-                  <h3>No.{thread.display_no ?? thread.id}へのええじゃないか</h3>
+                  <div className="inline-form-heading">
+                    <h3>ええじゃないか</h3>
+                    <button type="button" className="inline-form-close-button" onClick={() => closePanel('eejanaika')} aria-label="ええじゃないかフォームを閉じる">×</button>
+                  </div>
                   <label>
-                    名前
-                    <input value={eejanaikaName} onChange={(event) => setEejanaikaName(event.target.value)} />
+                    <span>名前（/30文字）<span className="required" aria-hidden="true">*</span></span>
+                    <input aria-label="名前" value={eejanaikaName} maxLength={30} onChange={(event) => setEejanaikaName(event.target.value)} required />
                   </label>
                   <div className="eejanaika-options">
                     {EEJAIKA_OPTIONS.map((option) => (
@@ -212,26 +242,17 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
               )}
 
               <footer className="board-thread-actions">
-                {settings.config.tweetEnabled && !thread.tweet_off && (
-                  <p className="board-social-row">
-                    <span>Tweet先：</span>
-                    {thread.tweet_url ? (
-                      <a className="board-tweet-link" href={thread.tweet_url} target="_blank" rel="noreferrer" aria-label="Tweet先">
-                        ■
-                      </a>
-                    ) : (
-                      <span className="board-tweet-placeholder" aria-label="Tweet先未登録">■</span>
+                <SocialRows thread={thread} enabled={settings.config} />
+                {!panelMode && (
+                  <div className="board-action-group">
+                    {action ? action(thread) : (
+                      <>
+                        <button type="button" className="board-action-button" onClick={() => openPanel(thread.id, 'comment')}>コメント</button>
+                        <button type="button" className="board-action-button" onClick={() => openPanel(thread.id, 'eejanaika')}>ええじゃないか</button>
+                      </>
                     )}
-                  </p>
+                  </div>
                 )}
-                <div className="board-action-group">
-                  {action ? action(thread) : (
-                    <>
-                      <button type="button" className="board-action-button" onClick={() => openPanel(thread.id, 'comment')}>コメント</button>
-                      <button type="button" className="board-action-button" onClick={() => openPanel(thread.id, 'eejanaika')}>ええじゃないか</button>
-                    </>
-                  )}
-                </div>
               </footer>
             </div>
           </article>
@@ -246,10 +267,86 @@ function threadClassName(thread: Post): string {
   if (thread.gdgd) {
     classes.push('board-thread-gdgd');
   }
-  if (thread.tweet_off) {
-    classes.push('board-thread-tweet-off');
-  }
   return classes.join(' ');
+}
+
+function SocialRows({ thread, enabled }: { thread: Post; enabled: PublicSettings['config'] }) {
+  if (thread.tweet_off) {
+    return null;
+  }
+
+  const links = thread.social_links ?? { x: thread.tweet_url };
+  const reactions = thread.social_reactions ?? {};
+  const rows = [
+    enabled.tweetEnabled && {
+      key: 'x',
+      label: 'X',
+      url: links.x ?? thread.tweet_url,
+      metrics: [
+        ['閲覧数', reactions.x?.impressions ?? 0],
+        ['いいね数', reactions.x?.likes ?? 0],
+        ['RP数', reactions.x?.reposts ?? 0],
+      ],
+    },
+    enabled.blueskyEnabled && {
+      key: 'bluesky',
+      label: 'Bluesky',
+      url: links.bluesky,
+      metrics: [
+        ['Like数', reactions.bluesky?.likes ?? 0],
+        ['Repost数', reactions.bluesky?.reposts ?? 0],
+        ['Quote数', reactions.bluesky?.quotes ?? 0],
+      ],
+    },
+    enabled.mastodonEnabled && {
+      key: 'mastodon',
+      label: 'Mastodon',
+      url: links.mastodon,
+      metrics: [
+        ['Boost数', reactions.mastodon?.boosts ?? 0],
+        ['Fav数', reactions.mastodon?.favs ?? 0],
+      ],
+    },
+    enabled.misskeyEnabled && {
+      key: 'misskey',
+      label: 'Misskey',
+      url: links.misskey,
+      metrics: [
+        ['🔥', reactions.misskey?.fire ?? 0],
+        ['👀', reactions.misskey?.eyes ?? 0],
+        ['😭', reactions.misskey?.cry ?? 0],
+        ['🤔', reactions.misskey?.thinking ?? 0],
+        ['🎉', reactions.misskey?.party ?? 0],
+        ['他', reactions.misskey?.other ?? 0],
+      ],
+    },
+  ].filter(Boolean) as Array<{ key: string; label: string; url?: string | null; metrics: Array<[string, number]> }>;
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="board-social-rows">
+      {rows.map((row) => (
+        <p className="board-social-row" key={row.key}>
+          <span className="board-social-label">{row.label}先：</span>
+          {row.url ? (
+            <a className="board-tweet-link" href={row.url} target="_blank" rel="noreferrer" aria-label={`${row.label}先`}>
+              ■
+            </a>
+          ) : (
+            <span className="board-tweet-placeholder" aria-label={`${row.label}先未登録`}>■</span>
+          )}
+          {row.metrics.map(([label, value]) => (
+            <span className={`board-social-metric board-social-metric-${row.key}`} key={label}>
+              {label}: {value}
+            </span>
+          ))}
+        </p>
+      ))}
+    </div>
+  );
 }
 
 export function replyTextClassName(message: string): string {

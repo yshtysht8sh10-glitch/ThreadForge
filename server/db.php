@@ -44,7 +44,25 @@ function initializeDatabase(PDO $pdo): void
             tweet_like_count INTEGER NOT NULL DEFAULT 0,
             tweet_retweet_count INTEGER NOT NULL DEFAULT 0,
             tweet_comment_count INTEGER NOT NULL DEFAULT 0,
-            tweet_impression_count INTEGER NOT NULL DEFAULT 0
+            tweet_impression_count INTEGER NOT NULL DEFAULT 0,
+            bluesky_uri TEXT,
+            bluesky_cid TEXT,
+            bluesky_url TEXT,
+            bluesky_like_count INTEGER NOT NULL DEFAULT 0,
+            bluesky_repost_count INTEGER NOT NULL DEFAULT 0,
+            bluesky_quote_count INTEGER NOT NULL DEFAULT 0,
+            mastodon_id TEXT,
+            mastodon_url TEXT,
+            mastodon_boost_count INTEGER NOT NULL DEFAULT 0,
+            mastodon_fav_count INTEGER NOT NULL DEFAULT 0,
+            misskey_id TEXT,
+            misskey_url TEXT,
+            misskey_fire_count INTEGER NOT NULL DEFAULT 0,
+            misskey_eyes_count INTEGER NOT NULL DEFAULT 0,
+            misskey_cry_count INTEGER NOT NULL DEFAULT 0,
+            misskey_thinking_count INTEGER NOT NULL DEFAULT 0,
+            misskey_party_count INTEGER NOT NULL DEFAULT 0,
+            misskey_other_count INTEGER NOT NULL DEFAULT 0
         )'
     );
 
@@ -65,6 +83,24 @@ function initializeDatabase(PDO $pdo): void
     ensureColumnExists($pdo, 'posts', 'tweet_retweet_count', 'INTEGER NOT NULL DEFAULT 0');
     ensureColumnExists($pdo, 'posts', 'tweet_comment_count', 'INTEGER NOT NULL DEFAULT 0');
     ensureColumnExists($pdo, 'posts', 'tweet_impression_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'bluesky_uri', 'TEXT');
+    ensureColumnExists($pdo, 'posts', 'bluesky_cid', 'TEXT');
+    ensureColumnExists($pdo, 'posts', 'bluesky_url', 'TEXT');
+    ensureColumnExists($pdo, 'posts', 'bluesky_like_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'bluesky_repost_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'bluesky_quote_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'mastodon_id', 'TEXT');
+    ensureColumnExists($pdo, 'posts', 'mastodon_url', 'TEXT');
+    ensureColumnExists($pdo, 'posts', 'mastodon_boost_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'mastodon_fav_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'misskey_id', 'TEXT');
+    ensureColumnExists($pdo, 'posts', 'misskey_url', 'TEXT');
+    ensureColumnExists($pdo, 'posts', 'misskey_fire_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'misskey_eyes_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'misskey_cry_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'misskey_thinking_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'misskey_party_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'misskey_other_count', 'INTEGER NOT NULL DEFAULT 0');
 
     if (!is_dir(STORAGE_DIR)) {
         mkdir(STORAGE_DIR, 0775, true);
@@ -102,6 +138,46 @@ function buildPost(array $row): array
         'tweet_off' => (bool)($row['tweet_off'] ?? false),
         'tweet_text' => $row['tweet_text'] ?? null,
         'tweet_url' => $row['tweet_url'] ?? null,
+        'social_links' => buildSocialLinks($row),
+        'social_reactions' => buildSocialReactions($row),
+    ];
+}
+
+function buildSocialLinks(array $row): array
+{
+    return [
+        'x' => $row['tweet_url'] ?? null,
+        'bluesky' => $row['bluesky_url'] ?? null,
+        'mastodon' => $row['mastodon_url'] ?? null,
+        'misskey' => $row['misskey_url'] ?? null,
+    ];
+}
+
+function buildSocialReactions(array $row): array
+{
+    return [
+        'x' => [
+            'likes' => (int)($row['tweet_like_count'] ?? 0),
+            'reposts' => (int)($row['tweet_retweet_count'] ?? 0),
+            'impressions' => (int)($row['tweet_impression_count'] ?? 0),
+        ],
+        'bluesky' => [
+            'likes' => (int)($row['bluesky_like_count'] ?? 0),
+            'reposts' => (int)($row['bluesky_repost_count'] ?? 0),
+            'quotes' => (int)($row['bluesky_quote_count'] ?? 0),
+        ],
+        'mastodon' => [
+            'boosts' => (int)($row['mastodon_boost_count'] ?? 0),
+            'favs' => (int)($row['mastodon_fav_count'] ?? 0),
+        ],
+        'misskey' => [
+            'fire' => (int)($row['misskey_fire_count'] ?? 0),
+            'eyes' => (int)($row['misskey_eyes_count'] ?? 0),
+            'cry' => (int)($row['misskey_cry_count'] ?? 0),
+            'thinking' => (int)($row['misskey_thinking_count'] ?? 0),
+            'party' => (int)($row['misskey_party_count'] ?? 0),
+            'other' => (int)($row['misskey_other_count'] ?? 0),
+        ],
     ];
 }
 
@@ -471,6 +547,11 @@ function normalizeCount($value): int
 
 function buildTweetText(string $name, string $title, string $message, ?string $sourceUrl = null): string
 {
+    return buildSocialPostText('x', $name, $title, $message, $sourceUrl);
+}
+
+function buildSocialPostText(string $platform, string $name, string $title, string $message, ?string $sourceUrl = null): string
+{
     $tweetMessage = preg_split('/_TWEND_/', $message, 2)[0] ?? '';
     $text = '[DT000000：' . $title . ']' . "\n"
         . '作者：' . $name . "\n\n"
@@ -482,34 +563,74 @@ function buildTweetText(string $name, string $title, string $message, ?string $s
 
     $text .= '#ドット絵 #pixelart';
 
-    return trimToTweetLength($text);
+    return trimToSocialPostLength($text, socialPostLimit($platform), $platform === 'x');
 }
 
 function countTweetLength(string $text): int
 {
-    $withoutUrls = preg_replace('/https?:\/\/[^\s]+/u', '', $text) ?? $text;
     preg_match_all('/https?:\/\/[^\s]+/u', $text, $matches);
-    $withoutBreaks = str_replace(["\r\n", "\r", "\n"], '', $withoutUrls);
+    $withoutUrls = preg_replace('/https?:\/\/[^\s]+/u', '', $text) ?? $text;
+    $chars = preg_split('//u', $withoutUrls, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    $length = count($matches[0] ?? []) * 23;
 
-    return mb_strlen($withoutBreaks, 'UTF-8') + (count($matches[0] ?? []) * 23);
+    foreach ($chars as $char) {
+        $length += tweetCharacterWeight($char);
+    }
+
+    return $length;
 }
 
 function trimToTweetLength(string $text): string
 {
-    if (countTweetLength($text) <= 280) {
+    return trimToSocialPostLength($text, 280, true);
+}
+
+function countSocialPostLength(string $text, bool $tweetWeighted = false): int
+{
+    return $tweetWeighted ? countTweetLength($text) : mb_strlen($text, 'UTF-8');
+}
+
+function trimToSocialPostLength(string $text, int $limit, bool $tweetWeighted = false): string
+{
+    if (countSocialPostLength($text, $tweetWeighted) <= $limit) {
         return $text;
     }
 
+    $ellipsis = '..';
     $marker = "\n\n元：";
     $sourcePos = mb_strpos($text, $marker, 0, 'UTF-8');
-    $body = $sourcePos === false ? $text : mb_substr($text, 0, $sourcePos, 'UTF-8');
-    $tail = $sourcePos === false ? '' : mb_substr($text, $sourcePos, null, 'UTF-8');
+    $tagPos = mb_strrpos($text, "\n#", 0, 'UTF-8');
+    $tailPos = $sourcePos !== false ? $sourcePos : ($tagPos !== false ? $tagPos : false);
+    $body = $tailPos === false ? $text : mb_substr($text, 0, $tailPos, 'UTF-8');
+    $tail = $tailPos === false ? '' : mb_substr($text, $tailPos, null, 'UTF-8');
 
-    while ($body !== '' && countTweetLength($body . '...' . $tail) > 280) {
+    while ($body !== '' && countSocialPostLength($body . $ellipsis . $tail, $tweetWeighted) > $limit) {
         $body = mb_substr($body, 0, mb_strlen($body, 'UTF-8') - 1, 'UTF-8');
     }
 
-    return rtrim($body) . '...' . $tail;
+    while ($tail !== '' && countSocialPostLength(rtrim($body) . $ellipsis . $tail, $tweetWeighted) > $limit) {
+        $tail = mb_substr($tail, 0, mb_strlen($tail, 'UTF-8') - 1, 'UTF-8');
+    }
+
+    return rtrim($body) . $ellipsis . $tail;
+}
+
+function socialPostLimit(string $platform): int
+{
+    return [
+        'x' => 280,
+        'bluesky' => 300,
+        'mastodon' => 500,
+        'misskey' => 3000,
+    ][$platform] ?? 500;
+}
+
+function tweetCharacterWeight(string $char): int
+{
+    if ($char === "\r") {
+        return 0;
+    }
+    return preg_match('/[\x{0000}-\x{10ff}\x{2000}-\x{200d}\x{2010}-\x{201f}\x{2032}-\x{2037}]/u', $char) === 1 ? 1 : 2;
 }
 
 function hasRecentDuplicatePost(PDO $pdo, string $name, string $title, string $message, int $windowSeconds = 60): bool

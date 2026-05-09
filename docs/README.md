@@ -27,8 +27,9 @@ This directory is the documentation index. Keep the root `README.md` as the shor
 - Non-destructive old BBSnote log import
 - Search by all fields, title, body, or author
 - RSS output
-- Tweet integration is available but disabled by default for local-first operation
-- Tweet OFF and gdgd visual modes
+- X, Bluesky, Mastodon, and Misskey posting settings are available but disabled by default for local-first operation
+- Cached social reaction counts can be refreshed from the admin maintenance screen
+- gdgd visual mode
 - Embedded manual page
 - Admin-configurable HOME link, manual text, Tweet switch, gdgd switch, and gdgd label
 - Tweet credential fields are disabled in the admin UI while Tweet integration is OFF

@@ -59,14 +59,14 @@ switch ($action) {
     case 'adminCheckIntegrity':
         adminCheckIntegrity($pdo);
         break;
+    case 'refreshSocialReactions':
+        refreshSocialReactions($pdo);
+        break;
     case 'exportBackup':
         exportBackup($pdo);
         break;
     case 'importBackup':
         importBackup($pdo);
-        break;
-    case 'importLegacyBbsnote':
-        importLegacyBbsnote($pdo);
         break;
     case 'getSettings':
         getSettings($pdo);
@@ -225,6 +225,10 @@ function createPost(PDO $pdo): void
     $settings = loadSettings($pdo);
     $config = $settings['config'] ?? [];
     $tweetEnabled = toBoolFlag($config['tweetEnabled'] ?? false);
+    $blueskyEnabled = toBoolFlag($config['blueskyEnabled'] ?? false);
+    $mastodonEnabled = toBoolFlag($config['mastodonEnabled'] ?? false);
+    $misskeyEnabled = toBoolFlag($config['misskeyEnabled'] ?? false);
+    $socialEnabled = $tweetEnabled || $blueskyEnabled || $mastodonEnabled || $misskeyEnabled;
     $gdgdEnabled = toBoolFlag($config['gdgdEnabled'] ?? true);
     $name = normalizeString($_POST['name'] ?? '');
     $url = normalizeUrl($_POST['url'] ?? null);
@@ -235,7 +239,7 @@ function createPost(PDO $pdo): void
     $parentId = filter_input(INPUT_POST, 'parent_id', FILTER_VALIDATE_INT) ?: 0;
     $isReply = $threadId !== 0 || $parentId !== 0;
     $gdgd = $isReply || !$gdgdEnabled ? false : toBoolFlag($_POST['gdgd'] ?? $_POST['gdgd_post'] ?? false);
-    $tweetOff = $isReply || !$tweetEnabled ? true : toBoolFlag($_POST['tweet_off'] ?? $_POST['TweetOFF'] ?? false);
+    $tweetOff = $isReply || !$socialEnabled ? true : toBoolFlag($_POST['tweet_off'] ?? $_POST['TweetOFF'] ?? false);
     $tweetUrl = null;
 
     if ($name === '' || $title === '' || $message === '' || $password === '') {
@@ -248,7 +252,8 @@ function createPost(PDO $pdo): void
 
     $createdAt = currentTimestamp();
     $sourceUrl = $_POST['source_url'] ?? null;
-    $tweetText = $tweetOff ? null : buildTweetText($name, $title, $message, is_string($sourceUrl) ? normalizeUrl($sourceUrl) : null);
+    $normalizedSourceUrl = is_string($sourceUrl) ? normalizeUrl($sourceUrl) : null;
+    $tweetText = $tweetOff ? null : buildTweetText($name, $title, $message, $normalizedSourceUrl);
 
     if ($threadId === 0) {
         $parentId = 0;
@@ -321,7 +326,7 @@ function createPost(PDO $pdo): void
     $pdo->commit();
 
     $responseMessage = '投稿が完了しました。';
-    if (!$tweetOff && $tweetText !== null) {
+    if (!$tweetOff && $tweetText !== null && $tweetEnabled) {
         $tweetResult = publishTweetFromSettings($settings, $tweetText, $imagePath);
         if ($tweetResult['success']) {
             $tweetUrl = $tweetResult['url'];
@@ -336,6 +341,17 @@ function createPost(PDO $pdo): void
         }
     }
 
+    if (!$tweetOff) {
+        foreach (publishFederatedPostsFromSettings($settings, $name, $title, $message, $normalizedSourceUrl, $insertedId) as $platform => $result) {
+            if ($result['success']) {
+                saveSocialPublishResult($pdo, $insertedId, $platform, $result);
+                $responseMessage .= ' ' . socialPlatformLabel($platform) . 'へ投稿しました。';
+            } else {
+                $responseMessage .= ' ' . socialPlatformLabel($platform) . '投稿は失敗しました: ' . $result['message'];
+            }
+        }
+    }
+
     jsonResponse(['success' => true, 'message' => $responseMessage, 'tweet_url' => $tweetUrl]);
 }
 
@@ -344,7 +360,7 @@ function fillTweetPostId(string $tweetText, int $postId): string
     return preg_replace('/000000/', str_pad((string)$postId, 6, '0', STR_PAD_LEFT), $tweetText, 1) ?? $tweetText;
 }
 
-function publishTweetFromSettings(array $settings, string $text, ?string $imagePath): array
+function publishTweetFromSettings(array $settings, string $text, ?string $imagePath, ?string $previousTweetId = null): array
 {
     $config = $settings['config'] ?? [];
     $consumerKey = trim((string)($config['tweetConsumerKey'] ?? ''));
@@ -370,7 +386,7 @@ function publishTweetFromSettings(array $settings, string $text, ?string $imageP
         $mediaIds[] = $upload['media_id'];
     }
 
-    $tweet = twitterCreateTweet($consumerKey, $consumerSecret, $accessToken, $accessTokenSecret, $text, $mediaIds);
+    $tweet = twitterCreateTweet($consumerKey, $consumerSecret, $accessToken, $accessTokenSecret, $text, $mediaIds, $previousTweetId);
     if (!$tweet['success']) {
         return ['success' => false, 'message' => $tweet['message'], 'url' => null];
     }
@@ -422,11 +438,15 @@ function twitterCreateTweet(
     string $accessToken,
     string $accessTokenSecret,
     string $text,
-    array $mediaIds
+    array $mediaIds,
+    ?string $previousTweetId = null
 ): array {
     $payload = ['text' => $text];
     if (count($mediaIds) > 0) {
         $payload['media'] = ['media_ids' => $mediaIds];
+    }
+    if ($previousTweetId !== null && $previousTweetId !== '') {
+        $payload['edit_options'] = ['previous_post_id' => $previousTweetId];
     }
 
     $response = twitterRequest(
@@ -472,13 +492,16 @@ function twitterRequest(
     }
 
     $curl = curl_init($url);
-    curl_setopt_array($curl, [
+    $options = [
         CURLOPT_CUSTOMREQUEST => strtoupper($method),
         CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_POSTFIELDS => $body,
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 30,
-    ]);
+    ];
+    if (strtoupper($method) !== 'GET') {
+        $options[CURLOPT_POSTFIELDS] = $body;
+    }
+    curl_setopt_array($curl, $options);
 
     $raw = curl_exec($curl);
     $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
@@ -519,14 +542,22 @@ function twitterOAuthHeader(
         'oauth_version' => '1.0',
     ];
 
+    $baseUrl = strtok($url, '?') ?: $url;
     $baseParams = $oauth;
+    $query = parse_url($url, PHP_URL_QUERY);
+    if (is_string($query) && $query !== '') {
+        parse_str($query, $queryParams);
+        foreach ($queryParams as $key => $value) {
+            $baseParams[(string)$key] = $value;
+        }
+    }
     ksort($baseParams);
     $encodedParams = [];
     foreach ($baseParams as $key => $value) {
         $encodedParams[] = rawurlencode($key) . '=' . rawurlencode((string)$value);
     }
 
-    $baseString = strtoupper($method) . '&' . rawurlencode($url) . '&' . rawurlencode(implode('&', $encodedParams));
+    $baseString = strtoupper($method) . '&' . rawurlencode($baseUrl) . '&' . rawurlencode(implode('&', $encodedParams));
     $signingKey = rawurlencode($consumerSecret) . '&' . rawurlencode($accessTokenSecret);
     $oauth['oauth_signature'] = base64_encode(hash_hmac('sha1', $baseString, $signingKey, true));
 
@@ -536,6 +567,335 @@ function twitterOAuthHeader(
     }
 
     return 'OAuth ' . implode(', ', $header);
+}
+
+function publishFederatedPostsFromSettings(array $settings, string $name, string $title, string $message, ?string $sourceUrl, int $postId): array
+{
+    $config = $settings['config'] ?? [];
+    $results = [];
+
+    if (toBoolFlag($config['blueskyEnabled'] ?? false)) {
+        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl), $postId);
+        $results['bluesky'] = publishBlueskyPost($config, $text);
+    }
+    if (toBoolFlag($config['mastodonEnabled'] ?? false)) {
+        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl), $postId);
+        $results['mastodon'] = publishMastodonPost($config, $text);
+    }
+    if (toBoolFlag($config['misskeyEnabled'] ?? false)) {
+        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl), $postId);
+        $results['misskey'] = publishMisskeyPost($config, $text);
+    }
+
+    return $results;
+}
+
+function updateFederatedPostsFromSettings(array $settings, array $post, string $name, string $title, string $message, ?string $sourceUrl, int $postId): array
+{
+    $config = $settings['config'] ?? [];
+    $results = [];
+
+    if (toBoolFlag($config['blueskyEnabled'] ?? false)) {
+        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl), $postId);
+        $results['bluesky'] = updateBlueskyPost($config, $text, (string)($post['bluesky_uri'] ?? ''));
+    }
+    if (toBoolFlag($config['mastodonEnabled'] ?? false)) {
+        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl), $postId);
+        $results['mastodon'] = updateMastodonPost($config, $text, (string)($post['mastodon_id'] ?? ''));
+    }
+    if (toBoolFlag($config['misskeyEnabled'] ?? false)) {
+        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl), $postId);
+        $results['misskey'] = publishMisskeyPost($config, $text);
+    }
+
+    return $results;
+}
+
+function publishBlueskyPost(array $config, string $text): array
+{
+    $service = rtrim(trim((string)($config['blueskyServiceUrl'] ?? 'https://bsky.social')), '/');
+    $handle = trim((string)($config['blueskyHandle'] ?? ''));
+    $password = trim((string)($config['blueskyAppPassword'] ?? ''));
+    if ($handle === '' || $password === '') {
+        return ['success' => false, 'message' => 'BlueskyのハンドルまたはApp Passwordが未設定です。'];
+    }
+
+    $session = httpJsonRequest('POST', $service . '/xrpc/com.atproto.server.createSession', [], [
+        'identifier' => $handle,
+        'password' => $password,
+    ]);
+    if (!$session['success']) {
+        return $session;
+    }
+
+    $accessJwt = (string)($session['body']['accessJwt'] ?? '');
+    $did = (string)($session['body']['did'] ?? '');
+    if ($accessJwt === '' || $did === '') {
+        return ['success' => false, 'message' => 'Blueskyのセッション応答にaccessJwtまたはdidがありません。'];
+    }
+
+    $post = httpJsonRequest('POST', $service . '/xrpc/com.atproto.repo.createRecord', [
+        'Authorization: Bearer ' . $accessJwt,
+    ], [
+        'repo' => $did,
+        'collection' => 'app.bsky.feed.post',
+        'record' => [
+            '$type' => 'app.bsky.feed.post',
+            'text' => $text,
+            'createdAt' => gmdate('c'),
+        ],
+    ]);
+    if (!$post['success']) {
+        return $post;
+    }
+
+    $uri = (string)($post['body']['uri'] ?? '');
+    $cid = (string)($post['body']['cid'] ?? '');
+    if ($uri === '') {
+        return ['success' => false, 'message' => 'Blueskyの投稿応答にURIがありません。'];
+    }
+
+    return [
+        'success' => true,
+        'uri' => $uri,
+        'cid' => $cid,
+        'url' => blueskyUrlFromUri($uri, $handle),
+    ];
+}
+
+function updateBlueskyPost(array $config, string $text, string $existingUri): array
+{
+    if ($existingUri === '') {
+        return publishBlueskyPost($config, $text);
+    }
+
+    $service = rtrim(trim((string)($config['blueskyServiceUrl'] ?? 'https://bsky.social')), '/');
+    $handle = trim((string)($config['blueskyHandle'] ?? ''));
+    $password = trim((string)($config['blueskyAppPassword'] ?? ''));
+    if ($handle === '' || $password === '') {
+        return ['success' => false, 'message' => 'BlueskyのハンドルまたはApp Passwordが未設定です。'];
+    }
+
+    $parts = explode('/', $existingUri);
+    $rkey = end($parts);
+    if (!is_string($rkey) || $rkey === '') {
+        return ['success' => false, 'message' => 'Blueskyの既存URIからrkeyを取得できません。'];
+    }
+
+    $session = httpJsonRequest('POST', $service . '/xrpc/com.atproto.server.createSession', [], [
+        'identifier' => $handle,
+        'password' => $password,
+    ]);
+    if (!$session['success']) {
+        return $session;
+    }
+
+    $accessJwt = (string)($session['body']['accessJwt'] ?? '');
+    $did = (string)($session['body']['did'] ?? '');
+    if ($accessJwt === '' || $did === '') {
+        return ['success' => false, 'message' => 'Blueskyのセッション応答にaccessJwtまたはdidがありません。'];
+    }
+
+    $post = httpJsonRequest('POST', $service . '/xrpc/com.atproto.repo.putRecord', [
+        'Authorization: Bearer ' . $accessJwt,
+    ], [
+        'repo' => $did,
+        'collection' => 'app.bsky.feed.post',
+        'rkey' => $rkey,
+        'record' => [
+            '$type' => 'app.bsky.feed.post',
+            'text' => $text,
+            'createdAt' => gmdate('c'),
+        ],
+    ]);
+    if (!$post['success']) {
+        return $post;
+    }
+
+    $uri = (string)($post['body']['uri'] ?? $existingUri);
+    $cid = (string)($post['body']['cid'] ?? '');
+    return ['success' => true, 'uri' => $uri, 'cid' => $cid, 'url' => blueskyUrlFromUri($uri, $handle)];
+}
+
+function publishMastodonPost(array $config, string $text): array
+{
+    $instance = rtrim(trim((string)($config['mastodonInstanceUrl'] ?? '')), '/');
+    $token = trim((string)($config['mastodonAccessToken'] ?? ''));
+    if ($instance === '' || $token === '') {
+        return ['success' => false, 'message' => 'MastodonのインスタンスURLまたはAccess Tokenが未設定です。'];
+    }
+
+    $response = httpJsonRequest('POST', $instance . '/api/v1/statuses', [
+        'Authorization: Bearer ' . $token,
+    ], [
+        'status' => $text,
+        'visibility' => (string)($config['mastodonVisibility'] ?? 'public'),
+    ], false);
+    if (!$response['success']) {
+        return $response;
+    }
+
+    $id = (string)($response['body']['id'] ?? '');
+    $url = (string)($response['body']['url'] ?? '');
+    if ($id === '') {
+        return ['success' => false, 'message' => 'Mastodonの投稿応答にIDがありません。'];
+    }
+
+    return ['success' => true, 'id' => $id, 'url' => $url];
+}
+
+function updateMastodonPost(array $config, string $text, string $existingId): array
+{
+    if ($existingId === '') {
+        return publishMastodonPost($config, $text);
+    }
+
+    $instance = rtrim(trim((string)($config['mastodonInstanceUrl'] ?? '')), '/');
+    $token = trim((string)($config['mastodonAccessToken'] ?? ''));
+    if ($instance === '' || $token === '') {
+        return ['success' => false, 'message' => 'MastodonのインスタンスURLまたはAccess Tokenが未設定です。'];
+    }
+
+    $response = httpJsonRequest('PUT', $instance . '/api/v1/statuses/' . rawurlencode($existingId), [
+        'Authorization: Bearer ' . $token,
+    ], [
+        'status' => $text,
+    ], false);
+    if (!$response['success']) {
+        return $response;
+    }
+
+    $id = (string)($response['body']['id'] ?? $existingId);
+    $url = (string)($response['body']['url'] ?? '');
+    return ['success' => true, 'id' => $id, 'url' => $url];
+}
+
+function publishMisskeyPost(array $config, string $text): array
+{
+    $instance = rtrim(trim((string)($config['misskeyInstanceUrl'] ?? '')), '/');
+    $token = trim((string)($config['misskeyAccessToken'] ?? ''));
+    if ($instance === '' || $token === '') {
+        return ['success' => false, 'message' => 'MisskeyのインスタンスURLまたはAccess Tokenが未設定です。'];
+    }
+
+    $response = httpJsonRequest('POST', $instance . '/api/notes/create', [], [
+        'i' => $token,
+        'text' => $text,
+    ]);
+    if (!$response['success']) {
+        return $response;
+    }
+
+    $note = $response['body']['createdNote'] ?? $response['body'];
+    $id = (string)($note['id'] ?? '');
+    $url = (string)($note['url'] ?? '');
+    if ($url === '' && $id !== '') {
+        $url = $instance . '/notes/' . $id;
+    }
+    if ($id === '') {
+        return ['success' => false, 'message' => 'Misskeyの投稿応答にNote IDがありません。'];
+    }
+
+    return ['success' => true, 'id' => $id, 'url' => $url];
+}
+
+function saveSocialPublishResult(PDO $pdo, int $postId, string $platform, array $result): void
+{
+    $updates = [
+        'bluesky' => ['bluesky_uri' => $result['uri'] ?? null, 'bluesky_cid' => $result['cid'] ?? null, 'bluesky_url' => $result['url'] ?? null],
+        'mastodon' => ['mastodon_id' => $result['id'] ?? null, 'mastodon_url' => $result['url'] ?? null],
+        'misskey' => ['misskey_id' => $result['id'] ?? null, 'misskey_url' => $result['url'] ?? null],
+    ][$platform] ?? [];
+
+    if ($updates === []) {
+        return;
+    }
+
+    $sets = [];
+    $params = [':id' => $postId];
+    foreach ($updates as $column => $value) {
+        $sets[] = $column . ' = :' . $column;
+        $params[':' . $column] = $value;
+    }
+    $stmt = $pdo->prepare('UPDATE posts SET ' . implode(', ', $sets) . ' WHERE id = :id');
+    $stmt->execute($params);
+}
+
+function socialPlatformLabel(string $platform): string
+{
+    return ['bluesky' => 'Bluesky', 'mastodon' => 'Mastodon', 'misskey' => 'Misskey'][$platform] ?? $platform;
+}
+
+function blueskyUrlFromUri(string $uri, string $handle): string
+{
+    $parts = explode('/', $uri);
+    $rkey = end($parts);
+    return 'https://bsky.app/profile/' . rawurlencode($handle) . '/post/' . rawurlencode((string)$rkey);
+}
+
+function httpJsonRequest(string $method, string $url, array $headers = [], array $payload = [], bool $jsonBody = true): array
+{
+    if (!function_exists('curl_init')) {
+        return ['success' => false, 'message' => 'PHP cURL拡張が有効ではありません。'];
+    }
+
+    $curlHeaders = $headers;
+    $body = null;
+    if ($method !== 'GET') {
+        if ($jsonBody) {
+            $curlHeaders[] = 'Content-Type: application/json';
+            $body = json_encode($payload, JSON_UNESCAPED_UNICODE);
+        } else {
+            $body = http_build_query($payload);
+        }
+    }
+
+    if ($method === 'GET' && $payload !== []) {
+        $url .= (str_contains($url, '?') ? '&' : '?') . queryString($payload);
+    }
+
+    $curl = curl_init($url);
+    $options = [
+        CURLOPT_CUSTOMREQUEST => strtoupper($method),
+        CURLOPT_HTTPHEADER => $curlHeaders,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+    ];
+    if ($body !== null) {
+        $options[CURLOPT_POSTFIELDS] = $body;
+    }
+    curl_setopt_array($curl, $options);
+
+    $raw = curl_exec($curl);
+    $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    $error = curl_error($curl);
+    curl_close($curl);
+
+    if ($raw === false) {
+        return ['success' => false, 'message' => 'API通信に失敗しました: ' . $error];
+    }
+
+    $decoded = json_decode((string)$raw, true);
+    if ($status < 200 || $status >= 300) {
+        $detail = is_array($decoded) ? json_encode($decoded, JSON_UNESCAPED_UNICODE) : (string)$raw;
+        return ['success' => false, 'message' => 'APIがエラーを返しました。HTTP ' . $status . ' ' . $detail];
+    }
+    if (!is_array($decoded)) {
+        return ['success' => false, 'message' => 'API応答がJSONではありません。'];
+    }
+
+    return ['success' => true, 'body' => $decoded];
+}
+
+function queryString(array $params): string
+{
+    $pairs = [];
+    foreach ($params as $key => $value) {
+        foreach ((array)$value as $item) {
+            $pairs[] = rawurlencode((string)$key) . '=' . rawurlencode((string)$item);
+        }
+    }
+    return implode('&', $pairs);
 }
 
 function getPost(PDO $pdo): void
@@ -576,10 +936,16 @@ function updatePost(PDO $pdo): void
     }
 
     $settings = loadSettings($pdo);
-    $gdgdEnabled = toBoolFlag(($settings['config'] ?? [])['gdgdEnabled'] ?? true);
+    $config = $settings['config'] ?? [];
+    $gdgdEnabled = toBoolFlag($config['gdgdEnabled'] ?? true);
+    $tweetEnabled = toBoolFlag($config['tweetEnabled'] ?? false);
+    $blueskyEnabled = toBoolFlag($config['blueskyEnabled'] ?? false);
+    $mastodonEnabled = toBoolFlag($config['mastodonEnabled'] ?? false);
+    $misskeyEnabled = toBoolFlag($config['misskeyEnabled'] ?? false);
+    $socialEnabled = $tweetEnabled || $blueskyEnabled || $mastodonEnabled || $misskeyEnabled;
     $isReply = (int)($post['parent_id'] ?? 0) !== 0;
     $gdgd = $isReply || !$gdgdEnabled ? false : toBoolFlag($_POST['gdgd'] ?? $post['gdgd'] ?? false);
-    $tweetOff = (bool)($post['tweet_off'] ?? true);
+    $tweetOff = $isReply || !$socialEnabled ? true : toBoolFlag($_POST['tweet_off'] ?? $post['tweet_off'] ?? false);
     $tweetUrl = $post['tweet_url'] ?? null;
 
     $imagePath = $post['image_path'];
@@ -591,7 +957,10 @@ function updatePost(PDO $pdo): void
         $imagePath = $newImage;
     }
 
-    $tweetText = $post['tweet_text'] ?? null;
+    $tweetText = null;
+    if (!$tweetOff) {
+        $tweetText = fillTweetPostId(buildTweetText($name, $title, $message, null), $id);
+    }
 
     $stmt = $pdo->prepare(
         'UPDATE posts SET
@@ -627,7 +996,31 @@ function updatePost(PDO $pdo): void
         ':tweet_impression_count' => 0,
     ]);
 
-    jsonResponse(['success' => true, 'message' => '投稿を更新しました。']);
+    $responseMessage = '投稿を更新しました。';
+    if (!$tweetOff && !$isReply && $tweetText !== null) {
+        if ($tweetEnabled) {
+            $tweetResult = publishTweetFromSettings($settings, $tweetText, $imagePath, is_string($tweetUrl) ? socialIdFromUrl($tweetUrl) : null);
+            if ($tweetResult['success']) {
+                $tweetUrl = $tweetResult['url'];
+                $updateTweetUrl = $pdo->prepare('UPDATE posts SET tweet_url = :tweet_url WHERE id = :id');
+                $updateTweetUrl->execute([':id' => $id, ':tweet_url' => $tweetUrl]);
+                $responseMessage .= ' Xへ反映しました。';
+            } else {
+                $responseMessage .= ' X反映は失敗しました: ' . $tweetResult['message'];
+            }
+        }
+
+        foreach (updateFederatedPostsFromSettings($settings, $post, $name, $title, $message, null, $id) as $platform => $result) {
+            if ($result['success']) {
+                saveSocialPublishResult($pdo, $id, $platform, $result);
+                $responseMessage .= ' ' . socialPlatformLabel($platform) . 'へ反映しました。';
+            } else {
+                $responseMessage .= ' ' . socialPlatformLabel($platform) . '反映は失敗しました: ' . $result['message'];
+            }
+        }
+    }
+
+    jsonResponse(['success' => true, 'message' => $responseMessage]);
 }
 
 function deletePost(PDO $pdo): void
@@ -782,6 +1175,204 @@ function adminCheckIntegrity(PDO $pdo): void
     ]);
 }
 
+function refreshSocialReactions(PDO $pdo): void
+{
+    requireAdmin();
+    $settings = loadSettings($pdo);
+    $rows = $pdo->query(
+        "SELECT * FROM posts
+         WHERE deleted_at IS NULL
+           AND parent_id = 0
+           AND (
+             tweet_url IS NOT NULL OR bluesky_uri IS NOT NULL OR mastodon_id IS NOT NULL OR misskey_id IS NOT NULL
+           )
+         ORDER BY id ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    $updated = 0;
+    $errors = [];
+    foreach ($rows as $row) {
+        foreach (fetchSocialReactionsForPost($settings, $row) as $platform => $result) {
+            if ($result['success']) {
+                saveSocialReactionResult($pdo, (int)$row['id'], $platform, $result);
+                $updated++;
+            } else {
+                $errors[] = '#' . $row['id'] . ' ' . socialPlatformLabel($platform) . ': ' . $result['message'];
+            }
+        }
+    }
+
+    jsonResponse([
+        'success' => true,
+        'message' => 'SNSリアクションを更新しました。',
+        'updated' => $updated,
+        'errors' => $errors,
+    ]);
+}
+
+function fetchSocialReactionsForPost(array $settings, array $row): array
+{
+    $config = $settings['config'] ?? [];
+    $results = [];
+
+    if (!empty($row['tweet_url']) && toBoolFlag($config['tweetEnabled'] ?? false)) {
+        $results['x'] = fetchXReactions($config, (string)$row['tweet_url']);
+    }
+    if (!empty($row['bluesky_uri']) && toBoolFlag($config['blueskyEnabled'] ?? false)) {
+        $results['bluesky'] = fetchBlueskyReactions($config, (string)$row['bluesky_uri']);
+    }
+    if (!empty($row['mastodon_id']) && toBoolFlag($config['mastodonEnabled'] ?? false)) {
+        $results['mastodon'] = fetchMastodonReactions($config, (string)$row['mastodon_id']);
+    }
+    if (!empty($row['misskey_id']) && toBoolFlag($config['misskeyEnabled'] ?? false)) {
+        $results['misskey'] = fetchMisskeyReactions($config, (string)$row['misskey_id']);
+    }
+
+    return $results;
+}
+
+function fetchXReactions(array $config, string $tweetUrl): array
+{
+    $tweetId = socialIdFromUrl($tweetUrl);
+    if ($tweetId === '') {
+        return ['success' => false, 'message' => 'X投稿IDをURLから取得できません。'];
+    }
+    $consumerKey = trim((string)($config['tweetConsumerKey'] ?? ''));
+    $consumerSecret = trim((string)($config['tweetConsumerSecret'] ?? ''));
+    $accessToken = trim((string)($config['tweetAccessToken'] ?? ''));
+    $accessTokenSecret = trim((string)($config['tweetAccessTokenSecret'] ?? ''));
+    if ($consumerKey === '' || $consumerSecret === '' || $accessToken === '' || $accessTokenSecret === '') {
+        return ['success' => false, 'message' => 'X API設定が未入力です。'];
+    }
+
+    $url = 'https://api.twitter.com/2/tweets/' . rawurlencode($tweetId) . '?tweet.fields=public_metrics';
+    $response = twitterRequest('GET', $url, $consumerKey, $consumerSecret, $accessToken, $accessTokenSecret, [], false);
+    if (!$response['success']) {
+        return $response;
+    }
+    $metrics = $response['body']['data']['public_metrics'] ?? [];
+    return [
+        'success' => true,
+        'likes' => (int)($metrics['like_count'] ?? 0),
+        'reposts' => (int)($metrics['retweet_count'] ?? 0),
+        'impressions' => (int)($metrics['impression_count'] ?? 0),
+    ];
+}
+
+function fetchBlueskyReactions(array $config, string $uri): array
+{
+    $service = rtrim(trim((string)($config['blueskyPublicApiUrl'] ?? 'https://public.api.bsky.app')), '/');
+    $response = httpJsonRequest('GET', $service . '/xrpc/app.bsky.feed.getPosts', [], ['uris' => [$uri]]);
+    if (!$response['success']) {
+        return $response;
+    }
+    $post = $response['body']['posts'][0] ?? [];
+    return [
+        'success' => true,
+        'likes' => (int)($post['likeCount'] ?? 0),
+        'reposts' => (int)($post['repostCount'] ?? 0),
+        'quotes' => (int)($post['quoteCount'] ?? 0),
+    ];
+}
+
+function fetchMastodonReactions(array $config, string $id): array
+{
+    $instance = rtrim(trim((string)($config['mastodonInstanceUrl'] ?? '')), '/');
+    $token = trim((string)($config['mastodonAccessToken'] ?? ''));
+    if ($instance === '') {
+        return ['success' => false, 'message' => 'MastodonインスタンスURLが未設定です。'];
+    }
+    $headers = $token === '' ? [] : ['Authorization: Bearer ' . $token];
+    $response = httpJsonRequest('GET', $instance . '/api/v1/statuses/' . rawurlencode($id), $headers);
+    if (!$response['success']) {
+        return $response;
+    }
+    return [
+        'success' => true,
+        'boosts' => (int)($response['body']['reblogs_count'] ?? 0),
+        'favs' => (int)($response['body']['favourites_count'] ?? 0),
+    ];
+}
+
+function fetchMisskeyReactions(array $config, string $id): array
+{
+    $instance = rtrim(trim((string)($config['misskeyInstanceUrl'] ?? '')), '/');
+    $token = trim((string)($config['misskeyAccessToken'] ?? ''));
+    if ($instance === '') {
+        return ['success' => false, 'message' => 'MisskeyインスタンスURLが未設定です。'];
+    }
+    $response = httpJsonRequest('POST', $instance . '/api/notes/show', [], ['i' => $token, 'noteId' => $id]);
+    if (!$response['success']) {
+        return $response;
+    }
+    return ['success' => true] + misskeyReactionCounts($response['body']['reactions'] ?? []);
+}
+
+function misskeyReactionCounts(array $reactions): array
+{
+    $known = ['🔥' => 'fire', '👀' => 'eyes', '😭' => 'cry', '🤔' => 'thinking', '🎉' => 'party'];
+    $counts = ['fire' => 0, 'eyes' => 0, 'cry' => 0, 'thinking' => 0, 'party' => 0, 'other' => 0];
+    foreach ($reactions as $reaction => $count) {
+        $key = $known[(string)$reaction] ?? null;
+        if ($key === null) {
+            $counts['other'] += (int)$count;
+        } else {
+            $counts[$key] += (int)$count;
+        }
+    }
+    return $counts;
+}
+
+function saveSocialReactionResult(PDO $pdo, int $postId, string $platform, array $result): void
+{
+    $maps = [
+        'x' => [
+            'tweet_like_count' => $result['likes'] ?? 0,
+            'tweet_retweet_count' => $result['reposts'] ?? 0,
+            'tweet_impression_count' => $result['impressions'] ?? 0,
+        ],
+        'bluesky' => [
+            'bluesky_like_count' => $result['likes'] ?? 0,
+            'bluesky_repost_count' => $result['reposts'] ?? 0,
+            'bluesky_quote_count' => $result['quotes'] ?? 0,
+        ],
+        'mastodon' => [
+            'mastodon_boost_count' => $result['boosts'] ?? 0,
+            'mastodon_fav_count' => $result['favs'] ?? 0,
+        ],
+        'misskey' => [
+            'misskey_fire_count' => $result['fire'] ?? 0,
+            'misskey_eyes_count' => $result['eyes'] ?? 0,
+            'misskey_cry_count' => $result['cry'] ?? 0,
+            'misskey_thinking_count' => $result['thinking'] ?? 0,
+            'misskey_party_count' => $result['party'] ?? 0,
+            'misskey_other_count' => $result['other'] ?? 0,
+        ],
+    ];
+    $updates = $maps[$platform] ?? [];
+    if ($updates === []) {
+        return;
+    }
+    $sets = [];
+    $params = [':id' => $postId];
+    foreach ($updates as $column => $value) {
+        $sets[] = $column . ' = :' . $column;
+        $params[':' . $column] = (int)$value;
+    }
+    $stmt = $pdo->prepare('UPDATE posts SET ' . implode(', ', $sets) . ' WHERE id = :id');
+    $stmt->execute($params);
+}
+
+function socialIdFromUrl(string $url): string
+{
+    $path = parse_url($url, PHP_URL_PATH);
+    if (!is_string($path)) {
+        return '';
+    }
+    $parts = array_values(array_filter(explode('/', $path), static fn($part) => $part !== ''));
+    return (string)end($parts);
+}
+
 function exportBackup(PDO $pdo): void
 {
     requireAdmin();
@@ -875,18 +1466,6 @@ function importBackup(PDO $pdo): void
     jsonResponse(['success' => true, 'message' => 'バックアップをインポートしました。']);
 }
 
-function importLegacyBbsnote(PDO $pdo): void
-{
-    requireAdmin();
-    $legacyDir = (string)($_POST['legacy_dir'] ?? 'data');
-
-    try {
-        jsonResponse(importLegacyBbsnoteDirectory($pdo, $legacyDir));
-    } catch (InvalidArgumentException $exception) {
-        jsonResponse(['success' => false, 'message' => $exception->getMessage()], 400);
-    }
-}
-
 function getSettings(PDO $pdo): void
 {
     requireAdmin();
@@ -907,6 +1486,9 @@ function publicSettings(PDO $pdo): void
                 'manualTitle' => (string)($config['manualTitle'] ?? 'ThreadForge 取扱説明書'),
                 'manualBody' => (string)($config['manualBody'] ?? defaultManualBody()),
                 'tweetEnabled' => toBoolFlag($config['tweetEnabled'] ?? false),
+                'blueskyEnabled' => toBoolFlag($config['blueskyEnabled'] ?? false),
+                'mastodonEnabled' => toBoolFlag($config['mastodonEnabled'] ?? false),
+                'misskeyEnabled' => toBoolFlag($config['misskeyEnabled'] ?? false),
                 'gdgdEnabled' => toBoolFlag($config['gdgdEnabled'] ?? true),
                 'gdgdLabel' => (string)($config['gdgdLabel'] ?? 'gdgd投稿'),
             ],
@@ -953,6 +1535,18 @@ function defaultSettings(): array
             'tweetConsumerSecret' => '',
             'tweetAccessToken' => '',
             'tweetAccessTokenSecret' => '',
+            'blueskyEnabled' => false,
+            'blueskyServiceUrl' => 'https://bsky.social',
+            'blueskyPublicApiUrl' => 'https://public.api.bsky.app',
+            'blueskyHandle' => '',
+            'blueskyAppPassword' => '',
+            'mastodonEnabled' => false,
+            'mastodonInstanceUrl' => '',
+            'mastodonAccessToken' => '',
+            'mastodonVisibility' => 'public',
+            'misskeyEnabled' => false,
+            'misskeyInstanceUrl' => '',
+            'misskeyAccessToken' => '',
             'gdgdEnabled' => true,
             'gdgdLabel' => 'gdgd投稿',
             'logView' => 20,
@@ -963,7 +1557,6 @@ function defaultSettings(): array
         'skin' => [
             'normalFrameColor' => '#a23dff',
             'gdgdFrameColor' => '#6dffc0',
-            'tweetOffFrameColor' => '#888888',
             'backgroundColor' => '#000000',
         ],
         'security' => [
@@ -978,8 +1571,8 @@ function defaultManualBody(): string
         'ThreadForge は、スレッド形式で作品や記事を投稿できる掲示板です。',
         '',
         '投稿',
-        '新規投稿ではタイトル、本文、画像、gdgd投稿、Tweet OFFを指定できます。',
-        'Tweet関連の項目は新規投稿だけで使います。返信では表示されません。',
+        '新規投稿ではタイトル、本文、画像、gdgd投稿、SNS転記OFFを指定できます。',
+        'SNS転記関連の項目は新規投稿と投稿編集で使います。返信では表示されません。',
         '',
         '返信',
         '返信では名前、URL / HOME、本文、パスワードを入力できます。',

@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api, DEFAULT_PUBLIC_SETTINGS, PublicSettings } from '../api';
 import { Post } from '../types';
+import { createSocialPostPreviews } from '../tweet';
 
 const EditPostPage = () => {
   const { id } = useParams();
@@ -13,6 +14,7 @@ const EditPostPage = () => {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [gdgd, setGdgd] = useState(false);
+  const [socialTransferOff, setSocialTransferOff] = useState(true);
   const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
   const [password, setPassword] = useState(() => {
     const state = location.state as { password?: string } | null;
@@ -33,6 +35,7 @@ const EditPostPage = () => {
         setTitle(data.title);
         setMessage(data.message);
         setGdgd(Boolean(data.gdgd));
+        setSocialTransferOff(Boolean(data.tweet_off));
       })
       .catch((err) => setError(err.message));
   }, [id]);
@@ -42,6 +45,17 @@ const EditPostPage = () => {
       .then((response) => response.success && setSettings(response.settings))
       .catch(() => setSettings(DEFAULT_PUBLIC_SETTINGS));
   }, []);
+
+  const enabledSocialPlatforms = {
+    x: Boolean(settings.config.tweetEnabled),
+    bluesky: Boolean(settings.config.blueskyEnabled),
+    mastodon: Boolean(settings.config.mastodonEnabled),
+    misskey: Boolean(settings.config.misskeyEnabled),
+  };
+  const socialEnabled = Object.values(enabledSocialPlatforms).some(Boolean);
+  const socialPreviews = !isReply && socialEnabled && !socialTransferOff
+    ? createSocialPostPreviews(enabledSocialPlatforms, name, title, message)
+    : [];
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -60,6 +74,9 @@ const EditPostPage = () => {
     formData.append('password', password);
     if (!isReply && settings.config.gdgdEnabled) {
       formData.append('gdgd', gdgd ? '1' : '0');
+    }
+    if (!isReply && socialEnabled) {
+      formData.append('tweet_off', socialTransferOff ? '1' : '0');
     }
     if (!isReply && file) {
       formData.append('file', file);
@@ -116,6 +133,12 @@ const EditPostPage = () => {
                 </label>
               </>
             )}
+            {!isReply && socialEnabled && (
+              <label className="checkbox-field">
+                <input type="checkbox" checked={socialTransferOff} onChange={(e) => setSocialTransferOff(e.target.checked)} />
+                SNS転記OFF
+              </label>
+            )}
             {!isReply && (
               <label>
                 画像置換 (任意)
@@ -125,6 +148,21 @@ const EditPostPage = () => {
             <div className="button-row">
               <button type="submit">更新する</button>
             </div>
+            {socialPreviews.length > 0 && (
+              <section className="social-transfer-preview" aria-label="SNS投稿のプレビュー">
+                <h2>SNS投稿のプレビュー</h2>
+                {socialPreviews.map((preview) => (
+                  <article className="social-transfer-preview-item" key={preview.platform}>
+                    <h3>
+                      {preview.label}
+                      <span>{preview.limit ? `${preview.length}/${preview.limit}文字` : `${preview.length}文字`}</span>
+                    </h3>
+                    <pre className="legacy-tweet-preview">{preview.text}</pre>
+                  </article>
+                ))}
+                <p className="social-transfer-help">※この項目は編集できません。</p>
+              </section>
+            )}
           </form>
         )}
       </div>

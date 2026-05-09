@@ -229,6 +229,19 @@ final class StorageLayerTest extends TestCase
         $this->assertLessThanOrEqual(280, countTweetLength($tweet));
     }
 
+    // #sym:describe buildSocialPostText
+    public function testBuildSocialPostTextTrimsPerPlatformLimit(): void
+    {
+        $bluesky = buildSocialPostText('bluesky', 'Alice', 'Title', str_repeat('あ', 400), 'https://example.com/thread/1');
+        $mastodon = buildSocialPostText('mastodon', 'Alice', 'Title', str_repeat('あ', 700), 'https://example.com/thread/1');
+
+        $this->assertLessThanOrEqual(300, mb_strlen($bluesky, 'UTF-8'));
+        $this->assertStringContainsString('..', $bluesky);
+        $this->assertStringContainsString('#ドット絵 #pixelart', $bluesky);
+        $this->assertLessThanOrEqual(500, mb_strlen($mastodon, 'UTF-8'));
+        $this->assertStringContainsString('..', $mastodon);
+    }
+
     // #sym:describe hasRecentDuplicatePost
     public function testHasRecentDuplicatePostDetectsActiveDuplicates(): void
     {

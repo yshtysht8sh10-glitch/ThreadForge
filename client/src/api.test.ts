@@ -231,11 +231,6 @@ describe('API Module', () => {
       expect(result.success).toBe(true);
     });
 
-    it('should import legacy BBSnote logs from mock API', async () => {
-      const result = await api.importLegacyBbsnote('data', 'admin');
-      expect(result.success).toBe(true);
-    });
-
     it('should update settings from mock API', async () => {
       const result = await api.updateSettings({ title: 'New Title' }, 'admin');
       expect(result.success).toBe(true);

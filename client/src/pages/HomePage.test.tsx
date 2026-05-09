@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import HomePage from './HomePage';
 
@@ -11,8 +11,8 @@ describe('HomePage', () => {
       </BrowserRouter>,
     );
 
-    const threadLink = await screen.findByRole('link', { name: /\[No・1\]/ });
-    expect(threadLink).toBeInTheDocument();
+    const threadLinks = await screen.findAllByRole('link', { name: /\[No/ });
+    expect(threadLinks.length).toBeGreaterThan(0);
   });
 
   it('renders uploaded images from the API origin', async () => {
@@ -38,38 +38,87 @@ describe('HomePage', () => {
     expect((await screen.findAllByText(/一覧|返信/)).length).toBeGreaterThan(0);
   });
 
-  it('links to the stored Tweet URL from the thread list', async () => {
+  it('hides social destination rows while social posting is disabled', async () => {
     render(
       <BrowserRouter>
         <HomePage />
       </BrowserRouter>,
     );
 
-    const tweetLink = await screen.findByRole('link', { name: 'Tweet先' });
-    expect(tweetLink).toHaveAttribute('href', 'https://x.com/threadforge/status/1');
+    await screen.findAllByRole('link', { name: /\[No/ });
+    expect(screen.queryByLabelText('X先')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('X先未登録')).not.toBeInTheDocument();
   });
 
-  it('shows a Tweet destination placeholder when the Tweet URL is not registered yet', async () => {
+  it('adds visual classes for gdgd but not Tweet OFF posts', async () => {
     render(
       <BrowserRouter>
         <HomePage />
       </BrowserRouter>,
     );
 
-    expect(await screen.findByLabelText('Tweet先未登録')).toBeInTheDocument();
+    const articles = await screen.findAllByRole('article');
+    expect(articles[0]).toHaveClass('board-thread-gdgd');
+    expect(articles[1]).not.toHaveClass('board-thread-tweet-off');
   });
 
-  it('adds visual classes for gdgd and Tweet OFF posts', async () => {
+  it('hides inline action buttons while a comment form is open and closes empty drafts immediately', async () => {
     render(
       <BrowserRouter>
         <HomePage />
       </BrowserRouter>,
     );
 
-    const gdgdThread = (await screen.findByRole('link', { name: /\[No・1\]/ })).closest('article');
-    const tweetOffThread = (await screen.findByRole('link', { name: /\[No・2\]/ })).closest('article');
+    const articles = await screen.findAllByRole('article');
+    const firstArticle = articles[0];
+    fireEvent.click(within(firstArticle).getByRole('button', { name: 'コメント' }));
 
-    expect(gdgdThread).toHaveClass('board-thread-gdgd');
-    expect(tweetOffThread).toHaveClass('board-thread-tweet-off');
+    expect(within(firstArticle).getByRole('heading', { name: 'コメント' })).toBeInTheDocument();
+    expect(within(firstArticle).getByText('名前（/30文字）')).toBeInTheDocument();
+    expect(within(firstArticle).getByText('本文（/100000文字）')).toBeInTheDocument();
+    expect(within(firstArticle).getByText('※半角英数字8文字まで有効です。')).toBeInTheDocument();
+    expect(within(firstArticle).getByLabelText('名前')).toHaveAttribute('maxlength', '30');
+    expect(within(firstArticle).getByLabelText('本文')).toHaveAttribute('maxlength', '100000');
+    expect(within(firstArticle).getByLabelText('パスワード')).toHaveAttribute('maxlength', '8');
+    expect(within(firstArticle).queryByRole('button', { name: 'コメント' })).not.toBeInTheDocument();
+    expect(within(firstArticle).queryByRole('button', { name: 'ええじゃないか' })).not.toBeInTheDocument();
+
+    fireEvent.click(within(firstArticle).getByRole('button', { name: 'コメントフォームを閉じる' }));
+
+    expect(within(firstArticle).queryByRole('heading', { name: 'コメント' })).not.toBeInTheDocument();
+    expect(within(firstArticle).getByRole('button', { name: 'コメント' })).toBeInTheDocument();
+  });
+
+  it('confirms before closing an inline comment draft', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    render(
+      <BrowserRouter>
+        <HomePage />
+      </BrowserRouter>,
+    );
+
+    const firstArticle = (await screen.findAllByRole('article'))[0];
+    fireEvent.click(within(firstArticle).getByRole('button', { name: 'コメント' }));
+    fireEvent.change(within(firstArticle).getByLabelText('本文'), { target: { value: '書きかけ' } });
+    fireEvent.click(within(firstArticle).getByRole('button', { name: 'コメントフォームを閉じる' }));
+
+    expect(confirm).toHaveBeenCalledWith('入力内容は破棄されます。閉じますか？');
+    expect(within(firstArticle).getByRole('heading', { name: 'コメント' })).toBeInTheDocument();
+  });
+
+  it('uses the same required name style in the inline eejanaika form', async () => {
+    render(
+      <BrowserRouter>
+        <HomePage />
+      </BrowserRouter>,
+    );
+
+    const firstArticle = (await screen.findAllByRole('article'))[0];
+    fireEvent.click(within(firstArticle).getByRole('button', { name: 'ええじゃないか' }));
+
+    expect(within(firstArticle).getByText('名前（/30文字）')).toBeInTheDocument();
+    expect(within(firstArticle).getByLabelText('名前')).toHaveAttribute('maxlength', '30');
+    expect(within(firstArticle).getByLabelText('名前')).toBeRequired();
   });
 });

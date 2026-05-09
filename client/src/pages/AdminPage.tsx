@@ -22,7 +22,6 @@ const AdminPage = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [backupFile, setBackupFile] = useState<File | null>(null);
-  const [legacyDir, setLegacyDir] = useState('data');
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [status, setStatus] = useState<string | null>('管理データを読み込み中...');
   const [error, setError] = useState<string | null>(null);
@@ -108,10 +107,10 @@ const AdminPage = () => {
     await loadAll();
   });
 
-  const importLegacyBbsnote = guarded(async () => {
-    setStatus('旧BBSnoteログをインポート中...');
-    const response = await api.importLegacyBbsnote(legacyDir, adminPassword);
-    setStatus(`${response.message} スレッド ${response.imported_threads}件 / 返信 ${response.imported_replies}件 / スキップ ${response.skipped_threads + response.skipped_replies}件 / 画像欠損 ${response.missing_images.length}件`);
+  const refreshSocialReactions = guarded(async () => {
+    setStatus('SNSリアクションを更新中...');
+    const response = await api.refreshSocialReactions(adminPassword);
+    setStatus(`${response.message} 更新: ${response.updated}件 / エラー: ${response.errors.length}件`);
     await reloadThreads();
   });
 
@@ -189,6 +188,9 @@ const AdminPage = () => {
           {activeTab === 'maintenance' && (
             <section className="card">
               <h2>管理パスワード変更</h2>
+              <div className="button-row align-right">
+                <button type="button" onClick={refreshSocialReactions}>SNSリアクションを更新</button>
+              </div>
               <form onSubmit={changeAdminPassword} className="form-card">
                 <label>
                   新しい管理パスワード
@@ -223,19 +225,6 @@ const AdminPage = () => {
                   </div>
                 </form>
               </section>
-              <section className="card">
-                <h2>旧BBSnoteログ追加インポート</h2>
-                <p className="form-help">既存DB、画像、管理設定は初期化せず、旧ログを追加で取り込みます。</p>
-                <form onSubmit={importLegacyBbsnote} className="form-card">
-                  <label>
-                    旧BBSnoteログディレクトリ
-                    <input value={legacyDir} onChange={(event) => setLegacyDir(event.target.value)} placeholder="data" />
-                  </label>
-                  <div className="button-row align-right">
-                    <button type="submit">旧BBSnoteログを追加インポート</button>
-                  </div>
-                </form>
-              </section>
             </div>
           )}
 
@@ -243,8 +232,10 @@ const AdminPage = () => {
             <section className="card">
               <h2>掲示板設定</h2>
               <p>HOMEリンク先、取説、投稿機能、色設定をここで設定できます。</p>
-              <SettingsForm values={settings.config} onChange={(key, value) => updateSetting('config', key, value)} />
-              <SettingsForm values={settings.skin} onChange={(key, value) => updateSetting('skin', key, value)} compact />
+              <SettingsForm
+                values={{ ...settings.config, ...settings.skin }}
+                onChange={(key, value) => updateSetting(key in settings.skin ? 'skin' : 'config', key, value)}
+              />
               <div className="button-row align-right">
                 <button type="button" onClick={saveSettings}>設定を保存</button>
               </div>
@@ -273,45 +264,79 @@ const AdminPage = () => {
 function SettingsForm({
   values,
   onChange,
-  compact = false,
 }: {
   values: Record<string, string | number | boolean>;
   onChange: (key: string, value: string) => void;
-  compact?: boolean;
 }) {
-  const tweetEnabled = values.tweetEnabled === true || values.tweetEnabled === 'true';
-
   return (
-    <div className={compact ? 'admin-settings-grid admin-settings-grid-compact' : 'admin-settings-grid'}>
-      {Object.entries(values).map(([key, value]) => {
-        const label = settingLabels[key] ?? key;
-        const stringValue = String(value);
-        const disabled = isTweetSetting(key) && key !== 'tweetEnabled' && !tweetEnabled;
+    <>
+      {settingGroups.map((group) => {
+        const keys = group.keys.filter((key) => key in values);
+        if (keys.length === 0) {
+          return null;
+        }
         return (
-          <label key={key} className={key === 'manualBody' ? 'admin-setting-wide' : undefined}>
-            <span>{label}</span>
-            {key === 'manualBody' ? (
-              <textarea value={stringValue} rows={12} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
-            ) : key === 'tweetEnabled' || key === 'gdgdEnabled' ? (
-              <select value={stringValue} onChange={(event) => onChange(key, event.target.value)}>
-                <option value="true">ON</option>
-                <option value="false">OFF</option>
-              </select>
-            ) : key === 'tweetConsumerSecret' || key === 'tweetAccessTokenSecret' ? (
-              <input type="password" value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
-            ) : (
-              <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
-            )}
-          </label>
+          <div className="admin-settings-grid" key={group.title}>
+            {group.title && <h3 className="admin-settings-heading">{group.title}</h3>}
+            {keys.map((key) => {
+              const value = values[key];
+              const label = settingLabels[key] ?? key;
+              const stringValue = String(value);
+              const disabled = isDisabledPlatformSetting(values, key);
+              return (
+                <label key={key} className={key === 'manualBody' ? 'admin-setting-wide' : undefined}>
+                  <span>{label}</span>
+                  {key === 'manualBody' ? (
+                    <textarea value={stringValue} rows={12} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
+                  ) : isBooleanSetting(key) ? (
+                    <select value={stringValue} onChange={(event) => onChange(key, event.target.value)}>
+                      <option value="true">ON</option>
+                      <option value="false">OFF</option>
+                    </select>
+                  ) : isSecretSetting(key) ? (
+                    <input type="password" value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
+                  ) : (
+                    <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
+                  )}
+                </label>
+              );
+            })}
+          </div>
         );
       })}
-    </div>
+    </>
   );
 }
 
-function isTweetSetting(key: string): boolean {
-  return key.startsWith('tweet');
+function isBooleanSetting(key: string): boolean {
+  return key.endsWith('Enabled');
 }
+
+function isSecretSetting(key: string): boolean {
+  return key.endsWith('Secret') || key.endsWith('Token') || key === 'blueskyAppPassword';
+}
+
+function isDisabledPlatformSetting(values: Record<string, string | number | boolean>, key: string): boolean {
+  const platformPrefixes = [
+    ['tweet', 'tweetEnabled'],
+    ['bluesky', 'blueskyEnabled'],
+    ['mastodon', 'mastodonEnabled'],
+    ['misskey', 'misskeyEnabled'],
+  ];
+  const match = platformPrefixes.find(([prefix]) => key.startsWith(prefix));
+  if (!match || key === match[1]) {
+    return false;
+  }
+  return !(values[match[1]] === true || values[match[1]] === 'true');
+}
+
+const settingGroups = [
+  { title: '基本', keys: ['bbsTitle', 'homePageUrl', 'manualTitle', 'manualBody', 'gdgdEnabled', 'gdgdLabel', 'logView', 'maxUploadBytes', 'maxImageWidth', 'maxImageHeight', 'normalFrameColor', 'gdgdFrameColor', 'backgroundColor'] },
+  { title: 'X', keys: ['tweetEnabled', 'tweetBaseUrl', 'tweetConsumerKey', 'tweetConsumerSecret', 'tweetAccessToken', 'tweetAccessTokenSecret'] },
+  { title: 'Bluesky', keys: ['blueskyEnabled', 'blueskyServiceUrl', 'blueskyPublicApiUrl', 'blueskyHandle', 'blueskyAppPassword'] },
+  { title: 'Mastodon', keys: ['mastodonEnabled', 'mastodonInstanceUrl', 'mastodonAccessToken', 'mastodonVisibility'] },
+  { title: 'Misskey', keys: ['misskeyEnabled', 'misskeyInstanceUrl', 'misskeyAccessToken'] },
+];
 
 const adminTabs: Array<{ id: AdminTab; label: string }> = [
   { id: 'posts', label: '投稿管理' },
@@ -332,6 +357,18 @@ const settingLabels: Record<string, string> = {
   tweetConsumerSecret: 'Consumer Secret',
   tweetAccessToken: 'Access Token',
   tweetAccessTokenSecret: 'Access Token Secret',
+  blueskyEnabled: 'Bluesky機能',
+  blueskyServiceUrl: 'Bluesky PDS URL',
+  blueskyPublicApiUrl: 'Bluesky公開API URL',
+  blueskyHandle: 'Bluesky Handle',
+  blueskyAppPassword: 'Bluesky App Password',
+  mastodonEnabled: 'Mastodon機能',
+  mastodonInstanceUrl: 'MastodonインスタンスURL',
+  mastodonAccessToken: 'Mastodon Access Token',
+  mastodonVisibility: 'Mastodon公開範囲',
+  misskeyEnabled: 'Misskey機能',
+  misskeyInstanceUrl: 'MisskeyインスタンスURL',
+  misskeyAccessToken: 'Misskey Access Token',
   gdgdEnabled: 'gdgd投稿機能',
   gdgdLabel: 'gdgd投稿の表示名',
   logView: '一覧表示件数',
@@ -340,7 +377,6 @@ const settingLabels: Record<string, string> = {
   maxImageHeight: '最大画像高さ(px)',
   normalFrameColor: '通常投稿の枠色',
   gdgdFrameColor: 'gdgd投稿の枠色',
-  tweetOffFrameColor: 'Tweet OFF投稿の枠色',
   backgroundColor: '背景色',
 };
 
