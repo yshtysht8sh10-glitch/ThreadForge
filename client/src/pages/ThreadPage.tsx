@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { api, mediaUrl } from '../api';
+import { api, mediaUrl, type PublicSettings } from '../api';
 import { NewPostData, Post, ThreadResponse } from '../types';
 import LinkedText from '../components/LinkedText';
-import { replyTextClassName } from '../components/ThreadList';
+import { eejanaikaOptionsFromSettings, replyTextClassName, replyTextStyle } from '../components/ThreadList';
 
 const EEJAIKA_OPTIONS = [
   'お美事にございまする',
@@ -11,21 +11,45 @@ const EEJAIKA_OPTIONS = [
   'ええじゃないか',
 ];
 
+const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
+  config: {
+    bbsTitle: 'ThreadForge',
+    homePageUrl: '/',
+    manualTitle: '',
+    manualBody: '',
+    tweetEnabled: false,
+    blueskyEnabled: false,
+    mastodonEnabled: false,
+    misskeyEnabled: false,
+    gdgdEnabled: true,
+    gdgdLabel: 'gdgd投稿',
+    eejanaikaOmigotoText: 'お美事にございまする',
+    eejanaikaOmigotoColor: '#ff72ff',
+    eejanaikaGoodjobText: 'いい仕事してますねぇ',
+    eejanaikaGoodjobColor: '#27a8ff',
+    eejanaikaEejanaikaText: 'ええじゃないか',
+    eejanaikaEejanaikaColor: '#fff200',
+    socialHashtags: '#ドット絵 #pixelart',
+  },
+};
+
 const ThreadPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const shouldFocusEejanaika = searchParams.get('mode') === 'eejanaika';
   const [threadData, setThreadData] = useState<ThreadResponse | null>(null);
+  const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [replyName, setReplyName] = useState('');
+  const [replyName, setReplyName] = useState('Blank');
   const [replyUrl, setReplyUrl] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
   const [replyPassword, setReplyPassword] = useState('');
-  const [eejanaikaName, setEejanaikaName] = useState('');
-  const [eejanaikaMessage, setEejanaikaMessage] = useState(EEJAIKA_OPTIONS[2]);
+  const [eejanaikaName, setEejanaikaName] = useState('Blank');
+  const [eejanaikaMessage, setEejanaikaMessage] = useState(DEFAULT_PUBLIC_SETTINGS.config.eejanaikaEejanaikaText);
   const [replyStatus, setReplyStatus] = useState<string | null>(null);
+  const eejanaikaOptions = eejanaikaOptionsFromSettings(settings.config);
 
   const loadThread = async () => {
     if (!id) return;
@@ -46,6 +70,22 @@ const ThreadPage = () => {
   }, [id]);
 
   useEffect(() => {
+    if (!api.publicSettings) {
+      return;
+    }
+    api.publicSettings()
+      .then((response) => response.success && setSettings(response.settings))
+      .catch(() => setSettings(DEFAULT_PUBLIC_SETTINGS));
+  }, []);
+
+  useEffect(() => {
+    setEejanaikaMessage((current) => {
+      const available = eejanaikaOptions.some((option) => option.text === current);
+      return available ? current : settings.config.eejanaikaEejanaikaText;
+    });
+  }, [eejanaikaOptions, settings.config.eejanaikaEejanaikaText]);
+
+  useEffect(() => {
     if (shouldFocusEejanaika) {
       document.getElementById('eejanaika-form')?.scrollIntoView({ block: 'center' });
     }
@@ -60,12 +100,12 @@ const ThreadPage = () => {
       await api.createPost(payload);
       await loadThread();
       setReplyStatus('返信を投稿しました。');
-      setReplyName('');
+      setReplyName('Blank');
       setReplyUrl('');
       setReplyMessage('');
       setReplyPassword('');
-      setEejanaikaName('');
-      setEejanaikaMessage(EEJAIKA_OPTIONS[2]);
+      setEejanaikaName('Blank');
+      setEejanaikaMessage(settings.config.eejanaikaEejanaikaText);
     } catch (err: any) {
       setError(err.message);
       setReplyStatus(null);
@@ -158,7 +198,7 @@ const ThreadPage = () => {
                       {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>
                       {reply.reply_no && <> <span className="board-meta-sub">/ 返信No.{thread.display_no ?? thread.id}-{reply.reply_no}</span></>}
                     </p>
-                    <div className={replyTextClassName(reply.message)}>
+                    <div className={replyTextClassName(reply.message, settings.config)} style={replyTextStyle(reply.message, settings.config)}>
                       <LinkedText text={reply.message} />
                     </div>
                   </section>
@@ -204,16 +244,16 @@ const ThreadPage = () => {
                   <input aria-label="名前" value={eejanaikaName} maxLength={30} onChange={(e) => setEejanaikaName(e.target.value)} required />
                 </label>
                 <div className="eejanaika-options">
-                  {EEJAIKA_OPTIONS.map((option) => (
-                    <label key={option} className={replyTextClassName(option)}>
+                  {eejanaikaOptions.map((option) => (
+                    <label key={option.key} className={replyTextClassName(option.text, settings.config)} style={{ color: option.color }}>
                       <input
                         type="radio"
                         name="eejanaika"
-                        value={option}
-                        checked={eejanaikaMessage === option}
-                        onChange={() => setEejanaikaMessage(option)}
+                        value={option.text}
+                        checked={eejanaikaMessage === option.text}
+                        onChange={() => setEejanaikaMessage(option.text)}
                       />
-                      {option}
+                      {option.text}
                     </label>
                   ))}
                 </div>

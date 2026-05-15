@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { CSSProperties, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, DEFAULT_PUBLIC_SETTINGS, mediaUrl, PublicSettings } from '../api';
-import { NewPostData, Post } from '../types';
+import { api, mediaUrl, type PublicSettings } from '../api';
+import { BoardReactions, NewPostData, Post } from '../types';
 import LinkedText from './LinkedText';
 
 type ThreadListProps = {
@@ -17,23 +17,81 @@ const EEJAIKA_OPTIONS = [
   'ええじゃないか',
 ];
 
+const DEFAULT_REPLY_NAME = 'Blank';
+const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
+  config: {
+    bbsTitle: 'ThreadForge',
+    homePageUrl: '/',
+    manualTitle: '',
+    manualBody: '',
+    tweetEnabled: false,
+    blueskyEnabled: false,
+    mastodonEnabled: false,
+    misskeyEnabled: false,
+    gdgdEnabled: true,
+    gdgdLabel: 'gdgd投稿',
+    eejanaikaOmigotoText: 'お美事にございまする',
+    eejanaikaOmigotoColor: '#ff72ff',
+    eejanaikaGoodjobText: 'いい仕事してますねぇ',
+    eejanaikaGoodjobColor: '#27a8ff',
+    eejanaikaEejanaikaText: 'ええじゃないか',
+    eejanaikaEejanaikaColor: '#fff200',
+    socialHashtags: '#ドット絵 #pixelart',
+  },
+};
+
 const ThreadList = ({ threads, action }: ThreadListProps) => {
   const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
+  const viewedPostIds = useRef<Set<number>>(new Set());
   const [activePanel, setActivePanel] = useState<{ threadId: number; mode: InlineMode } | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Record<number, Post[]>>({});
-  const [replyName, setReplyName] = useState('');
+  const [replyName, setReplyName] = useState(DEFAULT_REPLY_NAME);
   const [replyUrl, setReplyUrl] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
   const [replyPassword, setReplyPassword] = useState('');
-  const [eejanaikaName, setEejanaikaName] = useState('');
-  const [eejanaikaMessage, setEejanaikaMessage] = useState(EEJAIKA_OPTIONS[2]);
+  const [eejanaikaName, setEejanaikaName] = useState(DEFAULT_REPLY_NAME);
+  const [eejanaikaMessage, setEejanaikaMessage] = useState(DEFAULT_PUBLIC_SETTINGS.config.eejanaikaEejanaikaText);
   const [inlineStatus, setInlineStatus] = useState<Record<number, string>>({});
+  const [boardReactionOverrides, setBoardReactionOverrides] = useState<Record<number, BoardReactions>>({});
+  const eejanaikaOptions = eejanaikaOptionsFromSettings(settings.config);
 
   useEffect(() => {
     api.publicSettings()
       .then((response) => response.success && setSettings(response.settings))
       .catch(() => setSettings(DEFAULT_PUBLIC_SETTINGS));
   }, []);
+
+  useEffect(() => {
+    setEejanaikaMessage((current) => {
+      const available = eejanaikaOptions.some((option) => option.text === current);
+      return available ? current : settings.config.eejanaikaEejanaikaText;
+    });
+  }, [eejanaikaOptions, settings.config.eejanaikaEejanaikaText]);
+
+  useEffect(() => {
+    if (!('IntersectionObserver' in window)) {
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const id = Number((entry.target as HTMLElement).dataset.postId);
+        if (!id || viewedPostIds.current.has(id)) return;
+        viewedPostIds.current.add(id);
+        api.recordPostView(id).catch(() => undefined);
+      });
+    }, { threshold: 0.35 });
+
+    threads.forEach((thread) => {
+      const element = document.querySelector<HTMLElement>(`[data-post-id="${thread.id}"]`);
+      if (element) {
+        observer.observe(element);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [threads]);
 
   const loadFullReplies = async (threadId: number) => {
     const response = await api.getThread(String(threadId));
@@ -51,21 +109,21 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
   };
 
   const resetReplyDraft = () => {
-    setReplyName('');
+    setReplyName(DEFAULT_REPLY_NAME);
     setReplyUrl('');
     setReplyMessage('');
     setReplyPassword('');
   };
 
   const resetEejanaikaDraft = () => {
-    setEejanaikaName('');
-    setEejanaikaMessage(EEJAIKA_OPTIONS[2]);
+    setEejanaikaName(DEFAULT_REPLY_NAME);
+    setEejanaikaMessage(settings.config.eejanaikaEejanaikaText);
   };
 
   const closePanel = (mode: InlineMode) => {
     const hasDraft = mode === 'comment'
-      ? [replyName, replyUrl, replyMessage, replyPassword].some((value) => value.trim() !== '')
-      : eejanaikaName.trim() !== '' || eejanaikaMessage !== EEJAIKA_OPTIONS[2];
+      ? [replyUrl, replyMessage, replyPassword].some((value) => value.trim() !== '') || replyName.trim() !== DEFAULT_REPLY_NAME
+      : eejanaikaName.trim() !== DEFAULT_REPLY_NAME || eejanaikaMessage !== settings.config.eejanaikaEejanaikaText;
     if (hasDraft && !window.confirm('入力内容は破棄されます。閉じますか？')) {
       return;
     }
@@ -81,10 +139,36 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
     setInlineStatus((current) => ({ ...current, [thread.id]: '返信を投稿中...' }));
     await api.createPost(payload);
     await loadFullReplies(thread.id);
+    updateBoardReactionSummary(thread, payload.message);
     setInlineStatus((current) => ({ ...current, [thread.id]: '返信を投稿しました。' }));
     resetReplyDraft();
     resetEejanaikaDraft();
     setActivePanel(null);
+  };
+
+  const updateBoardReactionSummary = (thread: Post, message: string) => {
+    const matched = eejanaikaOptions.find((option) => option.text === message);
+    if (!matched) {
+      return;
+    }
+
+    setBoardReactionOverrides((current) => {
+      const base = current[thread.id] ?? thread.board_reactions ?? {
+        views: thread.view_count ?? 0,
+        eejanaika: 0,
+        omigoto: 0,
+        goodjob: 0,
+      };
+      const next = { ...base };
+      if (matched.key === 'eejanaika') {
+        next.eejanaika += 1;
+      } else if (matched.key === 'omigoto') {
+        next.omigoto += 1;
+      } else {
+        next.goodjob += 1;
+      }
+      return { ...current, [thread.id]: next };
+    });
   };
 
   const onCommentSubmit = async (event: React.FormEvent, thread: Post) => {
@@ -132,9 +216,12 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
         const omittedStart = 1;
         const omittedEnd = hiddenReplyCount;
         const panelMode = activePanel?.threadId === thread.id ? activePanel.mode : null;
+        const displayedThread = boardReactionOverrides[thread.id]
+          ? { ...thread, board_reactions: boardReactionOverrides[thread.id] }
+          : thread;
 
         return (
-          <article key={thread.id} id={`post-${thread.id}`} className={threadClassName(thread)}>
+          <article key={thread.id} id={`post-${thread.id}`} data-post-id={thread.id} className={threadClassName(thread)}>
             <header className="board-thread-title">
               <Link to={`/thread/${thread.id}`}>[No・{thread.display_no ?? thread.id}] {thread.title || '無題'}</Link>
             </header>
@@ -164,7 +251,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
                     {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>
                     {reply.reply_no && <> <span className="board-meta-sub">/ 返信No.{thread.display_no ?? thread.id}-{reply.reply_no}</span></>}
                   </p>
-                  <div className={replyTextClassName(reply.message)}>
+                  <div className={replyTextClassName(reply.message, settings.config)} style={replyTextStyle(reply.message, settings.config)}>
                     <LinkedText text={reply.message} />
                   </div>
                 </section>
@@ -221,16 +308,16 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
                     <input aria-label="名前" value={eejanaikaName} maxLength={30} onChange={(event) => setEejanaikaName(event.target.value)} required />
                   </label>
                   <div className="eejanaika-options">
-                    {EEJAIKA_OPTIONS.map((option) => (
-                      <label key={option} className={replyTextClassName(option)}>
+                    {eejanaikaOptions.map((option) => (
+                      <label key={option.key} className={replyTextClassName(option.text, settings.config)} style={{ color: option.color }}>
                         <input
                           type="radio"
                           name={`eejanaika-${thread.id}`}
-                          value={option}
-                          checked={eejanaikaMessage === option}
-                          onChange={() => setEejanaikaMessage(option)}
+                          value={option.text}
+                          checked={eejanaikaMessage === option.text}
+                          onChange={() => setEejanaikaMessage(option.text)}
                         />
-                        {option}
+                        {option.text}
                       </label>
                     ))}
                   </div>
@@ -242,7 +329,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
               )}
 
               <footer className="board-thread-actions">
-                <SocialRows thread={thread} enabled={settings.config} />
+                <SocialRows thread={displayedThread} enabled={settings.config} />
                 {!panelMode && (
                   <div className="board-action-group">
                     {action ? action(thread) : (
@@ -271,14 +358,22 @@ function threadClassName(thread: Post): string {
 }
 
 function SocialRows({ thread, enabled }: { thread: Post; enabled: PublicSettings['config'] }) {
-  if (thread.tweet_off) {
-    return null;
-  }
-
   const links = thread.social_links ?? { x: thread.tweet_url };
   const reactions = thread.social_reactions ?? {};
+  const boardReactions = thread.board_reactions ?? {
+    views: thread.view_count ?? 0,
+    eejanaika: 0,
+    omigoto: 0,
+    goodjob: 0,
+  };
+  const boardMetrics: Array<[string, number]> = [
+    ['閲覧数', boardReactions.views],
+    ['ええじゃ数', boardReactions.eejanaika],
+    ['お美事数', boardReactions.omigoto],
+    ['いい仕事数', boardReactions.goodjob],
+  ];
   const rows = [
-    enabled.tweetEnabled && {
+    !thread.tweet_off && enabled.tweetEnabled && {
       key: 'x',
       label: 'X',
       url: links.x ?? thread.tweet_url,
@@ -322,12 +417,16 @@ function SocialRows({ thread, enabled }: { thread: Post; enabled: PublicSettings
     },
   ].filter(Boolean) as Array<{ key: string; label: string; url?: string | null; metrics: Array<[string, number]> }>;
 
-  if (rows.length === 0) {
-    return null;
-  }
-
   return (
     <div className="board-social-rows">
+      <p className="board-social-row">
+        <span className="board-social-label">当板：</span>
+        {boardMetrics.map(([label, value]) => (
+          <span className="board-social-metric board-social-metric-board" key={label}>
+            {label}: {value}
+          </span>
+        ))}
+      </p>
       {rows.map((row) => (
         <p className="board-social-row" key={row.key}>
           <span className="board-social-label">{row.label}先：</span>
@@ -349,8 +448,48 @@ function SocialRows({ thread, enabled }: { thread: Post; enabled: PublicSettings
   );
 }
 
-export function replyTextClassName(message: string): string {
+type EejanaikaOption = {
+  key: 'omigoto' | 'goodjob' | 'eejanaika';
+  text: string;
+  color: string;
+  className: string;
+};
+
+export function eejanaikaOptionsFromSettings(config: PublicSettings['config']): EejanaikaOption[] {
+  return [
+    {
+      key: 'omigoto',
+      text: config.eejanaikaOmigotoText,
+      color: config.eejanaikaOmigotoColor,
+      className: 'eejanaika-reply-omigoto',
+    },
+    {
+      key: 'goodjob',
+      text: config.eejanaikaGoodjobText,
+      color: config.eejanaikaGoodjobColor,
+      className: 'eejanaika-reply-goodjob',
+    },
+    {
+      key: 'eejanaika',
+      text: config.eejanaikaEejanaikaText,
+      color: config.eejanaikaEejanaikaColor,
+      className: 'eejanaika-reply-eejanaika',
+    },
+  ];
+}
+
+export function replyTextStyle(message: string, config = DEFAULT_PUBLIC_SETTINGS.config): CSSProperties | undefined {
+  const option = eejanaikaOptionsFromSettings(config).find((item) => item.text === message);
+  return option ? { color: option.color } : undefined;
+}
+
+export function replyTextClassName(message: string, config = DEFAULT_PUBLIC_SETTINGS.config): string {
   const classes = ['board-reply-text'];
+  const dynamicOption = eejanaikaOptionsFromSettings(config).find((item) => item.text === message);
+  if (dynamicOption) {
+    classes.push(dynamicOption.className);
+    return classes.join(' ');
+  }
   if (message === 'お美事にございまする') {
     classes.push('eejanaika-reply-omigoto');
   } else if (message === 'いい仕事してますねぇ') {

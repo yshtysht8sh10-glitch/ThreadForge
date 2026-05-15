@@ -1,6 +1,8 @@
-# アーキテクチャ
+# Architecture
 
-## 現行構成
+[Japanese architecture notes](ja/ARCHITECTURE.md)
+
+## Current Structure
 
 ```text
 client/ React + TypeScript + Vite
@@ -15,9 +17,9 @@ server/api.php
   +-- server/storage/data/
 ```
 
-## フロントエンド
+## Frontend
 
-`client/src/App.tsx` がルーティングを定義します。
+`client/src/App.tsx` defines routing.
 
 - `/`: `HomePage`
 - `/thread/:id`: `ThreadPage`
@@ -25,87 +27,101 @@ server/api.php
 - `/search`: `SearchPage`
 - `/edit/:id`: `EditPostPage`
 
-API 呼び出しは `client/src/api.ts` に集約されています。
+API calls are centralized in `client/src/api.ts`.
 
-`VITE_USE_MOCK` が `true` または未指定の場合、フロントエンドはモック応答を使います。実 API を使う場合は `VITE_USE_MOCK=false` を指定します。
+When `VITE_USE_MOCK` is `true` or unset, the frontend uses mock responses. Set `VITE_USE_MOCK=false` to use the real PHP API.
 
-## バックエンド
+## Backend
 
-`server/api.php` は `action` によって次の処理に分岐します。
+`server/api.php` dispatches behavior by the `action` parameter.
 
-- 一覧取得
-- スレッド取得
-- 投稿取得
-- 検索
-- 投稿作成
-- 投稿更新
-- 投稿削除
-- RSS 配信
-- 管理者による削除済み投稿の確認、復元
+Main actions:
 
-DB 接続、テーブル作成、画像保存補助、JSON 応答は `server/db.php` にあります。
+- list threads
+- get thread
+- get post
+- search
+- create post
+- update post
+- delete post
+- RSS feed
+- admin list/restore deleted posts
+- SNS reaction refresh
 
-## データの流れ
+DB connection, table creation, image storage helpers, and JSON responses live in `server/db.php`.
 
-新規投稿:
+## Data Flow
 
-1. フロントエンドが `multipart/form-data` を送信
-2. API が必須項目を確認
-3. パスワードをハッシュ化
-4. SQLite に投稿を保存して投稿 ID を確定
-5. 画像があれば投稿 ID をファイル名にして `server/storage/data/` に保存
-6. 画像パスを投稿レコードに反映
-7. JSON で成功または失敗を返す
+New top-level post:
 
-画像差し替え:
+1. The frontend sends `multipart/form-data`.
+2. The API validates required fields.
+3. The password is hashed.
+4. The post row is saved to SQLite and receives an ID.
+5. If an image exists, it is stored under `server/storage/data/` using the post ID.
+6. The image path is stored on the post row.
+7. If SNS posting is enabled, the API posts to enabled platforms and stores destination IDs/URLs.
+8. JSON success or error is returned.
 
-1. フロントエンドが投稿 ID、パスワード、差し替え画像を送信
-2. API がパスワードを検証
-3. 同じ投稿 ID と拡張子の現行画像があれば履歴名へ退避
-4. 新しい画像を `投稿ID.ext` として保存
-5. 投稿レコードの `image_path` を最新画像に更新
+Image replacement:
 
-スレッド表示:
+1. The frontend sends post ID, password, and replacement image.
+2. The API validates the password.
+3. If the existing image uses the same final filename, it is archived first.
+4. The new image is stored as `postId.ext`.
+5. The post row `image_path` is updated.
 
-1. フロントエンドが `getThread` を呼ぶ
-2. API が親投稿を取得
-3. 同じ `thread_id` の返信を作成日時昇順で取得
-4. `{ thread, replies }` を返す
+Thread display:
 
-削除:
+1. The frontend calls `getThread`.
+2. The API fetches the top-level post.
+3. Replies with the same `thread_id` are fetched by ascending creation time.
+4. `{ thread, replies }` is returned.
 
-1. フロントエンドが投稿 ID とパスワードを送信
-2. API がパスワードを検証
-3. 親投稿なら同一スレッドの返信にも同じ `deleted_at` を設定
-4. 返信なら対象投稿だけに `deleted_at` を設定
-5. SQLite レコードと画像ファイルは削除せず内部に保持
+Delete:
 
-表示:
+1. The frontend sends post ID and password.
+2. The API validates the password.
+3. Top-level delete sets `deleted_at` on the thread and replies.
+4. Reply delete sets `deleted_at` only on that reply.
+5. Rows and image files remain for restore/audit.
 
-- 一覧、スレッド詳細、検索は `deleted_at IS NULL` の投稿だけを返す
-- 削除済み投稿は見た目上消える
-- 内部データは復旧や監査に使える状態で残る
+Display:
 
-Tweet:
+- List, thread, and search APIs return only rows where `deleted_at IS NULL`.
+- Deleted posts disappear from normal UI.
+- Internal data remains available for restore and inspection.
 
-- 投稿画面でSNS転記文言を自動生成する
-- `_TWEND_` 以降は Tweet 対象外
-- SNS転記OFF の投稿は転記文言を保存しない
-- 編集画面で Tweet URL と統計値を管理する
+## SNS Posting
 
-安全な本文表示:
+- X, Bluesky, Mastodon, and Misskey are OFF by default.
+- The admin page has separate setting groups for X, Bluesky, Mastodon, and Misskey.
+- Credential fields are disabled while the corresponding platform is OFF.
+- Post forms show read-only previews for enabled platforms.
+- Text after `_TWEND_` is excluded from SNS posting.
+- Posts with SNS transfer OFF are saved locally and not sent to external SNS.
+- Top-level posts with images send the image to X, Bluesky, Mastodon, and Misskey when enabled.
+- Long text is shortened with `..` instead of blocking submission.
+- Current default limits are X 280, Bluesky 300, Mastodon 500, and Misskey 3000.
+- X uses weighted character counting; the other platforms use plain character length.
+- SNS text includes a "latest is here" link to the board-list anchor for the post.
+- Editing a top-level post does not update or repost to SNS. Replies never use SNS posting.
+- Reaction refresh can be run from the admin maintenance tab, `server/cron.php`, or an API-key-protected external scheduler URL.
+- Automatic reaction refresh targets only non-deleted top-level posts created within the last 7 days.
+- Displayed metrics are X impressions/likes/reposts, Bluesky likes/reposts/quotes, Mastodon boosts/favorites, and Misskey reaction buckets.
 
-- React の通常描画で HTML タグを文字列として扱う
-- URL だけ `LinkedText` コンポーネントでリンク化する
+## Safe Text Display
+
+- React rendering treats HTML tags as text.
+- `LinkedText` turns URLs into links.
 
 ## Laravel
 
-`server/laravel/` は将来の移行候補です。ルート、モデル、コントローラ、マイグレーションはありますが、現行アプリの標準 API ではありません。
+`server/laravel/` is a future migration placeholder. Routes, models, controllers, and migrations exist, but the current app's standard API is not the Laravel implementation.
 
-Laravel への完全移行は未実装です。
+Full Laravel migration is not implemented yet.
 
-## 未実装
+## Not Implemented
 
-- 既存 Perl CGI データ移行
-- CSRF 対策
-- 本文とメタデータの編集履歴
+- CSRF protection
+- Body and metadata edit history

@@ -1,15 +1,18 @@
 # ThreadForge
 
-ThreadForge is a lightweight, customizable thread board engine for posts, media, and community archives. It started as a modernization of a legacy image board workflow and is being generalized for broader self-hosted board use.
+[Japanese README](README.ja.md)
+
+ThreadForge is a lightweight, customizable thread board engine for posts, media, and community archives. It is designed as a fresh self-hosted board for posts, media, and community archives.
 
 ## Repository Contents
 
 - `client/`: React, TypeScript, Vite frontend
 - `server/`: PHP API, SQLite storage, PHPUnit tests
-- `docs/`: architecture, API, DB, and testing notes
+- `docs/`: architecture, API, DB, migration, and testing notes
 - `ThreadForge_Spec.md`: current product specification
+- `ThreadForge_Spec.ja.md`: Japanese product specification
 
-Legacy CGI files and historical image/log data are kept out of this Git repository by default. They are useful as migration/reference material, but they are not required to run the current app.
+Local archive files and historical image/log data are kept out of this Git repository by default. They are useful as migration/reference material, but they are not required to run the current app.
 
 ## Local Setup
 
@@ -78,13 +81,21 @@ These files are intentionally ignored by Git. Use the admin backup/export featur
 
 X, Bluesky, Mastodon, and Misskey integrations are disabled by default. In this operating mode, posts are saved locally without calling external APIs. Each platform has its own admin settings group, and credential fields stay disabled while that platform switch is OFF.
 
+When SNS posting is enabled, top-level posts can be copied to enabled SNS platforms at creation time. X, Bluesky, Mastodon, and Misskey receive the post image when one is attached. SNS text includes a "latest is here" link back to the top list anchor for the board post, and long text is trimmed with `..` instead of blocking submission.
+
+Post edits update the board only and do not edit or repost to SNS. Cached reaction counts can be refreshed manually from the admin maintenance screen or automatically through either the local `server/cron.php` script or the protected API URL shown in the admin screen. Automatic reaction refresh targets only social posts from the last 7 days.
+
 ## Documentation Map
 
 - `ThreadForge_Spec.md`: current product specification and implementation status
 - `CHANGELOG.md`: release history
+- `CHANGELOG.ja.md`: Japanese release history
 - `docs/README.md`: documentation index
 - `docs/API.md`: PHP API reference
 - `docs/DB.md`: SQLite/runtime data, backup, import, and reset notes
-- `docs/MIGRATION.md`: old BBSnote log import notes
+- `docs/MIGRATION.md`: local archive log import notes
 - `docs/ARCHITECTURE.md`: architecture notes
 - `docs/TESTING.md`: test strategy
+- `README.ja.md`: Japanese README
+- `ThreadForge_Spec.ja.md`: Japanese product specification
+- `docs/ja/`: Japanese documentation

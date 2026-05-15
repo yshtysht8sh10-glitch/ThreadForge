@@ -278,18 +278,18 @@ final class StorageLayerTest extends TestCase
         $this->assertSame(1, $reply['reply_no']);
     }
 
-    // #sym:describe importLegacyBbsnoteDirectory
-    public function testImportLegacyBbsnoteDirectoryAddsThreadsRepliesAndImagesWithoutDuplicates(): void
+    // #sym:describe importLocalArchiveDirectory
+    public function testImportLocalArchiveDirectoryAddsThreadsRepliesAndImagesWithoutDuplicates(): void
     {
         $pdo = getConnection();
-        $legacyDir = sys_get_temp_dir() . '/threadforge-legacy-' . bin2hex(random_bytes(4));
-        mkdir($legacyDir, 0775, true);
+        $archiveDir = sys_get_temp_dir() . '/threadforge-archive-' . bin2hex(random_bytes(4));
+        mkdir($archiveDir, 0775, true);
 
         $main = array_pad([
             '20403',
-            'Legacy User',
+            'Archive User',
             '2022/01/16 (Sun) 20:53:30',
-            'Legacy Title',
+            'Archive Title',
             '',
             'https://example.com/home',
             'Line1<BR><SPAN class="quot">&gt;quoted</SPAN>',
@@ -300,7 +300,7 @@ final class StorageLayerTest extends TestCase
             '254',
             '306',
             '321881',
-            'legacy-password',
+            'archive-password',
             '',
             '',
             '',
@@ -320,14 +320,14 @@ final class StorageLayerTest extends TestCase
             'os',
         ], 10, '');
 
-        file_put_contents($legacyDir . '/LOG_009359.cgi', implode("\t", $main) . PHP_EOL . implode("\t", $reply) . PHP_EOL);
-        file_put_contents($legacyDir . '/DOTIMG_009359_1.gif', 'gif-data');
+        file_put_contents($archiveDir . '/LOG_009359.cgi', implode("\t", $main) . PHP_EOL . implode("\t", $reply) . PHP_EOL);
+        file_put_contents($archiveDir . '/DOTIMG_009359_1.gif', 'gif-data');
 
         try {
-            $first = importLegacyBbsnoteDirectory($pdo, $legacyDir);
-            $second = importLegacyBbsnoteDirectory($pdo, $legacyDir);
+            $first = importLocalArchiveDirectory($pdo, $archiveDir);
+            $second = importLocalArchiveDirectory($pdo, $archiveDir);
         } finally {
-            $this->removeDirectory($legacyDir);
+            $this->removeDirectory($archiveDir);
         }
 
         $this->assertSame(1, $first['imported_threads']);
@@ -338,7 +338,7 @@ final class StorageLayerTest extends TestCase
 
         $rows = $pdo->query('SELECT * FROM posts ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
         $this->assertCount(2, $rows);
-        $this->assertSame('Legacy Title', $rows[0]['title']);
+        $this->assertSame('Archive Title', $rows[0]['title']);
         $this->assertSame("Line1\n>quoted", $rows[0]['message']);
         $this->assertSame('https://x.com/example/status/1', $rows[0]['tweet_url']);
         $this->assertFileExists((string)$rows[0]['image_path']);

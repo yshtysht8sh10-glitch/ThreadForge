@@ -10,6 +10,7 @@ vi.mock('../api', () => ({
   api: {
     listThreads: vi.fn(),
     listDeletedPosts: vi.fn(),
+    listAnalyticsPosts: vi.fn(),
     getSettings: vi.fn(),
     adminDeletePosts: vi.fn(),
     importBackup: vi.fn(),
@@ -58,12 +59,37 @@ const deletedReply = {
   deleted_at: '2026-05-06 22:26:16',
 };
 
+const analyticsThreads = [
+  {
+    ...thread,
+    created_at: '2026-05-05 10:00:00',
+    social_reactions: {
+      x: { likes: 10, reposts: 2, impressions: 100 },
+      bluesky: { likes: 4, reposts: 1, quotes: 0 },
+      mastodon: { boosts: 3, favs: 7 },
+      misskey: { fire: 1, eyes: 2, cry: 0, thinking: 0, party: 1, other: 1 },
+    },
+  },
+  {
+    ...thread,
+    id: 10,
+    thread_id: 10,
+    display_no: 2,
+    created_at: '2026-06-01 10:00:00',
+    social_reactions: {
+      x: { likes: 5, reposts: 1, impressions: 40 },
+      mastodon: { boosts: 0, favs: 2 },
+    },
+  },
+];
+
 describe('AdminPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
     vi.mocked(api.listThreads).mockResolvedValue([thread as any]);
     vi.mocked(api.listDeletedPosts).mockResolvedValue([deletedReply as any]);
+    vi.mocked(api.listAnalyticsPosts).mockResolvedValue(analyticsThreads as any);
     vi.mocked(api.getSettings).mockResolvedValue({
       success: true,
       settings: {
@@ -173,7 +199,7 @@ describe('AdminPage', () => {
       </MemoryRouter>,
     );
 
-    const settingsTab = (await screen.findAllByRole('button'))[3];
+    const settingsTab = (await screen.findAllByRole('button'))[4];
     fireEvent.click(settingsTab);
 
     const settingsPanel = screen.getByDisplayValue('https://twitter.com/example/status/').closest('section')!;
@@ -190,7 +216,7 @@ describe('AdminPage', () => {
     expect(within(settingsPanel).getByDisplayValue('token-secret')).toBeDisabled();
   });
 
-  it('does not expose legacy BBSnote import in the backup tab', async () => {
+  it('does not expose local archive import in the backup tab', async () => {
     render(
       <MemoryRouter>
         <AdminPage />
@@ -199,8 +225,37 @@ describe('AdminPage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'バックアップ' }));
 
-    expect(screen.queryByText('旧BBSnoteログ追加インポート')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('旧BBSnoteログディレクトリ')).not.toBeInTheDocument();
+    expect(screen.queryByText('ローカルアーカイブログ追加インポート')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('ローカルアーカイブログディレクトリ')).not.toBeInTheDocument();
+  });
+
+  it('shows analytics chart and aggregates selected metrics by unit', async () => {
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'アナリティクス' }));
+
+    expect(screen.getByRole('heading', { name: 'アナリティクス' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '投稿作品の推移グラフ' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '投稿作品の統計グラフ' })).toBeInTheDocument();
+    expect(screen.getAllByText('2026-05').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.getAllByText('1').length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText('表示データ'), { target: { value: 'mastodonFavs' } });
+    fireEvent.change(screen.getByLabelText('単位'), { target: { value: 'yearTotal' } });
+
+    expect(screen.getAllByText('2026').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.getAllByText('9').length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText('表示データ'), { target: { value: 'postCount' } });
+    fireEvent.change(screen.getByLabelText('単位'), { target: { value: 'monthCumulative' } });
+
+    expect(screen.getAllByText('2').length).toBeGreaterThan(0);
   });
 
   it('shows board display numbers for deleted replies instead of raw database ids', async () => {

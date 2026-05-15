@@ -15,10 +15,19 @@ export type Post = {
   tweet_off?: boolean;
   tweet_text?: string | null;
   tweet_url?: string | null;
+  view_count?: number;
+  board_reactions?: BoardReactions;
   social_links?: SocialLinks;
   social_reactions?: SocialReactions;
   replies?: Post[];
   reply_count?: number;
+};
+
+export type BoardReactions = {
+  views: number;
+  eejanaika: number;
+  omigoto: number;
+  goodjob: number;
 };
 
 export type SocialLinks = {
@@ -71,6 +80,7 @@ export type NewPostData = {
   file?: File;
   gdgd?: boolean;
   tweet_off?: boolean;
+  source_url?: string;
 };
 
 export type EditPostData = {

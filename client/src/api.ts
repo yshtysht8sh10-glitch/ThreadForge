@@ -13,6 +13,13 @@ export type PublicSettings = {
     misskeyEnabled: boolean;
     gdgdEnabled: boolean;
     gdgdLabel: string;
+    eejanaikaOmigotoText: string;
+    eejanaikaOmigotoColor: string;
+    eejanaikaGoodjobText: string;
+    eejanaikaGoodjobColor: string;
+    eejanaikaEejanaikaText: string;
+    eejanaikaEejanaikaColor: string;
+    socialHashtags: string;
   };
 };
 
@@ -27,6 +34,13 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     misskeyEnabled: false,
     gdgdEnabled: true,
     gdgdLabel: 'gdgd投稿',
+    eejanaikaOmigotoText: 'お美事にございまする',
+    eejanaikaOmigotoColor: '#ff72ff',
+    eejanaikaGoodjobText: 'いい仕事してますねぇ',
+    eejanaikaGoodjobColor: '#27a8ff',
+    eejanaikaEejanaikaText: 'ええじゃないか',
+    eejanaikaEejanaikaColor: '#fff200',
+    socialHashtags: '#ドット絵 #pixelart',
     manualBody: [
       'ThreadForge は、スレッド形式で作品や記事を投稿できる掲示板です。',
       '',
@@ -143,6 +157,8 @@ const mockPosts: Post[] = [
     tweet_off: false,
     tweet_text: '[DT000000：テストスレッド]\n作者：テストユーザー\n\nこれはテストの投稿です。\n\n#ドット絵 #pixelart',
     tweet_url: 'https://x.com/threadforge/status/1',
+    view_count: 12,
+    board_reactions: { views: 12, eejanaika: 4, omigoto: 2, goodjob: 1 },
     display_no: 1,
     replies: [
       {
@@ -178,6 +194,8 @@ const mockPosts: Post[] = [
     tweet_off: true,
     tweet_text: null,
     tweet_url: null,
+    view_count: 5,
+    board_reactions: { views: 5, eejanaika: 0, omigoto: 0, goodjob: 0 },
     display_no: 2,
     replies: [],
     reply_count: 0,
@@ -196,6 +214,8 @@ const mockPosts: Post[] = [
     tweet_off: false,
     tweet_text: null,
     tweet_url: null,
+    view_count: 8,
+    board_reactions: { views: 8, eejanaika: 1, omigoto: 0, goodjob: 0 },
     display_no: 3,
     replies: [],
     reply_count: 0,
@@ -216,6 +236,8 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
       return mockPosts as T;
     case 'listDeletedPosts':
       return [] as T;
+    case 'listAnalyticsPosts':
+      return mockPosts as T;
     case 'getThread':
       const threadId = params.get('id');
       const thread = mockPosts.find(p => p.id === Number(threadId));
@@ -227,7 +249,15 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
     case 'publicSettings':
       return { success: true, settings: DEFAULT_PUBLIC_SETTINGS } as T;
     case 'getSettings':
-      return { success: true, settings: DEFAULT_ADMIN_SETTINGS } as T;
+      return {
+        success: true,
+        settings: DEFAULT_ADMIN_SETTINGS,
+        system: {
+          cronPath: '/home/example/threadforge/server/cron.php',
+          cronApiUrl: 'https://example.com/api.php?action=cronRefreshSocialReactions&api_key=',
+          cronApiKey: 'mock-cron-api-key',
+        },
+      } as T;
     case 'search':
       const q = params.get('q') || '';
       const scope = params.get('scope') || 'all';
@@ -241,6 +271,7 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
     case 'createPost':
     case 'updatePost':
     case 'deletePost':
+    case 'recordPostView':
     case 'restorePost':
     case 'adminDeletePosts':
     case 'updateSettings':
@@ -327,8 +358,20 @@ export const api = {
       body: formData,
     });
   },
+  recordPostView: async (id: number): Promise<{ success: boolean; view_count: number }> => {
+    const formData = new FormData();
+    formData.append('action', 'recordPostView');
+    formData.append('id', String(id));
+    return fetchJson(`${apiBase()}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
   listDeletedPosts: async (adminPassword: string): Promise<Post[]> => {
     return fetchJson<Post[]>(`${apiBase()}?action=listDeletedPosts&admin_password=${encodeURIComponent(adminPassword)}`);
+  },
+  listAnalyticsPosts: async (adminPassword: string): Promise<Post[]> => {
+    return fetchJson<Post[]>(`${apiBase()}?action=listAnalyticsPosts&admin_password=${encodeURIComponent(adminPassword)}`);
   },
   restorePost: async (id: string, adminPassword: string): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();
@@ -366,7 +409,7 @@ export const api = {
       body: formData,
     });
   },
-  getSettings: async (adminPassword: string): Promise<{ success: boolean; settings: any }> => {
+  getSettings: async (adminPassword: string): Promise<{ success: boolean; settings: any; system?: { cronPath?: string; cronApiUrl?: string; cronApiKey?: string } }> => {
     return fetchJson(`${apiBase()}?action=getSettings&admin_password=${encodeURIComponent(adminPassword)}`);
   },
   updateSettings: async (settings: any, adminPassword: string): Promise<{ success: boolean; message: string }> => {

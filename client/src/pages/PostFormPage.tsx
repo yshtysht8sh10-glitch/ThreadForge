@@ -31,7 +31,8 @@ const PostFormPage = () => {
     misskey: settings.config.misskeyEnabled,
   };
   const socialEnabled = Object.values(enabledSocialPlatforms).some(Boolean);
-  const socialPreviews = socialTransferOff ? [] : createSocialPostPreviews(enabledSocialPlatforms, name, title, message);
+  const boardSourceUrl = `${window.location.origin}/#post-000000`;
+  const socialPreviews = socialTransferOff ? [] : createSocialPostPreviews(enabledSocialPlatforms, name, title, message, boardSourceUrl, settings.config.socialHashtags);
   const hasInput = [name, url, title, message, password].some((value) => value.trim() !== '') || gdgd || socialTransferOff || file !== undefined;
 
   const handleClose = () => {
@@ -54,6 +55,7 @@ const PostFormPage = () => {
       file,
       gdgd: settings.config.gdgdEnabled ? gdgd : false,
       tweet_off: socialEnabled ? socialTransferOff : true,
+      source_url: boardSourceUrl,
     };
 
     try {
@@ -78,7 +80,7 @@ const PostFormPage = () => {
 
   return (
     <div className={frameClassName}>
-      <form onSubmit={handleSubmit} className="legacy-post-form">
+      <form onSubmit={handleSubmit} className="post-form-fields">
         <div className="post-form-title">
           <span>通常投稿</span>
           <button type="button" className="post-form-close-button" onClick={handleClose} aria-label="投稿フォームを閉じる">×</button>
@@ -90,13 +92,13 @@ const PostFormPage = () => {
             <input value={name} onChange={(event) => setName(event.target.value)} required />
           </label>
           {settings.config.gdgdEnabled && (
-            <label className="legacy-checkbox">
+            <label className="post-form-checkbox">
               {settings.config.gdgdLabel}
               <input type="checkbox" checked={gdgd} onChange={(event) => setGdgd(event.target.checked)} />
             </label>
           )}
           {socialEnabled && (
-            <label className="legacy-checkbox">
+            <label className="post-form-checkbox">
               SNS転記OFF
               <input type="checkbox" checked={socialTransferOff} onChange={(event) => setSocialTransferOff(event.target.checked)} />
             </label>
@@ -142,7 +144,7 @@ const PostFormPage = () => {
                   {preview.label}
                   <span>{preview.limit ? `${preview.length}/${preview.limit}文字` : `${preview.length}文字`}</span>
                 </h3>
-                <pre className="legacy-tweet-preview">{preview.text}</pre>
+                <pre className="social-post-preview-text">{preview.text}</pre>
               </article>
             ))}
             <p className="social-transfer-help">※この項目は編集できません。</p>

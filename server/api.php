@@ -4,89 +4,105 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
+if (realpath((string)($_SERVER['SCRIPT_FILENAME'] ?? '')) === realpath(__FILE__)) {
+    handleApiRequest();
 }
 
-$action = resolveAction($_GET, $_POST);
-$pdo = getConnection();
+function handleApiRequest(): void
+{
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type');
 
-switch ($action) {
-    case 'listThreads':
-        listThreads($pdo);
-        break;
-    case 'getThread':
-        getThread($pdo);
-        break;
-    case 'getPost':
-        getPost($pdo);
-        break;
-    case 'search':
-        searchPosts($pdo);
-        break;
-    case 'rss':
-        rssFeed($pdo);
-        break;
-    case 'version':
-        versionInfo();
-        break;
-    case 'publicSettings':
-        publicSettings($pdo);
-        break;
-    case 'createPost':
-        createPost($pdo);
-        break;
-    case 'updatePost':
-        updatePost($pdo);
-        break;
-    case 'deletePost':
-        deletePost($pdo);
-        break;
-    case 'listDeletedPosts':
-        listDeletedPosts($pdo);
-        break;
-    case 'restorePost':
-        restorePost($pdo);
-        break;
-    case 'adminDeletePosts':
-        adminDeletePosts($pdo);
-        break;
-    case 'adminCheckIntegrity':
-        adminCheckIntegrity($pdo);
-        break;
-    case 'refreshSocialReactions':
-        refreshSocialReactions($pdo);
-        break;
-    case 'exportBackup':
-        exportBackup($pdo);
-        break;
-    case 'importBackup':
-        importBackup($pdo);
-        break;
-    case 'getSettings':
-        getSettings($pdo);
-        break;
-    case 'updateSettings':
-        updateSettings($pdo);
-        break;
-    case 'changeAdminPassword':
-        changeAdminPassword($pdo);
-        break;
-    default:
-        jsonResponse(['success' => false, 'message' => 'アクションが無効です。'], 400);
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        http_response_code(204);
+        exit;
+    }
+
+    $action = resolveAction($_GET, $_POST);
+    $pdo = getConnection();
+
+    switch ($action) {
+        case 'listThreads':
+            listThreads($pdo);
+            break;
+        case 'getThread':
+            getThread($pdo);
+            break;
+        case 'getPost':
+            getPost($pdo);
+            break;
+        case 'search':
+            searchPosts($pdo);
+            break;
+        case 'rss':
+            rssFeed($pdo);
+            break;
+        case 'version':
+            versionInfo();
+            break;
+        case 'publicSettings':
+            publicSettings($pdo);
+            break;
+        case 'createPost':
+            createPost($pdo);
+            break;
+        case 'updatePost':
+            updatePost($pdo);
+            break;
+        case 'deletePost':
+            deletePost($pdo);
+            break;
+        case 'listDeletedPosts':
+            listDeletedPosts($pdo);
+            break;
+        case 'listAnalyticsPosts':
+            listAnalyticsPosts($pdo);
+            break;
+        case 'recordPostView':
+            recordPostView($pdo);
+            break;
+        case 'restorePost':
+            restorePost($pdo);
+            break;
+        case 'adminDeletePosts':
+            adminDeletePosts($pdo);
+            break;
+        case 'adminCheckIntegrity':
+            adminCheckIntegrity($pdo);
+            break;
+        case 'refreshSocialReactions':
+            refreshSocialReactions($pdo);
+            break;
+        case 'cronRefreshSocialReactions':
+            cronRefreshSocialReactions($pdo);
+            break;
+        case 'exportBackup':
+            exportBackup($pdo);
+            break;
+        case 'importBackup':
+            importBackup($pdo);
+            break;
+        case 'getSettings':
+            getSettings($pdo);
+            break;
+        case 'updateSettings':
+            updateSettings($pdo);
+            break;
+        case 'changeAdminPassword':
+            changeAdminPassword($pdo);
+            break;
+        default:
+            jsonResponse(['success' => false, 'message' => 'アクションが無効です。'], 400);
+    }
 }
-
 function listThreads(PDO $pdo): void
 {
     [$limit, $offset] = paginationParams();
-    $stmt = $pdo->prepare('SELECT * FROM posts WHERE parent_id = 0 AND deleted_at IS NULL ORDER BY created_at DESC LIMIT :limit OFFSET :offset');
+    $stmt = $pdo->prepare('SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.parent_id = 0 AND p.deleted_at IS NULL ORDER BY p.created_at DESC LIMIT :limit OFFSET :offset');
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    bindBoardStatTexts($stmt, $pdo);
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -119,6 +135,24 @@ function buildThreadSummary(PDO $pdo, array $thread, int $replyLimit): array
     return $post;
 }
 
+function postSelectWithBoardStats(string $alias): string
+{
+    $prefix = $alias . '.';
+    return $alias . '.*,
+        (SELECT COUNT(*) FROM posts r WHERE r.thread_id = ' . $prefix . 'id AND r.parent_id != 0 AND r.deleted_at IS NULL) AS reply_count,
+        (SELECT COUNT(*) FROM posts r WHERE r.thread_id = ' . $prefix . 'id AND r.parent_id != 0 AND r.deleted_at IS NULL AND r.message = :eejanaika_text) AS eejanaika_count,
+        (SELECT COUNT(*) FROM posts r WHERE r.thread_id = ' . $prefix . 'id AND r.parent_id != 0 AND r.deleted_at IS NULL AND r.message = :omigoto_text) AS omigoto_count,
+        (SELECT COUNT(*) FROM posts r WHERE r.thread_id = ' . $prefix . 'id AND r.parent_id != 0 AND r.deleted_at IS NULL AND r.message = :goodjob_text) AS goodjob_count';
+}
+
+function bindBoardStatTexts(PDOStatement $stmt, PDO $pdo): void
+{
+    $config = loadSettings($pdo)['config'] ?? [];
+    $stmt->bindValue(':eejanaika_text', (string)($config['eejanaikaEejanaikaText'] ?? 'ええじゃないか'), PDO::PARAM_STR);
+    $stmt->bindValue(':omigoto_text', (string)($config['eejanaikaOmigotoText'] ?? 'お美事にございまする'), PDO::PARAM_STR);
+    $stmt->bindValue(':goodjob_text', (string)($config['eejanaikaGoodjobText'] ?? 'いい仕事してますねぇ'), PDO::PARAM_STR);
+}
+
 function getThread(PDO $pdo): void
 {
     $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
@@ -126,8 +160,10 @@ function getThread(PDO $pdo): void
         jsonResponse(['success' => false, 'message' => 'スレッドIDが不正です。'], 400);
     }
 
-    $stmt = $pdo->prepare('SELECT * FROM posts WHERE id = :id AND deleted_at IS NULL LIMIT 1');
-    $stmt->execute([':id' => $id]);
+    $stmt = $pdo->prepare('SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.id = :id AND p.deleted_at IS NULL LIMIT 1');
+    bindBoardStatTexts($stmt, $pdo);
+    $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
     $thread = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$thread) {
@@ -158,15 +194,16 @@ function searchPosts(PDO $pdo): void
     $pattern = '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%';
     $scope = $_GET['scope'] ?? 'all';
     $where = match ($scope) {
-        'title' => 'title LIKE :q ESCAPE "\\"',
-        'message' => 'message LIKE :q ESCAPE "\\"',
-        'name' => 'name LIKE :q ESCAPE "\\"',
-        default => '(title LIKE :q ESCAPE "\\" OR message LIKE :q ESCAPE "\\" OR name LIKE :q ESCAPE "\\")',
+        'title' => 'p.title LIKE :q ESCAPE "\\"',
+        'message' => 'p.message LIKE :q ESCAPE "\\"',
+        'name' => 'p.name LIKE :q ESCAPE "\\"',
+        default => '(p.title LIKE :q ESCAPE "\\" OR p.message LIKE :q ESCAPE "\\" OR p.name LIKE :q ESCAPE "\\")',
     };
-    $stmt = $pdo->prepare('SELECT * FROM posts WHERE deleted_at IS NULL AND ' . $where . ' ORDER BY created_at DESC LIMIT :limit OFFSET :offset');
+    $stmt = $pdo->prepare('SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.deleted_at IS NULL AND ' . $where . ' ORDER BY p.created_at DESC LIMIT :limit OFFSET :offset');
     $stmt->bindValue(':q', $pattern, PDO::PARAM_STR);
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    bindBoardStatTexts($stmt, $pdo);
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -241,6 +278,7 @@ function createPost(PDO $pdo): void
     $gdgd = $isReply || !$gdgdEnabled ? false : toBoolFlag($_POST['gdgd'] ?? $_POST['gdgd_post'] ?? false);
     $tweetOff = $isReply || !$socialEnabled ? true : toBoolFlag($_POST['tweet_off'] ?? $_POST['TweetOFF'] ?? false);
     $tweetUrl = null;
+    $socialHashtags = (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart');
 
     if ($name === '' || $title === '' || $message === '' || $password === '') {
         jsonResponse(['success' => false, 'message' => '名前・タイトル・本文・パスワードは必須です。'], 400);
@@ -251,9 +289,9 @@ function createPost(PDO $pdo): void
     }
 
     $createdAt = currentTimestamp();
-    $sourceUrl = $_POST['source_url'] ?? null;
+    $sourceUrl = $_POST['source_url'] ?? defaultBoardPostUrl();
     $normalizedSourceUrl = is_string($sourceUrl) ? normalizeUrl($sourceUrl) : null;
-    $tweetText = $tweetOff ? null : buildTweetText($name, $title, $message, $normalizedSourceUrl);
+    $tweetText = $tweetOff ? null : buildTweetText($name, $title, $message, $normalizedSourceUrl, $socialHashtags);
 
     if ($threadId === 0) {
         $parentId = 0;
@@ -342,7 +380,7 @@ function createPost(PDO $pdo): void
     }
 
     if (!$tweetOff) {
-        foreach (publishFederatedPostsFromSettings($settings, $name, $title, $message, $normalizedSourceUrl, $insertedId) as $platform => $result) {
+        foreach (publishFederatedPostsFromSettings($settings, $name, $title, $message, $normalizedSourceUrl, $insertedId, $imagePath) as $platform => $result) {
             if ($result['success']) {
                 saveSocialPublishResult($pdo, $insertedId, $platform, $result);
                 $responseMessage .= ' ' . socialPlatformLabel($platform) . 'へ投稿しました。';
@@ -357,7 +395,29 @@ function createPost(PDO $pdo): void
 
 function fillTweetPostId(string $tweetText, int $postId): string
 {
-    return preg_replace('/000000/', str_pad((string)$postId, 6, '0', STR_PAD_LEFT), $tweetText, 1) ?? $tweetText;
+    return preg_replace('/000000/', str_pad((string)$postId, 6, '0', STR_PAD_LEFT), $tweetText) ?? $tweetText;
+}
+
+function defaultBoardPostUrl(): ?string
+{
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    if (!is_string($origin) || trim($origin) === '') {
+        $referer = $_SERVER['HTTP_REFERER'] ?? '';
+        if (is_string($referer) && trim($referer) !== '') {
+            $parts = parse_url($referer);
+            if (is_array($parts) && isset($parts['scheme'], $parts['host'])) {
+                $port = isset($parts['port']) ? ':' . $parts['port'] : '';
+                $origin = $parts['scheme'] . '://' . $parts['host'] . $port;
+            }
+        }
+    }
+
+    $origin = trim((string)$origin);
+    if ($origin === '' || !preg_match('/^https?:\/\//i', $origin)) {
+        return null;
+    }
+
+    return rtrim($origin, '/') . '/#post-000000';
 }
 
 function publishTweetFromSettings(array $settings, string $text, ?string $imagePath, ?string $previousTweetId = null): array
@@ -569,49 +629,49 @@ function twitterOAuthHeader(
     return 'OAuth ' . implode(', ', $header);
 }
 
-function publishFederatedPostsFromSettings(array $settings, string $name, string $title, string $message, ?string $sourceUrl, int $postId): array
+function publishFederatedPostsFromSettings(array $settings, string $name, string $title, string $message, ?string $sourceUrl, int $postId, ?string $imagePath = null): array
 {
     $config = $settings['config'] ?? [];
     $results = [];
 
     if (toBoolFlag($config['blueskyEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl), $postId);
-        $results['bluesky'] = publishBlueskyPost($config, $text);
+        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart')), $postId);
+        $results['bluesky'] = publishBlueskyPost($config, $text, $imagePath);
     }
     if (toBoolFlag($config['mastodonEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl), $postId);
-        $results['mastodon'] = publishMastodonPost($config, $text);
+        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart')), $postId);
+        $results['mastodon'] = publishMastodonPost($config, $text, $imagePath);
     }
     if (toBoolFlag($config['misskeyEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl), $postId);
-        $results['misskey'] = publishMisskeyPost($config, $text);
+        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart')), $postId);
+        $results['misskey'] = publishMisskeyPost($config, $text, $imagePath);
     }
 
     return $results;
 }
 
-function updateFederatedPostsFromSettings(array $settings, array $post, string $name, string $title, string $message, ?string $sourceUrl, int $postId): array
+function updateFederatedPostsFromSettings(array $settings, array $post, string $name, string $title, string $message, ?string $sourceUrl, int $postId, ?string $imagePath = null): array
 {
     $config = $settings['config'] ?? [];
     $results = [];
 
     if (toBoolFlag($config['blueskyEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl), $postId);
-        $results['bluesky'] = updateBlueskyPost($config, $text, (string)($post['bluesky_uri'] ?? ''));
+        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart')), $postId);
+        $results['bluesky'] = updateBlueskyPost($config, $text, (string)($post['bluesky_uri'] ?? ''), $imagePath);
     }
     if (toBoolFlag($config['mastodonEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl), $postId);
-        $results['mastodon'] = updateMastodonPost($config, $text, (string)($post['mastodon_id'] ?? ''));
+        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart')), $postId);
+        $results['mastodon'] = updateMastodonPost($config, $text, (string)($post['mastodon_id'] ?? ''), $imagePath);
     }
     if (toBoolFlag($config['misskeyEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl), $postId);
-        $results['misskey'] = publishMisskeyPost($config, $text);
+        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart')), $postId);
+        $results['misskey'] = publishMisskeyPost($config, $text, $imagePath);
     }
 
     return $results;
 }
 
-function publishBlueskyPost(array $config, string $text): array
+function publishBlueskyPost(array $config, string $text, ?string $imagePath = null): array
 {
     $service = rtrim(trim((string)($config['blueskyServiceUrl'] ?? 'https://bsky.social')), '/');
     $handle = trim((string)($config['blueskyHandle'] ?? ''));
@@ -634,16 +694,25 @@ function publishBlueskyPost(array $config, string $text): array
         return ['success' => false, 'message' => 'Blueskyのセッション応答にaccessJwtまたはdidがありません。'];
     }
 
+    $record = [
+        '$type' => 'app.bsky.feed.post',
+        'text' => $text,
+        'createdAt' => gmdate('c'),
+    ];
+    $embed = blueskyImageEmbed($service, $accessJwt, $imagePath);
+    if (!$embed['success']) {
+        return $embed;
+    }
+    if (isset($embed['embed'])) {
+        $record['embed'] = $embed['embed'];
+    }
+
     $post = httpJsonRequest('POST', $service . '/xrpc/com.atproto.repo.createRecord', [
         'Authorization: Bearer ' . $accessJwt,
     ], [
         'repo' => $did,
         'collection' => 'app.bsky.feed.post',
-        'record' => [
-            '$type' => 'app.bsky.feed.post',
-            'text' => $text,
-            'createdAt' => gmdate('c'),
-        ],
+        'record' => $record,
     ]);
     if (!$post['success']) {
         return $post;
@@ -663,10 +732,10 @@ function publishBlueskyPost(array $config, string $text): array
     ];
 }
 
-function updateBlueskyPost(array $config, string $text, string $existingUri): array
+function updateBlueskyPost(array $config, string $text, string $existingUri, ?string $imagePath = null): array
 {
     if ($existingUri === '') {
-        return publishBlueskyPost($config, $text);
+        return publishBlueskyPost($config, $text, $imagePath);
     }
 
     $service = rtrim(trim((string)($config['blueskyServiceUrl'] ?? 'https://bsky.social')), '/');
@@ -696,17 +765,26 @@ function updateBlueskyPost(array $config, string $text, string $existingUri): ar
         return ['success' => false, 'message' => 'Blueskyのセッション応答にaccessJwtまたはdidがありません。'];
     }
 
+    $record = [
+        '$type' => 'app.bsky.feed.post',
+        'text' => $text,
+        'createdAt' => gmdate('c'),
+    ];
+    $embed = blueskyImageEmbed($service, $accessJwt, $imagePath);
+    if (!$embed['success']) {
+        return $embed;
+    }
+    if (isset($embed['embed'])) {
+        $record['embed'] = $embed['embed'];
+    }
+
     $post = httpJsonRequest('POST', $service . '/xrpc/com.atproto.repo.putRecord', [
         'Authorization: Bearer ' . $accessJwt,
     ], [
         'repo' => $did,
         'collection' => 'app.bsky.feed.post',
         'rkey' => $rkey,
-        'record' => [
-            '$type' => 'app.bsky.feed.post',
-            'text' => $text,
-            'createdAt' => gmdate('c'),
-        ],
+        'record' => $record,
     ]);
     if (!$post['success']) {
         return $post;
@@ -717,7 +795,7 @@ function updateBlueskyPost(array $config, string $text, string $existingUri): ar
     return ['success' => true, 'uri' => $uri, 'cid' => $cid, 'url' => blueskyUrlFromUri($uri, $handle)];
 }
 
-function publishMastodonPost(array $config, string $text): array
+function publishMastodonPost(array $config, string $text, ?string $imagePath = null): array
 {
     $instance = rtrim(trim((string)($config['mastodonInstanceUrl'] ?? '')), '/');
     $token = trim((string)($config['mastodonAccessToken'] ?? ''));
@@ -725,12 +803,21 @@ function publishMastodonPost(array $config, string $text): array
         return ['success' => false, 'message' => 'MastodonのインスタンスURLまたはAccess Tokenが未設定です。'];
     }
 
-    $response = httpJsonRequest('POST', $instance . '/api/v1/statuses', [
-        'Authorization: Bearer ' . $token,
-    ], [
+    $payload = [
         'status' => $text,
         'visibility' => (string)($config['mastodonVisibility'] ?? 'public'),
-    ], false);
+    ];
+    $mediaId = mastodonUploadMedia($instance, $token, $imagePath);
+    if (!$mediaId['success']) {
+        return $mediaId;
+    }
+    if (isset($mediaId['id'])) {
+        $payload['media_ids'] = [$mediaId['id']];
+    }
+
+    $response = httpJsonRequest('POST', $instance . '/api/v1/statuses', [
+        'Authorization: Bearer ' . $token,
+    ], $payload, false);
     if (!$response['success']) {
         return $response;
     }
@@ -744,10 +831,10 @@ function publishMastodonPost(array $config, string $text): array
     return ['success' => true, 'id' => $id, 'url' => $url];
 }
 
-function updateMastodonPost(array $config, string $text, string $existingId): array
+function updateMastodonPost(array $config, string $text, string $existingId, ?string $imagePath = null): array
 {
     if ($existingId === '') {
-        return publishMastodonPost($config, $text);
+        return publishMastodonPost($config, $text, $imagePath);
     }
 
     $instance = rtrim(trim((string)($config['mastodonInstanceUrl'] ?? '')), '/');
@@ -756,11 +843,18 @@ function updateMastodonPost(array $config, string $text, string $existingId): ar
         return ['success' => false, 'message' => 'MastodonのインスタンスURLまたはAccess Tokenが未設定です。'];
     }
 
+    $payload = ['status' => $text];
+    $mediaId = mastodonUploadMedia($instance, $token, $imagePath);
+    if (!$mediaId['success']) {
+        return $mediaId;
+    }
+    if (isset($mediaId['id'])) {
+        $payload['media_ids'] = [$mediaId['id']];
+    }
+
     $response = httpJsonRequest('PUT', $instance . '/api/v1/statuses/' . rawurlencode($existingId), [
         'Authorization: Bearer ' . $token,
-    ], [
-        'status' => $text,
-    ], false);
+    ], $payload, false);
     if (!$response['success']) {
         return $response;
     }
@@ -770,7 +864,7 @@ function updateMastodonPost(array $config, string $text, string $existingId): ar
     return ['success' => true, 'id' => $id, 'url' => $url];
 }
 
-function publishMisskeyPost(array $config, string $text): array
+function publishMisskeyPost(array $config, string $text, ?string $imagePath = null): array
 {
     $instance = rtrim(trim((string)($config['misskeyInstanceUrl'] ?? '')), '/');
     $token = trim((string)($config['misskeyAccessToken'] ?? ''));
@@ -778,10 +872,19 @@ function publishMisskeyPost(array $config, string $text): array
         return ['success' => false, 'message' => 'MisskeyのインスタンスURLまたはAccess Tokenが未設定です。'];
     }
 
-    $response = httpJsonRequest('POST', $instance . '/api/notes/create', [], [
+    $payload = [
         'i' => $token,
         'text' => $text,
-    ]);
+    ];
+    $fileId = misskeyUploadFile($instance, $token, $imagePath);
+    if (!$fileId['success']) {
+        return $fileId;
+    }
+    if (isset($fileId['id'])) {
+        $payload['fileIds'] = [$fileId['id']];
+    }
+
+    $response = httpJsonRequest('POST', $instance . '/api/notes/create', [], $payload);
     if (!$response['success']) {
         return $response;
     }
@@ -826,11 +929,196 @@ function socialPlatformLabel(string $platform): string
     return ['bluesky' => 'Bluesky', 'mastodon' => 'Mastodon', 'misskey' => 'Misskey'][$platform] ?? $platform;
 }
 
+function blueskyImageEmbed(string $service, string $accessJwt, ?string $imagePath): array
+{
+    if ($imagePath === null || !is_file($imagePath)) {
+        return ['success' => true];
+    }
+
+    $mimeType = imageMimeType($imagePath);
+    if ($mimeType === null) {
+        return ['success' => false, 'message' => 'Bluesky image type is not supported.'];
+    }
+
+    $upload = httpRawRequest('POST', $service . '/xrpc/com.atproto.repo.uploadBlob', [
+        'Authorization: Bearer ' . $accessJwt,
+        'Content-Type: ' . $mimeType,
+    ], (string)file_get_contents($imagePath));
+    if (!$upload['success']) {
+        return $upload;
+    }
+
+    $blob = $upload['body']['blob'] ?? null;
+    if (!is_array($blob)) {
+        return ['success' => false, 'message' => 'Bluesky image upload response has no blob.'];
+    }
+
+    $image = [
+        'alt' => basename($imagePath),
+        'image' => $blob,
+    ];
+    $size = @getimagesize($imagePath);
+    if (is_array($size) && isset($size[0], $size[1]) && (int)$size[0] > 0 && (int)$size[1] > 0) {
+        $image['aspectRatio'] = ['width' => (int)$size[0], 'height' => (int)$size[1]];
+    }
+
+    return [
+        'success' => true,
+        'embed' => [
+            '$type' => 'app.bsky.embed.images',
+            'images' => [$image],
+        ],
+    ];
+}
+
+function mastodonUploadMedia(string $instance, string $token, ?string $imagePath): array
+{
+    if ($imagePath === null || !is_file($imagePath)) {
+        return ['success' => true];
+    }
+
+    $mimeType = imageMimeType($imagePath);
+    if ($mimeType === null) {
+        return ['success' => false, 'message' => 'Mastodon image type is not supported.'];
+    }
+
+    $response = httpMultipartRequest('POST', $instance . '/api/v2/media', [
+        'Authorization: Bearer ' . $token,
+    ], [
+        'file' => new CURLFile($imagePath, $mimeType, basename($imagePath)),
+    ]);
+    if (!$response['success']) {
+        return $response;
+    }
+
+    $id = (string)($response['body']['id'] ?? '');
+    if ($id === '') {
+        return ['success' => false, 'message' => 'Mastodon media upload response has no ID.'];
+    }
+
+    return ['success' => true, 'id' => $id];
+}
+
+function misskeyUploadFile(string $instance, string $token, ?string $imagePath): array
+{
+    if ($imagePath === null || !is_file($imagePath)) {
+        return ['success' => true];
+    }
+
+    $mimeType = imageMimeType($imagePath);
+    if ($mimeType === null) {
+        return ['success' => false, 'message' => 'Misskey image type is not supported.'];
+    }
+
+    $response = httpMultipartRequest('POST', $instance . '/api/drive/files/create', [], [
+        'i' => $token,
+        'file' => new CURLFile($imagePath, $mimeType, basename($imagePath)),
+    ]);
+    if (!$response['success']) {
+        return $response;
+    }
+
+    $id = (string)($response['body']['id'] ?? '');
+    if ($id === '') {
+        return ['success' => false, 'message' => 'Misskey file upload response has no ID.'];
+    }
+
+    return ['success' => true, 'id' => $id];
+}
+
+function imageMimeType(string $imagePath): ?string
+{
+    $mimeType = function_exists('mime_content_type') ? mime_content_type($imagePath) : false;
+    if (is_string($mimeType) && imageExtensionFromMime($mimeType) !== null) {
+        return $mimeType;
+    }
+
+    $extension = strtolower(pathinfo($imagePath, PATHINFO_EXTENSION));
+    return [
+        'png' => 'image/png',
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'gif' => 'image/gif',
+    ][$extension] ?? null;
+}
+
 function blueskyUrlFromUri(string $uri, string $handle): string
 {
     $parts = explode('/', $uri);
     $rkey = end($parts);
     return 'https://bsky.app/profile/' . rawurlencode($handle) . '/post/' . rawurlencode((string)$rkey);
+}
+
+function httpRawRequest(string $method, string $url, array $headers, string $body): array
+{
+    if (!function_exists('curl_init')) {
+        return ['success' => false, 'message' => 'PHP cURL extension is not enabled.'];
+    }
+
+    $curl = curl_init($url);
+    curl_setopt_array($curl, [
+        CURLOPT_CUSTOMREQUEST => strtoupper($method),
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_POSTFIELDS => $body,
+    ]);
+
+    $raw = curl_exec($curl);
+    $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    $error = curl_error($curl);
+    curl_close($curl);
+
+    if ($raw === false) {
+        return ['success' => false, 'message' => 'API request failed: ' . $error];
+    }
+
+    $decoded = json_decode((string)$raw, true);
+    if ($status < 200 || $status >= 300) {
+        $detail = is_array($decoded) ? json_encode($decoded, JSON_UNESCAPED_UNICODE) : (string)$raw;
+        return ['success' => false, 'message' => 'API returned an error. HTTP ' . $status . ' ' . $detail];
+    }
+    if (!is_array($decoded)) {
+        return ['success' => false, 'message' => 'API response is not JSON.'];
+    }
+
+    return ['success' => true, 'body' => $decoded];
+}
+
+function httpMultipartRequest(string $method, string $url, array $headers, array $payload): array
+{
+    if (!function_exists('curl_init')) {
+        return ['success' => false, 'message' => 'PHP cURL extension is not enabled.'];
+    }
+
+    $curl = curl_init($url);
+    curl_setopt_array($curl, [
+        CURLOPT_CUSTOMREQUEST => strtoupper($method),
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_POSTFIELDS => $payload,
+    ]);
+
+    $raw = curl_exec($curl);
+    $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    $error = curl_error($curl);
+    curl_close($curl);
+
+    if ($raw === false) {
+        return ['success' => false, 'message' => 'API request failed: ' . $error];
+    }
+
+    $decoded = json_decode((string)$raw, true);
+    if ($status < 200 || $status >= 300) {
+        $detail = is_array($decoded) ? json_encode($decoded, JSON_UNESCAPED_UNICODE) : (string)$raw;
+        return ['success' => false, 'message' => 'API returned an error. HTTP ' . $status . ' ' . $detail];
+    }
+    if (!is_array($decoded)) {
+        return ['success' => false, 'message' => 'API response is not JSON.'];
+    }
+
+    return ['success' => true, 'body' => $decoded];
 }
 
 function httpJsonRequest(string $method, string $url, array $headers = [], array $payload = [], bool $jsonBody = true): array
@@ -846,7 +1134,8 @@ function httpJsonRequest(string $method, string $url, array $headers = [], array
             $curlHeaders[] = 'Content-Type: application/json';
             $body = json_encode($payload, JSON_UNESCAPED_UNICODE);
         } else {
-            $body = http_build_query($payload);
+            $curlHeaders[] = 'Content-Type: application/x-www-form-urlencoded';
+            $body = formEncodedBody($payload);
         }
     }
 
@@ -887,6 +1176,22 @@ function httpJsonRequest(string $method, string $url, array $headers = [], array
     return ['success' => true, 'body' => $decoded];
 }
 
+function formEncodedBody(array $payload): string
+{
+    $pairs = [];
+    foreach ($payload as $key => $value) {
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                $pairs[] = rawurlencode((string)$key . '[]') . '=' . rawurlencode((string)$item);
+            }
+            continue;
+        }
+        $pairs[] = rawurlencode((string)$key) . '=' . rawurlencode((string)$value);
+    }
+
+    return implode('&', $pairs);
+}
+
 function queryString(array $params): string
 {
     $pairs = [];
@@ -905,7 +1210,11 @@ function getPost(PDO $pdo): void
         jsonResponse(['success' => false, 'message' => '投稿IDが不正です。'], 400);
     }
 
-    $post = findActivePostById($pdo, $id);
+    $stmt = $pdo->prepare('SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.id = :id AND p.deleted_at IS NULL LIMIT 1');
+    bindBoardStatTexts($stmt, $pdo);
+    $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
+    $post = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$post) {
         jsonResponse(['success' => false, 'message' => '投稿が見つかりません。'], 404);
     }
@@ -957,10 +1266,7 @@ function updatePost(PDO $pdo): void
         $imagePath = $newImage;
     }
 
-    $tweetText = null;
-    if (!$tweetOff) {
-        $tweetText = fillTweetPostId(buildTweetText($name, $title, $message, null), $id);
-    }
+    $tweetText = $post['tweet_text'] ?? null;
 
     $stmt = $pdo->prepare(
         'UPDATE posts SET
@@ -990,35 +1296,13 @@ function updatePost(PDO $pdo): void
         ':tweet_off' => $tweetOff ? 1 : 0,
         ':tweet_text' => $tweetText,
         ':tweet_url' => $tweetUrl,
-        ':tweet_like_count' => 0,
-        ':tweet_retweet_count' => 0,
-        ':tweet_comment_count' => 0,
-        ':tweet_impression_count' => 0,
+        ':tweet_like_count' => normalizeCount($post['tweet_like_count'] ?? 0),
+        ':tweet_retweet_count' => normalizeCount($post['tweet_retweet_count'] ?? 0),
+        ':tweet_comment_count' => normalizeCount($post['tweet_comment_count'] ?? 0),
+        ':tweet_impression_count' => normalizeCount($post['tweet_impression_count'] ?? 0),
     ]);
 
     $responseMessage = '投稿を更新しました。';
-    if (!$tweetOff && !$isReply && $tweetText !== null) {
-        if ($tweetEnabled) {
-            $tweetResult = publishTweetFromSettings($settings, $tweetText, $imagePath, is_string($tweetUrl) ? socialIdFromUrl($tweetUrl) : null);
-            if ($tweetResult['success']) {
-                $tweetUrl = $tweetResult['url'];
-                $updateTweetUrl = $pdo->prepare('UPDATE posts SET tweet_url = :tweet_url WHERE id = :id');
-                $updateTweetUrl->execute([':id' => $id, ':tweet_url' => $tweetUrl]);
-                $responseMessage .= ' Xへ反映しました。';
-            } else {
-                $responseMessage .= ' X反映は失敗しました: ' . $tweetResult['message'];
-            }
-        }
-
-        foreach (updateFederatedPostsFromSettings($settings, $post, $name, $title, $message, null, $id) as $platform => $result) {
-            if ($result['success']) {
-                saveSocialPublishResult($pdo, $id, $platform, $result);
-                $responseMessage .= ' ' . socialPlatformLabel($platform) . 'へ反映しました。';
-            } else {
-                $responseMessage .= ' ' . socialPlatformLabel($platform) . '反映は失敗しました: ' . $result['message'];
-            }
-        }
-    }
 
     jsonResponse(['success' => true, 'message' => $responseMessage]);
 }
@@ -1073,6 +1357,34 @@ function listDeletedPosts(PDO $pdo): void
         fn (array $row): array => buildDeletedPost($pdo, $row),
         $stmt->fetchAll(PDO::FETCH_ASSOC)
     ));
+}
+
+function listAnalyticsPosts(PDO $pdo): void
+{
+    requireAdmin();
+    $stmt = $pdo->prepare('SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.parent_id = 0 AND p.deleted_at IS NULL ORDER BY p.created_at ASC');
+    bindBoardStatTexts($stmt, $pdo);
+    $stmt->execute();
+
+    jsonResponse(array_map('buildPost', $stmt->fetchAll(PDO::FETCH_ASSOC)));
+}
+
+function recordPostView(PDO $pdo): void
+{
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    if ($id === false || $id === null) {
+        jsonResponse(['success' => false, 'message' => '投稿IDが不正です。'], 400);
+    }
+
+    $stmt = $pdo->prepare('UPDATE posts SET view_count = view_count + 1 WHERE id = :id AND parent_id = 0 AND deleted_at IS NULL');
+    $stmt->execute([':id' => $id]);
+    if ($stmt->rowCount() === 0) {
+        jsonResponse(['success' => false, 'message' => '投稿が見つかりません。'], 404);
+    }
+
+    $select = $pdo->prepare('SELECT view_count FROM posts WHERE id = :id');
+    $select->execute([':id' => $id]);
+    jsonResponse(['success' => true, 'view_count' => (int)$select->fetchColumn()]);
 }
 
 function restorePost(PDO $pdo): void
@@ -1169,7 +1481,7 @@ function adminCheckIntegrity(PDO $pdo): void
 
     jsonResponse([
         'success' => true,
-        'message' => 'DBを確認しました。現行版に旧システムインデックス修復は不要です。',
+        'message' => 'DBを確認しました。現行版にシステムインデックス修復は不要です。',
         'orphan_replies' => $orphanReplies,
         'missing_image_post_ids' => $missingImages,
     ]);
@@ -1178,16 +1490,60 @@ function adminCheckIntegrity(PDO $pdo): void
 function refreshSocialReactions(PDO $pdo): void
 {
     requireAdmin();
+    $result = runSocialReactionRefresh($pdo);
+
+    jsonResponse([
+        'success' => true,
+        'message' => 'SNSリアクションを更新しました。',
+        'updated' => $result['updated'],
+        'errors' => $result['errors'],
+    ]);
+}
+
+function cronRefreshSocialReactions(PDO $pdo): void
+{
+    requireCronApiKey($pdo);
+    $result = runSocialReactionRefresh($pdo);
+
+    jsonResponse([
+        'success' => true,
+        'message' => 'SNSリアクションを更新しました。',
+        'updated' => $result['updated'],
+        'checked_posts' => $result['checked_posts'],
+        'recent_days' => $result['recent_days'],
+        'errors' => $result['errors'],
+    ]);
+}
+
+function requireCronApiKey(PDO $pdo): void
+{
     $settings = loadSettings($pdo);
-    $rows = $pdo->query(
+    $expected = (string)($settings['security']['cronApiKey'] ?? '');
+    $provided = (string)($_GET['api_key'] ?? $_POST['api_key'] ?? '');
+
+    if ($expected === '' || $provided === '' || !hash_equals($expected, $provided)) {
+        jsonResponse(['success' => false, 'message' => 'Cron APIキーが無効です。'], 403);
+    }
+}
+
+function runSocialReactionRefresh(PDO $pdo, int $recentDays = 7): array
+{
+    $settings = loadSettings($pdo);
+    $cutoff = (new DateTimeImmutable('now', new DateTimeZone('Asia/Tokyo')))
+        ->modify('-' . $recentDays . ' days')
+        ->format('Y-m-d H:i:s');
+    $stmt = $pdo->prepare(
         "SELECT * FROM posts
          WHERE deleted_at IS NULL
            AND parent_id = 0
+           AND created_at >= :cutoff
            AND (
              tweet_url IS NOT NULL OR bluesky_uri IS NOT NULL OR mastodon_id IS NOT NULL OR misskey_id IS NOT NULL
            )
          ORDER BY id ASC"
-    )->fetchAll(PDO::FETCH_ASSOC);
+    );
+    $stmt->execute([':cutoff' => $cutoff]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $updated = 0;
     $errors = [];
@@ -1202,12 +1558,12 @@ function refreshSocialReactions(PDO $pdo): void
         }
     }
 
-    jsonResponse([
-        'success' => true,
-        'message' => 'SNSリアクションを更新しました。',
+    return [
         'updated' => $updated,
         'errors' => $errors,
-    ]);
+        'checked_posts' => count($rows),
+        'recent_days' => $recentDays,
+    ];
 }
 
 function fetchSocialReactionsForPost(array $settings, array $row): array
@@ -1469,7 +1825,47 @@ function importBackup(PDO $pdo): void
 function getSettings(PDO $pdo): void
 {
     requireAdmin();
-    jsonResponse(['success' => true, 'settings' => loadSettings($pdo)]);
+    $cronApiKey = ensureCronApiKey($pdo);
+    jsonResponse([
+        'success' => true,
+        'settings' => loadSettings($pdo),
+        'system' => [
+            'cronPath' => cronScriptPath(),
+            'cronApiUrl' => cronApiUrl(),
+            'cronApiKey' => $cronApiKey,
+        ],
+    ]);
+}
+
+function cronScriptPath(): string
+{
+    return realpath(__DIR__ . '/cron.php') ?: __DIR__ . '/cron.php';
+}
+
+function cronApiUrl(): string
+{
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = (string)($_SERVER['HTTP_HOST'] ?? '');
+    if ($host === '') {
+        return 'api.php?action=cronRefreshSocialReactions&api_key=';
+    }
+
+    $path = (string)($_SERVER['SCRIPT_NAME'] ?? '/api.php');
+    return $scheme . '://' . $host . $path . '?action=cronRefreshSocialReactions&api_key=';
+}
+
+function ensureCronApiKey(PDO $pdo): string
+{
+    $settings = loadSettings($pdo);
+    $key = (string)($settings['security']['cronApiKey'] ?? '');
+    if ($key !== '') {
+        return $key;
+    }
+
+    $key = bin2hex(random_bytes(24));
+    $settings['security']['cronApiKey'] = $key;
+    saveSettings($pdo, $settings);
+    return $key;
 }
 
 function publicSettings(PDO $pdo): void
@@ -1491,6 +1887,13 @@ function publicSettings(PDO $pdo): void
                 'misskeyEnabled' => toBoolFlag($config['misskeyEnabled'] ?? false),
                 'gdgdEnabled' => toBoolFlag($config['gdgdEnabled'] ?? true),
                 'gdgdLabel' => (string)($config['gdgdLabel'] ?? 'gdgd投稿'),
+                'eejanaikaOmigotoText' => (string)($config['eejanaikaOmigotoText'] ?? 'お美事にございまする'),
+                'eejanaikaOmigotoColor' => (string)($config['eejanaikaOmigotoColor'] ?? '#ff72ff'),
+                'eejanaikaGoodjobText' => (string)($config['eejanaikaGoodjobText'] ?? 'いい仕事してますねぇ'),
+                'eejanaikaGoodjobColor' => (string)($config['eejanaikaGoodjobColor'] ?? '#27a8ff'),
+                'eejanaikaEejanaikaText' => (string)($config['eejanaikaEejanaikaText'] ?? 'ええじゃないか'),
+                'eejanaikaEejanaikaColor' => (string)($config['eejanaikaEejanaikaColor'] ?? '#fff200'),
+                'socialHashtags' => (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart'),
             ],
         ],
     ]);
@@ -1549,6 +1952,13 @@ function defaultSettings(): array
             'misskeyAccessToken' => '',
             'gdgdEnabled' => true,
             'gdgdLabel' => 'gdgd投稿',
+            'eejanaikaOmigotoText' => 'お美事にございまする',
+            'eejanaikaOmigotoColor' => '#ff72ff',
+            'eejanaikaGoodjobText' => 'いい仕事してますねぇ',
+            'eejanaikaGoodjobColor' => '#27a8ff',
+            'eejanaikaEejanaikaText' => 'ええじゃないか',
+            'eejanaikaEejanaikaColor' => '#fff200',
+            'socialHashtags' => '#ドット絵 #pixelart',
             'logView' => 20,
             'maxUploadBytes' => 5100000,
             'maxImageWidth' => 1280,
@@ -1561,6 +1971,7 @@ function defaultSettings(): array
         ],
         'security' => [
             'adminPasswordHash' => '',
+            'cronApiKey' => '',
         ],
     ];
 }

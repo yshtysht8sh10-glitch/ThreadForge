@@ -54,7 +54,7 @@ const EditPostPage = () => {
   };
   const socialEnabled = Object.values(enabledSocialPlatforms).some(Boolean);
   const socialPreviews = !isReply && socialEnabled && !socialTransferOff
-    ? createSocialPostPreviews(enabledSocialPlatforms, name, title, message)
+    ? createSocialPostPreviews(enabledSocialPlatforms, name, title, message, '', settings.config.socialHashtags)
     : [];
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -157,7 +157,7 @@ const EditPostPage = () => {
                       {preview.label}
                       <span>{preview.limit ? `${preview.length}/${preview.limit}文字` : `${preview.length}文字`}</span>
                     </h3>
-                    <pre className="legacy-tweet-preview">{preview.text}</pre>
+                    <pre className="social-post-preview-text">{preview.text}</pre>
                   </article>
                 ))}
                 <p className="social-transfer-help">※この項目は編集できません。</p>

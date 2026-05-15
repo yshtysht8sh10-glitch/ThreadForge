@@ -1,8 +1,10 @@
 # Migration Notes
 
-## Old BBSnote Logs
+[Japanese migration notes](ja/MIGRATION.md)
 
-ThreadForge can import old BBSnote-style `LOG_*.cgi` files from the admin screen.
+## Local Archive Logs
+
+ThreadForge can import local archive-style `LOG_*.cgi` files, but this operation is intentionally kept out of the web admin screen. Run it from a local operator batch or local PHP command that calls `importLocalArchiveDirectory()` in `server/db.php`.
 
 Default source directory:
 
@@ -26,10 +28,11 @@ Import behavior:
 - Existing DB rows, uploaded images, and admin settings are not reset.
 - Re-running the import skips already imported posts and replies by name, content, and timestamp.
 
-Imported legacy posts use generated unknown password hashes. Manage them through the admin screen.
+Imported posts use generated unknown password hashes. Manage them through the admin screen.
+The local batch used for an individual deployment should not be committed unless the project explicitly decides to ship one.
 
 ## Full Backup Restore
 
-The backup JSON import is different from old-log import. It is a full restore and replaces posts/images with the backup contents.
+The backup JSON import is different from local archive import. It is a full restore and replaces posts/images with the backup contents.
 
-Use backup restore when moving a ThreadForge instance. Use old BBSnote import when adding historical logs to an existing board.
+Use backup restore when moving a ThreadForge instance. Use local archive import when adding historical logs to an existing board.

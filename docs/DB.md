@@ -1,5 +1,7 @@
 # DB / Runtime Data
 
+[Japanese DB notes](ja/DB.md)
+
 The current backend uses SQLite plus file storage.
 
 ## Runtime Files
@@ -59,7 +61,7 @@ CREATE TABLE IF NOT EXISTS posts (
 )
 ```
 
-Social columns store per-platform destination IDs/URLs and cached reaction counts. X keeps the legacy `tweet_*` column names for compatibility.
+Social columns store per-platform destination IDs/URLs and cached reaction counts. X keeps the `tweet_*` column names for compatibility.
 
 ## settings Table
 
@@ -76,6 +78,8 @@ Settings are stored as JSON sections:
 - `skin`
 - `security`
 
+The `security` section stores `adminPasswordHash` and `cronApiKey`. `cronApiKey` is generated automatically when missing and is used by the protected `cronRefreshSocialReactions` API for external schedulers such as GitHub Actions.
+
 ## Backups
 
 Use the admin screen export button to download one JSON file containing:
@@ -86,11 +90,11 @@ Use the admin screen export button to download one JSON file containing:
 
 Importing this backup JSON is a full restore. It replaces posts and images, then restores settings from the backup.
 
-## Old BBSnote Import
+## Local Archive Import
 
-Old BBSnote log import is operated from a local batch file instead of the web admin screen.
+Local Archive log import is operated from a local operator batch or PHP command instead of the web admin screen. Deployment-local batch files are not part of the committed application unless explicitly added later.
 
-The importer reads old `LOG_*.cgi` files from a local directory, defaulting to root `data/`, and copies referenced image files into `server/storage/data/`.
+The importer reads `LOG_*.cgi` files from a local directory, defaulting to root `data/`, and copies referenced image files into `server/storage/data/`.
 
 This import is intentionally non-destructive:
 
@@ -99,7 +103,7 @@ This import is intentionally non-destructive:
 - It does not reset admin settings.
 - Re-running it skips posts and replies already imported by matching name, content, and timestamp.
 
-Imported legacy posts use generated unknown password hashes. They should be managed from the admin screen unless a later password migration is implemented.
+Imported posts use generated unknown password hashes. They should be managed from the admin screen unless a password migration is implemented.
 
 ## Intentional Clean Initialization
 

@@ -8,7 +8,7 @@ describe('tweet utilities', () => {
     expect(text).toContain('[DT000000：Title]');
     expect(text).toContain('作者：Alice');
     expect(text).toContain('本文です');
-    expect(text).toContain('元：https://example.com/thread/1');
+    expect(text).toContain('最新はこちら https://example.com/thread/1');
   });
 
   it('ignores message text after _TWEND_', () => {

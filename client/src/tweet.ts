@@ -12,17 +12,20 @@ export type SocialPostPreview = {
   length: number;
 };
 
-export function createTweetText(name: string, title: string, message: string, sourceUrl = ''): string {
+const DEFAULT_SOCIAL_HASHTAGS = '#ドット絵 #pixelart';
+
+export function createTweetText(name: string, title: string, message: string, sourceUrl = '', hashtags = DEFAULT_SOCIAL_HASHTAGS): string {
   const tweetMessage = message.split('_TWEND_')[0].trim();
   const source = sourceUrl.trim();
+  const tagLine = hashtags.trim();
   const base = [
     `[DT000000：${title}]`,
     `作者：${name}`,
     '',
     tweetMessage,
     '',
-    source ? `元：${source}` : '',
-    '#ドット絵 #pixelart',
+    source ? `最新はこちら ${source}` : '',
+    tagLine,
   ].filter((line, index, lines) => line !== '' || lines[index - 1] !== '').join('\n');
 
   return trimSocialText(base, TWEET_LIMIT, countTweetLength);
@@ -34,12 +37,13 @@ export function createSocialPostPreviews(
   title: string,
   message: string,
   sourceUrl = '',
+  hashtags = DEFAULT_SOCIAL_HASHTAGS,
 ): SocialPostPreview[] {
   const previews: SocialPostPreview[] = [];
-  const baseInputs = { name, title, message, sourceUrl };
+  const baseInputs = { name, title, message, sourceUrl, hashtags };
 
   if (enabled.x) {
-    const text = createTweetText(name, title, message, sourceUrl);
+    const text = createTweetText(name, title, message, sourceUrl, hashtags);
     previews.push({ platform: 'x', label: 'X', text, limit: TWEET_LIMIT, length: countTweetLength(text) });
   }
 
@@ -62,26 +66,27 @@ function createFederatedPreview(
   platform: Exclude<SocialPlatform, 'x'>,
   label: string,
   limit: number,
-  { name, title, message, sourceUrl }: { name: string; title: string; message: string; sourceUrl: string },
+  { name, title, message, sourceUrl, hashtags }: { name: string; title: string; message: string; sourceUrl: string; hashtags: string },
 ): SocialPostPreview {
   const tweetMessage = message.split('_TWEND_')[0].trim();
   const source = sourceUrl.trim();
+  const tagLine = hashtags.trim();
   const base = [
     `[DT000000：${title}]`,
     `作者：${name}`,
     '',
     tweetMessage,
     '',
-    source ? `元：${source}` : '',
-    socialTagLine(platform),
+    source ? `最新はこちら ${source}` : '',
+    socialTagLine(platform, tagLine),
   ].filter((line, index, lines) => line !== '' || lines[index - 1] !== '').join('\n');
   const text = trimSocialText(base, limit, countPlainTextLength);
 
   return { platform, label, text, limit, length: countPlainTextLength(text) };
 }
 
-function socialTagLine(_platform: Exclude<SocialPlatform, 'x'>): string {
-  return '#ドット絵 #pixelart';
+function socialTagLine(_platform: Exclude<SocialPlatform, 'x'>, hashtags: string): string {
+  return hashtags;
 }
 
 export function countTweetLength(text: string): number {
@@ -104,7 +109,7 @@ function trimSocialText(text: string, limit: number, countLength: (value: string
   }
 
   const ellipsis = '..';
-  const marker = '\n\n元：';
+  const marker = '\n\n最新はこちら ';
   const tagMarker = '\n#';
   const sourceIndex = text.indexOf(marker);
   const tagIndex = text.lastIndexOf(tagMarker);

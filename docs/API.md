@@ -1,76 +1,83 @@
-# API 仕様
+# API Reference
 
-現行 API は `server/api.php` です。REST 形式ではなく、`action` パラメータで処理を分岐します。
+[Japanese API reference](ja/API.md)
 
-## 共通仕様
+The current API is implemented in `server/api.php`. It is not REST-shaped; requests are routed by the `action` parameter.
 
-- レスポンス形式: JSON
-- 文字コード: UTF-8
+## Common Behavior
+
+- Response format: JSON unless otherwise noted
+- Encoding: UTF-8
 - CORS: `Access-Control-Allow-Origin: *`
-- 許可メソッド: `GET`, `POST`, `OPTIONS`
-- エラー時: HTTP 400/403/404 などと `{ "success": false, "message": "..." }`
+- Allowed methods: `GET`, `POST`, `OPTIONS`
+- Error responses use HTTP 400/403/404 and `{ "success": false, "message": "..." }`
 
 ## GET `?action=listThreads`
 
-親投稿一覧を返します。
+Returns top-level posts.
 
-- 対象: `parent_id = 0`
-- 並び順: `created_at DESC`
-- `page`, `limit` によるページング。`limit` は最大 100
-- レスポンス: `Post[]`
+- Target: `parent_id = 0`
+- Order: `created_at DESC`
+- Supports `page` and `limit`; maximum `limit` is 100
+- Response: `Post[]`
 
 ## GET `?action=getThread&id={id}`
 
-指定スレッドを返します。
+Returns a thread and its replies.
 
-- `id`: スレッド親投稿 ID
-- レスポンス: `{ "thread": Post, "replies": Post[] }`
-- 返信の並び順: `created_at ASC`
+- `id`: top-level post ID
+- Response: `{ "thread": Post, "replies": Post[] }`
+- Replies are ordered by `created_at ASC`
 
 ## GET `?action=getPost&id={id}`
 
-指定投稿を 1 件返します。
+Returns one post.
 
-- `id`: 投稿 ID
-- レスポンス: `Post`
+- `id`: post ID
+- Response: `Post`
 
 ## GET `?action=search&q={query}`
 
-投稿を検索します。
+Searches posts.
 
-- 対象カラム: `title`, `message`, `name`
-- 検索方式: SQLite `LIKE` による部分一致
-- 空文字: `[]`
-- 並び順: `created_at DESC`
-- `page`, `limit` によるページング。`limit` は最大 100
-- レスポンス: `Post[]`
+- Target columns: `title`, `message`, `name`
+- Search method: SQLite `LIKE`
+- Empty query returns `[]`
+- Order: `created_at DESC`
+- Supports `page` and `limit`; maximum `limit` is 100
+- Response: `Post[]`
 
 ## POST `?action=createPost`
 
-新規スレッドまたは返信を作成します。
+Creates a new top-level post or reply.
 
 Content-Type:
 
 - `multipart/form-data`
 
-フィールド:
+Fields:
 
-- `name`: 必須
-- `url`: 任意
-- `title`: 必須
-- `message`: 必須
-- `password`: 必須
-- `thread_id`: 任意。新規スレッドは `0` または未指定
-- `parent_id`: 任意。新規スレッドは `0` または未指定
-- `file`: 任意。PNG/JPEG/GIF
-- `tweet_off`: 任意
-- `tweet_url`: 任意
-- `tweet_like_count`: 任意
-- `tweet_retweet_count`: 任意
-- `tweet_comment_count`: 任意
-- `tweet_impression_count`: 任意
+- `name`: required
+- `url`: optional
+- `title`: required
+- `message`: required
+- `password`: required
+- `thread_id`: optional. New top-level posts use `0` or omit it
+- `parent_id`: optional. New top-level posts use `0` or omit it
+- `file`: optional. PNG/JPEG/GIF. Top-level posts only
+- `gdgd`: optional. Top-level posts only
+- `tweet_off`: optional. Top-level posts only. UI label is "SNS transfer OFF"
+- `source_url`: optional. Top-level posts only. Board-list anchor URL for SNS text. If omitted, the API derives it from the request origin
 
-成功レスポンス:
+Notes:
+
+- Replies do not use image upload, gdgd, or SNS posting.
+- If SNS posting is enabled for a top-level post, the API posts to enabled SNS platforms from admin settings.
+- If a top-level post has an image, X, Bluesky, Mastodon, and Misskey receive the image when enabled.
+- SNS text uses only content before `_TWEND_` and is shortened with `..` to fit each platform limit.
+- SNS text includes a "latest is here" board-list anchor URL. The frontend sends a temporary `#post-000000` URL, and the API replaces `000000` after the real post ID is saved.
+
+Success response:
 
 ```json
 {
@@ -81,73 +88,100 @@ Content-Type:
 
 ## POST `?action=updatePost`
 
-投稿を更新します。投稿時のパスワードが必要です。
+Updates an existing post. The original post password is required.
 
 Content-Type:
 
 - `multipart/form-data`
 
-フィールド:
+Fields:
 
-- `id`: 必須
-- `name`: 必須
-- `url`: 任意
-- `title`: 必須
-- `message`: 必須
-- `password`: 必須
-- `file`: 任意。指定された場合のみ画像を差し替え。旧画像は履歴名へ退避して保持
-- `tweet_off`: 任意
-- `tweet_url`: 任意
-- `tweet_like_count`: 任意
-- `tweet_retweet_count`: 任意
-- `tweet_comment_count`: 任意
-- `tweet_impression_count`: 任意
+- `id`: required
+- `name`: required
+- `url`: optional
+- `title`: required
+- `message`: required
+- `password`: required
+- `file`: optional. Replaces the image only when supplied. Previous images are archived instead of overwritten
+- `gdgd`: optional. Top-level posts only
+- `tweet_off`: optional. Top-level posts only. UI label is "SNS transfer OFF"
 
-パスワード不一致時は HTTP 403 を返します。
+Password mismatch returns HTTP 403.
+
+Post updates affect only the board. Even for top-level posts, existing SNS posts are not edited and no repost is made. Replies never use SNS posting.
 
 ## POST `?action=deletePost`
 
-投稿を削除します。投稿時のパスワードが必要です。
+Soft-deletes a post. The original post password is required.
 
 Content-Type:
 
 - `multipart/form-data`
 
-フィールド:
+Fields:
 
-- `id`: 必須
-- `password`: 必須
+- `id`: required
+- `password`: required
 
-削除動作:
+Behavior:
 
-- SQLite レコードは削除せず、`deleted_at` を設定します
-- スレッド親投稿を削除すると、そのスレッドの返信にも `deleted_at` を設定します
-- 返信を削除すると、その返信のみに `deleted_at` を設定します
-- 画像ファイルは削除しません
-- 一覧、スレッド詳細、検索 API には削除済み投稿を返しません
+- SQLite rows are not removed; `deleted_at` is set.
+- Deleting a top-level thread also sets `deleted_at` on its replies.
+- Deleting a reply affects only that reply.
+- Image files are not deleted.
+- List, thread, and search APIs do not return soft-deleted posts.
 
 ## GET `?action=rss`
 
-削除されていない親投稿を新着順に最大 30 件含む RSS 2.0 XML を返します。
+Returns RSS 2.0 XML with up to 30 latest non-deleted top-level posts.
+
+## GET `?action=refreshSocialReactions&admin_password={password}`
+
+Admin-only action that fetches reaction counts from stored SNS post URLs/IDs and caches them.
+
+Targets are non-deleted top-level posts created within the last 7 days.
+
+Fetched metrics:
+
+- X: impressions, likes, reposts
+- Bluesky: likes, reposts, quotes
+- Mastodon: boosts, favorites
+- Misskey: reaction buckets
+
+## GET `?action=cronRefreshSocialReactions&api_key={key}`
+
+Scheduler-friendly reaction refresh endpoint for external periodic jobs.
+
+Use the `cronApiKey` shown in the admin screen. This endpoint is intended for GitHub Actions or external HTTP schedulers.
+
+Targets are the same as `refreshSocialReactions`: non-deleted top-level posts created within the last 7 days.
+
+For local server Cron, register the `server/cron.php` file path shown in the admin screen.
 
 ## GET `?action=listDeletedPosts&admin_password={password}`
 
-管理者向けに削除済み投稿を返します。`DOTEITA_ADMIN_PASSWORD` 環境変数と一致する `admin_password` が必要です。
+Admin-only action that returns soft-deleted posts. `admin_password` must match the `DOTEITA_ADMIN_PASSWORD` environment variable.
+
+## GET `?action=listAnalyticsPosts&admin_password={password}`
+
+Admin-only action that returns all non-deleted top-level posts for the analytics screen. The response uses the normal `Post` shape, including cached social reaction totals.
 
 ## POST `?action=restorePost`
 
-管理者向けに削除済み投稿を復元します。
+Admin-only action that restores a soft-deleted post.
 
-フィールド:
+Fields:
 
-- `id`: 必須
-- `admin_password`: 必須
+- `id`: required
+- `admin_password`: required
 
-## Post 型
+## Post Type
 
 ```ts
 type Post = {
   id: number;
+  display_no?: number;
+  reply_no?: number;
   thread_id: number;
   parent_id: number;
   name: string;
@@ -164,15 +198,36 @@ type Post = {
   tweet_retweet_count?: number;
   tweet_comment_count?: number;
   tweet_impression_count?: number;
+  social_links?: {
+    x?: string | null;
+    bluesky?: string | null;
+    mastodon?: string | null;
+    misskey?: string | null;
+  };
+  social_reactions?: {
+    x?: { likes: number; reposts: number; impressions: number };
+    bluesky?: { likes: number; reposts: number; quotes: number };
+    mastodon?: { boosts: number; favs: number };
+    misskey?: {
+      fire: number;
+      eyes: number;
+      cry: number;
+      thinking: number;
+      party: number;
+      other: number;
+    };
+  };
+  replies?: Post[];
+  reply_count?: number;
 };
 ```
 
-`password_hash` は API レスポンスには含めません。
+`password_hash` is never included in API responses.
 
 ## Laravel API
 
-`server/laravel/routes/api.php` に Laravel 版のルートはありますが、現行フロントエンドの標準接続先ではありません。Laravel API は本番仕様としては未実装扱いです。
+`server/laravel/routes/api.php` contains Laravel routes, but the current frontend does not use them as the standard API. The Laravel API is not treated as production-ready yet.
 
-## 未実装 API
+## Non-Web Import Operation
 
-- 既存 Perl CGI データ移行 API
+Local Archive `LOG_*.cgi` import is not exposed through the web API or admin screen. Run it from a local operator batch or PHP command that directly calls `importLocalArchiveDirectory()` in `server/db.php`.

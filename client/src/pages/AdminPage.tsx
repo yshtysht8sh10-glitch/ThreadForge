@@ -8,7 +8,9 @@ type Settings = {
   skin: Record<string, string | number | boolean>;
 };
 
-type AdminTab = 'posts' | 'maintenance' | 'backup' | 'settings' | 'deleted';
+type AdminTab = 'posts' | 'maintenance' | 'backup' | 'analytics' | 'settings' | 'deleted';
+type AnalyticsMetric = 'postCount' | 'commentCount' | 'viewCount' | 'boardEejanaika' | 'boardOmigoto' | 'boardGoodjob' | 'xLikes' | 'xReposts' | 'xImpressions' | 'blueskyLikes' | 'blueskyReposts' | 'mastodonBoosts' | 'mastodonFavs' | 'misskeyReactions' | 'misskeyFire' | 'misskeyEyes' | 'misskeyCry' | 'misskeyThinking' | 'misskeyParty' | 'misskeyOther';
+type AnalyticsUnit = 'dayTotal' | 'dayCumulative' | 'monthTotal' | 'monthAverage' | 'monthCumulative' | 'yearTotal' | 'yearAverage' | 'yearCumulative';
 
 const DEFAULT_HIDDEN_ADMIN_PASSWORD = 'admin';
 
@@ -19,10 +21,16 @@ const AdminPage = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('posts');
   const [threads, setThreads] = useState<Post[]>([]);
   const [deletedPosts, setDeletedPosts] = useState<Post[]>([]);
+  const [analyticsPosts, setAnalyticsPosts] = useState<Post[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [cronPath, setCronPath] = useState('');
+  const [cronApiUrl, setCronApiUrl] = useState('');
+  const [cronApiKey, setCronApiKey] = useState('');
   const [backupFile, setBackupFile] = useState<File | null>(null);
   const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [analyticsMetric, setAnalyticsMetric] = useState<AnalyticsMetric>('postCount');
+  const [analyticsUnit, setAnalyticsUnit] = useState<AnalyticsUnit>('monthTotal');
   const [status, setStatus] = useState<string | null>('管理データを読み込み中...');
   const [error, setError] = useState<string | null>(null);
 
@@ -30,14 +38,19 @@ const AdminPage = () => {
     setStatus('管理データを読み込み中...');
     setError(null);
     try {
-      const [loadedThreads, deleted, settingResponse] = await Promise.all([
+      const [loadedThreads, deleted, analytics, settingResponse] = await Promise.all([
         api.listThreads(),
         api.listDeletedPosts(adminPassword),
+        api.listAnalyticsPosts(adminPassword),
         api.getSettings(adminPassword),
       ]);
       setThreads(loadedThreads);
       setDeletedPosts(deleted);
+      setAnalyticsPosts(analytics);
       setSettings(settingResponse.settings);
+      setCronPath(settingResponse.system?.cronPath ?? '');
+      setCronApiUrl(settingResponse.system?.cronApiUrl ?? '');
+      setCronApiKey(settingResponse.system?.cronApiKey ?? '');
       setSelectedIds([]);
       setStatus('管理データを読み込みました。');
     } catch (err) {
@@ -187,6 +200,22 @@ const AdminPage = () => {
 
           {activeTab === 'maintenance' && (
             <section className="card">
+              <div className="form-card">
+                <h2>cron設定</h2>
+                <p>SNSリアクションはcronまたは外部サービスから自動更新できます。更新対象は投稿から7日以内の親投稿のみです。</p>
+                <label>
+                  Cron用ファイルパス
+                  <input value={cronPath} readOnly onFocus={(event) => event.currentTarget.select()} />
+                </label>
+                <label>
+                  API定期実行URL
+                  <input value={`${cronApiUrl}${cronApiKey}`} readOnly onFocus={(event) => event.currentTarget.select()} />
+                </label>
+                <label>
+                  APIキー
+                  <input value={cronApiKey} readOnly onFocus={(event) => event.currentTarget.select()} />
+                </label>
+              </div>
               <h2>管理パスワード変更</h2>
               <div className="button-row align-right">
                 <button type="button" onClick={refreshSocialReactions}>SNSリアクションを更新</button>
@@ -226,6 +255,31 @@ const AdminPage = () => {
                 </form>
               </section>
             </div>
+          )}
+
+          {activeTab === 'analytics' && (
+            <section className="card admin-analytics-card">
+              <h2>アナリティクス</h2>
+              <div className="admin-analytics-controls">
+                <label>
+                  表示データ
+                  <select value={analyticsMetric} onChange={(event) => setAnalyticsMetric(event.target.value as AnalyticsMetric)}>
+                    {analyticsMetricOptions.map((option) => (
+                      <option key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  単位
+                  <select value={analyticsUnit} onChange={(event) => setAnalyticsUnit(event.target.value as AnalyticsUnit)}>
+                    {analyticsUnitOptions.map((option) => (
+                      <option key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <AnalyticsChart rows={buildAnalyticsRows(analyticsPosts, analyticsMetric, analyticsUnit)} />
+            </section>
           )}
 
           {activeTab === 'settings' && (
@@ -295,6 +349,8 @@ function SettingsForm({
                     </select>
                   ) : isSecretSetting(key) ? (
                     <input type="password" value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
+                  ) : key.endsWith('Color') ? (
+                    <input type="color" value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
                   ) : (
                     <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
                   )}
@@ -332,6 +388,8 @@ function isDisabledPlatformSetting(values: Record<string, string | number | bool
 
 const settingGroups = [
   { title: '基本', keys: ['bbsTitle', 'homePageUrl', 'manualTitle', 'manualBody', 'gdgdEnabled', 'gdgdLabel', 'logView', 'maxUploadBytes', 'maxImageWidth', 'maxImageHeight', 'normalFrameColor', 'gdgdFrameColor', 'backgroundColor'] },
+  { title: '簡単リアクション', keys: ['eejanaikaOmigotoText', 'eejanaikaOmigotoColor', 'eejanaikaGoodjobText', 'eejanaikaGoodjobColor', 'eejanaikaEejanaikaText', 'eejanaikaEejanaikaColor'] },
+  { title: 'SNS共通', keys: ['socialHashtags'] },
   { title: 'X', keys: ['tweetEnabled', 'tweetBaseUrl', 'tweetConsumerKey', 'tweetConsumerSecret', 'tweetAccessToken', 'tweetAccessTokenSecret'] },
   { title: 'Bluesky', keys: ['blueskyEnabled', 'blueskyServiceUrl', 'blueskyPublicApiUrl', 'blueskyHandle', 'blueskyAppPassword'] },
   { title: 'Mastodon', keys: ['mastodonEnabled', 'mastodonInstanceUrl', 'mastodonAccessToken', 'mastodonVisibility'] },
@@ -342,9 +400,202 @@ const adminTabs: Array<{ id: AdminTab; label: string }> = [
   { id: 'posts', label: '投稿管理' },
   { id: 'maintenance', label: '保守' },
   { id: 'backup', label: 'バックアップ' },
+  { id: 'analytics', label: 'アナリティクス' },
   { id: 'settings', label: '掲示板設定' },
   { id: 'deleted', label: '削除済み' },
 ];
+
+const analyticsMetricOptions: Array<{ id: AnalyticsMetric; label: string; value: (post: Post) => number }> = [
+  { id: 'postCount', label: '投稿数', value: () => 1 },
+  { id: 'commentCount', label: 'コメント数', value: (post) => post.reply_count ?? post.replies?.length ?? 0 },
+  { id: 'viewCount', label: '閲覧数', value: (post) => post.board_reactions?.views ?? post.view_count ?? 0 },
+  { id: 'boardEejanaika', label: 'ええじゃ数', value: (post) => post.board_reactions?.eejanaika ?? 0 },
+  { id: 'boardOmigoto', label: 'お美事数', value: (post) => post.board_reactions?.omigoto ?? 0 },
+  { id: 'boardGoodjob', label: 'いい仕事数', value: (post) => post.board_reactions?.goodjob ?? 0 },
+  { id: 'xLikes', label: 'Xいいね数', value: (post) => post.social_reactions?.x?.likes ?? 0 },
+  { id: 'xReposts', label: 'Xリポスト数', value: (post) => post.social_reactions?.x?.reposts ?? 0 },
+  { id: 'xImpressions', label: 'X表示数', value: (post) => post.social_reactions?.x?.impressions ?? 0 },
+  { id: 'blueskyLikes', label: 'Blueskyいいね数', value: (post) => post.social_reactions?.bluesky?.likes ?? 0 },
+  { id: 'blueskyReposts', label: 'Blueskyリポスト数', value: (post) => post.social_reactions?.bluesky?.reposts ?? 0 },
+  { id: 'mastodonBoosts', label: 'Mastodonブースト数', value: (post) => post.social_reactions?.mastodon?.boosts ?? 0 },
+  { id: 'mastodonFavs', label: 'Mastodon favo数', value: (post) => post.social_reactions?.mastodon?.favs ?? 0 },
+  {
+    id: 'misskeyReactions',
+    label: 'Misskeyリアクション数',
+    value: (post) => {
+      const reactions = post.social_reactions?.misskey;
+      return reactions ? reactions.fire + reactions.eyes + reactions.cry + reactions.thinking + reactions.party + reactions.other : 0;
+    },
+  },
+  { id: 'misskeyFire', label: 'Misskey 🔥数', value: (post) => post.social_reactions?.misskey?.fire ?? 0 },
+  { id: 'misskeyEyes', label: 'Misskey 👀数', value: (post) => post.social_reactions?.misskey?.eyes ?? 0 },
+  { id: 'misskeyCry', label: 'Misskey 😭数', value: (post) => post.social_reactions?.misskey?.cry ?? 0 },
+  { id: 'misskeyThinking', label: 'Misskey 🤔数', value: (post) => post.social_reactions?.misskey?.thinking ?? 0 },
+  { id: 'misskeyParty', label: 'Misskey 🎉数', value: (post) => post.social_reactions?.misskey?.party ?? 0 },
+  { id: 'misskeyOther', label: 'Misskey その他数', value: (post) => post.social_reactions?.misskey?.other ?? 0 },
+];
+
+const analyticsUnitOptions: Array<{ id: AnalyticsUnit; label: string }> = [
+  { id: 'dayTotal', label: '日の合計' },
+  { id: 'dayCumulative', label: '日の累積' },
+  { id: 'monthTotal', label: '月の合計' },
+  { id: 'monthAverage', label: '月平均' },
+  { id: 'monthCumulative', label: '月の累積' },
+  { id: 'yearTotal', label: '年の合計' },
+  { id: 'yearAverage', label: '年平均' },
+  { id: 'yearCumulative', label: '年の累積' },
+];
+
+type AnalyticsRow = {
+  label: string;
+  total: number;
+  divisor: number;
+  value: number;
+};
+
+function AnalyticsChart({ rows }: { rows: AnalyticsRow[] }) {
+  const max = Math.max(...rows.map((row) => row.value), 0);
+
+  if (rows.length === 0) {
+    return <p>表示できる統計データはありません。</p>;
+  }
+
+  return (
+    <div className="admin-analytics-output">
+      <AnalyticsLineChart rows={rows} max={max} />
+      <div className="admin-analytics-chart" role="img" aria-label="投稿作品の統計グラフ">
+        {rows.map((row) => (
+          <div className="admin-analytics-bar-row" key={row.label}>
+            <span className="admin-analytics-bar-label">{row.label}</span>
+            <div className="admin-analytics-bar-track">
+              <span className="admin-analytics-bar" style={{ width: `${row.value === 0 || max === 0 ? 0 : Math.max(3, (row.value / max) * 100)}%` }} />
+            </div>
+            <span className="admin-analytics-bar-value">{formatAnalyticsValue(row.value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsLineChart({ rows, max }: { rows: AnalyticsRow[]; max: number }) {
+  const width = 720;
+  const height = 220;
+  const padding = { top: 18, right: 18, bottom: 48, left: 42 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const denominator = max > 0 ? max : 1;
+  const points = rows.map((row, index) => {
+    const x = padding.left + (rows.length === 1 ? chartWidth / 2 : (index / (rows.length - 1)) * chartWidth);
+    const y = padding.top + chartHeight - (row.value / denominator) * chartHeight;
+    return { ...row, x, y };
+  });
+  const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const ticks = [0, denominator / 2, denominator];
+
+  return (
+    <div className="admin-analytics-line-wrap">
+      <svg className="admin-analytics-line-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="投稿作品の推移グラフ">
+        {ticks.map((tick) => {
+          const y = padding.top + chartHeight - (tick / denominator) * chartHeight;
+          return (
+            <g key={tick}>
+              <line x1={padding.left} x2={width - padding.right} y1={y} y2={y} className="admin-analytics-grid-line" />
+              <text x={padding.left - 8} y={y + 4} textAnchor="end" className="admin-analytics-axis-label">{formatAnalyticsValue(tick)}</text>
+            </g>
+          );
+        })}
+        <line x1={padding.left} x2={width - padding.right} y1={padding.top + chartHeight} y2={padding.top + chartHeight} className="admin-analytics-axis-line" />
+        <line x1={padding.left} x2={padding.left} y1={padding.top} y2={padding.top + chartHeight} className="admin-analytics-axis-line" />
+        {path && <path d={path} className="admin-analytics-line" />}
+        {points.map((point, index) => {
+          const showLabel = rows.length <= 8 || index === 0 || index === rows.length - 1 || index % Math.ceil(rows.length / 6) === 0;
+          return (
+            <g key={point.label}>
+              <circle cx={point.x} cy={point.y} r="4" className="admin-analytics-line-point" />
+              {showLabel && (
+                <text x={point.x} y={height - 18} textAnchor="middle" className="admin-analytics-axis-label">
+                  {point.label}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function buildAnalyticsRows(posts: Post[], metric: AnalyticsMetric, unit: AnalyticsUnit): AnalyticsRow[] {
+  const metricOption = analyticsMetricOptions.find((option) => option.id === metric) ?? analyticsMetricOptions[0];
+  const buckets = new Map<string, { total: number; date: Date }>();
+
+  posts.forEach((post) => {
+    const date = parsePostDate(post.created_at);
+    if (!date) return;
+    const key = analyticsBucketKey(date, unit);
+    const current = buckets.get(key) ?? { total: 0, date };
+    current.total += metricOption.value(post);
+    buckets.set(key, current);
+  });
+
+  let cumulative = 0;
+
+  return Array.from(buckets.entries())
+    .sort(([, left], [, right]) => left.date.getTime() - right.date.getTime())
+    .map(([label, bucket]) => {
+      const divisor = analyticsDivisor(bucket.date, unit);
+      cumulative += bucket.total;
+      const value = isCumulativeAnalyticsUnit(unit) ? cumulative : bucket.total / divisor;
+      return {
+        label,
+        total: bucket.total,
+        divisor,
+        value,
+      };
+    });
+}
+
+function analyticsBucketKey(date: Date, unit: AnalyticsUnit): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  if (unit === 'dayTotal' || unit === 'dayCumulative') {
+    return `${year}-${month}-${day}`;
+  }
+  if (unit === 'yearTotal' || unit === 'yearAverage' || unit === 'yearCumulative') {
+    return String(year);
+  }
+  return `${year}-${month}`;
+}
+
+function analyticsDivisor(date: Date, unit: AnalyticsUnit): number {
+  if (unit === 'monthAverage') {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  }
+  if (unit === 'yearAverage') {
+    return 12;
+  }
+  return 1;
+}
+
+function isCumulativeAnalyticsUnit(unit: AnalyticsUnit): boolean {
+  return unit === 'dayCumulative' || unit === 'monthCumulative' || unit === 'yearCumulative';
+}
+
+function parsePostDate(value: string): Date | null {
+  const normalized = value.includes('T') ? value : value.replace(' ', 'T');
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatAnalyticsValue(value: number): string {
+  if (Number.isInteger(value)) {
+    return value.toLocaleString('ja-JP');
+  }
+  return value.toLocaleString('ja-JP', { maximumFractionDigits: 2 });
+}
 
 const settingLabels: Record<string, string> = {
   bbsTitle: '掲示板タイトル',
@@ -369,6 +620,13 @@ const settingLabels: Record<string, string> = {
   misskeyEnabled: 'Misskey機能',
   misskeyInstanceUrl: 'MisskeyインスタンスURL',
   misskeyAccessToken: 'Misskey Access Token',
+  eejanaikaOmigotoText: 'お美事の文字列',
+  eejanaikaOmigotoColor: 'お美事の文字色',
+  eejanaikaGoodjobText: 'いい仕事の文字列',
+  eejanaikaGoodjobColor: 'いい仕事の文字色',
+  eejanaikaEejanaikaText: 'ええじゃの文字列',
+  eejanaikaEejanaikaColor: 'ええじゃの文字色',
+  socialHashtags: 'SNS投稿ハッシュタグ',
   gdgdEnabled: 'gdgd投稿機能',
   gdgdLabel: 'gdgd投稿の表示名',
   logView: '一覧表示件数',

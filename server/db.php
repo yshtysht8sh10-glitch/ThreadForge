@@ -62,7 +62,8 @@ function initializeDatabase(PDO $pdo): void
             misskey_cry_count INTEGER NOT NULL DEFAULT 0,
             misskey_thinking_count INTEGER NOT NULL DEFAULT 0,
             misskey_party_count INTEGER NOT NULL DEFAULT 0,
-            misskey_other_count INTEGER NOT NULL DEFAULT 0
+            misskey_other_count INTEGER NOT NULL DEFAULT 0,
+            view_count INTEGER NOT NULL DEFAULT 0
         )'
     );
 
@@ -101,6 +102,7 @@ function initializeDatabase(PDO $pdo): void
     ensureColumnExists($pdo, 'posts', 'misskey_thinking_count', 'INTEGER NOT NULL DEFAULT 0');
     ensureColumnExists($pdo, 'posts', 'misskey_party_count', 'INTEGER NOT NULL DEFAULT 0');
     ensureColumnExists($pdo, 'posts', 'misskey_other_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'view_count', 'INTEGER NOT NULL DEFAULT 0');
 
     if (!is_dir(STORAGE_DIR)) {
         mkdir(STORAGE_DIR, 0775, true);
@@ -123,7 +125,7 @@ function ensureColumnExists(PDO $pdo, string $table, string $column, string $def
 
 function buildPost(array $row): array
 {
-    return [
+    $post = [
         'id' => (int)$row['id'],
         'thread_id' => (int)$row['thread_id'],
         'parent_id' => (int)$row['parent_id'],
@@ -138,8 +140,24 @@ function buildPost(array $row): array
         'tweet_off' => (bool)($row['tweet_off'] ?? false),
         'tweet_text' => $row['tweet_text'] ?? null,
         'tweet_url' => $row['tweet_url'] ?? null,
+        'view_count' => (int)($row['view_count'] ?? 0),
+        'board_reactions' => buildBoardReactions($row),
         'social_links' => buildSocialLinks($row),
         'social_reactions' => buildSocialReactions($row),
+    ];
+    if (array_key_exists('reply_count', $row)) {
+        $post['reply_count'] = (int)$row['reply_count'];
+    }
+    return $post;
+}
+
+function buildBoardReactions(array $row): array
+{
+    return [
+        'views' => (int)($row['view_count'] ?? 0),
+        'eejanaika' => (int)($row['eejanaika_count'] ?? 0),
+        'omigoto' => (int)($row['omigoto_count'] ?? 0),
+        'goodjob' => (int)($row['goodjob_count'] ?? 0),
     ];
 }
 
@@ -215,16 +233,16 @@ function buildDeletedPost(PDO $pdo, array $row): array
     return $post;
 }
 
-function importLegacyBbsnoteDirectory(PDO $pdo, string $legacyDir = 'data'): array
+function importLocalArchiveDirectory(PDO $pdo, string $archiveDir = 'data'): array
 {
-    $resolvedDir = resolveLegacyBbsnoteDirectory($legacyDir);
+    $resolvedDir = resolveLocalArchiveDirectory($archiveDir);
     $files = glob($resolvedDir . DIRECTORY_SEPARATOR . 'LOG_*.cgi') ?: [];
     sort($files, SORT_NATURAL);
 
     $summary = [
         'success' => true,
-        'message' => '旧BBSnoteログをインポートしました。',
-        'legacy_dir' => $resolvedDir,
+        'message' => 'ローカルアーカイブログをインポートしました。',
+        'source_dir' => $resolvedDir,
         'imported_threads' => 0,
         'imported_replies' => 0,
         'skipped_threads' => 0,
@@ -236,7 +254,7 @@ function importLegacyBbsnoteDirectory(PDO $pdo, string $legacyDir = 'data'): arr
     $pdo->beginTransaction();
     try {
         foreach ($files as $file) {
-            importLegacyBbsnoteLogFile($pdo, $file, $resolvedDir, $summary);
+            importLocalArchiveLogFile($pdo, $file, $resolvedDir, $summary);
         }
         $pdo->commit();
     } catch (Throwable $exception) {
@@ -247,42 +265,42 @@ function importLegacyBbsnoteDirectory(PDO $pdo, string $legacyDir = 'data'): arr
     return $summary;
 }
 
-function resolveLegacyBbsnoteDirectory(string $legacyDir): string
+function resolveLocalArchiveDirectory(string $archiveDir): string
 {
-    $legacyDir = trim($legacyDir);
-    if ($legacyDir === '') {
-        $legacyDir = 'data';
+    $archiveDir = trim($archiveDir);
+    if ($archiveDir === '') {
+        $archiveDir = 'data';
     }
 
     $projectRoot = dirname(__DIR__);
-    $candidate = preg_match('/^[A-Za-z]:[\/\\\\]|^[\/\\\\]/', $legacyDir)
-        ? $legacyDir
-        : $projectRoot . DIRECTORY_SEPARATOR . $legacyDir;
+    $candidate = preg_match('/^[A-Za-z]:[\/\\\\]|^[\/\\\\]/', $archiveDir)
+        ? $archiveDir
+        : $projectRoot . DIRECTORY_SEPARATOR . $archiveDir;
     $resolved = realpath($candidate);
 
     if ($resolved === false || !is_dir($resolved)) {
-        throw new InvalidArgumentException('旧BBSnoteログディレクトリが見つかりません。');
+        throw new InvalidArgumentException('ローカルアーカイブログディレクトリが見つかりません。');
     }
 
     return $resolved;
 }
 
-function importLegacyBbsnoteLogFile(PDO $pdo, string $file, string $legacyDir, array &$summary): void
+function importLocalArchiveLogFile(PDO $pdo, string $file, string $archiveDir, array &$summary): void
 {
     $raw = (string)file_get_contents($file);
-    $raw = legacyToUtf8($raw);
+    $raw = archiveToUtf8($raw);
     $lines = array_values(array_filter(preg_split('/\r\n|\n|\r/', $raw) ?: [], fn (string $line): bool => trim($line) !== ''));
 
     if (count($lines) === 0) {
         return;
     }
 
-    $main = legacyFields($lines[0], 24);
-    $name = legacyText($main[1] ?? '');
-    $createdAt = legacyDateToTimestamp($main[2] ?? '');
-    $title = legacyText($main[3] ?? '');
+    $main = archiveFields($lines[0], 24);
+    $name = archiveText($main[1] ?? '');
+    $createdAt = archiveDateToTimestamp($main[2] ?? '');
+    $title = archiveText($main[3] ?? '');
     $url = normalizeUrl($main[5] ?? null);
-    $message = legacyMessageToText($main[6] ?? '');
+    $message = archiveMessageToText($main[6] ?? '');
     $filename = basename(trim((string)($main[10] ?? '')));
     $tweetOff = toBoolFlag($main[18] ?? false);
     $tweetUrl = normalizeUrl($main[19] ?? null);
@@ -294,7 +312,7 @@ function importLegacyBbsnoteLogFile(PDO $pdo, string $file, string $legacyDir, a
         $title = 'Imported thread';
     }
 
-    $threadId = findLegacyThread($pdo, $name, $title, $message, $createdAt);
+    $threadId = findImportedArchiveThread($pdo, $name, $title, $message, $createdAt);
     if ($threadId === null) {
         $stmt = $pdo->prepare(
             'INSERT INTO posts (
@@ -310,24 +328,24 @@ function importLegacyBbsnoteLogFile(PDO $pdo, string $file, string $legacyDir, a
             ':url' => $url,
             ':title' => $title,
             ':message' => $message,
-            ':password_hash' => legacyImportedPasswordHash(),
+            ':password_hash' => importedArchivePasswordHash(),
             ':created_at' => $createdAt,
             ':tweet_off' => $tweetOff ? 1 : 0,
             ':tweet_url' => $tweetUrl,
         ]);
         $threadId = (int)$pdo->lastInsertId();
         $pdo->prepare('UPDATE posts SET thread_id = :thread_id WHERE id = :id')->execute([':thread_id' => $threadId, ':id' => $threadId]);
-        copyLegacyBbsnoteImage($pdo, $legacyDir, $filename, $threadId, $summary);
+        copyLocalArchiveImage($pdo, $archiveDir, $filename, $threadId, $summary);
         $summary['imported_threads']++;
     } else {
         $summary['skipped_threads']++;
     }
 
     for ($i = 1; $i < count($lines); $i++) {
-        $reply = legacyFields($lines[$i], 10);
-        $replyName = legacyText($reply[1] ?? '');
-        $replyCreatedAt = legacyDateToTimestamp($reply[2] ?? '');
-        $replyMessage = legacyMessageToText($reply[3] ?? '');
+        $reply = archiveFields($lines[$i], 10);
+        $replyName = archiveText($reply[1] ?? '');
+        $replyCreatedAt = archiveDateToTimestamp($reply[2] ?? '');
+        $replyMessage = archiveMessageToText($reply[3] ?? '');
         $replyUrl = normalizeUrl($reply[7] ?? null);
 
         if ($replyName === '') {
@@ -336,7 +354,7 @@ function importLegacyBbsnoteLogFile(PDO $pdo, string $file, string $legacyDir, a
         if ($replyMessage === '') {
             continue;
         }
-        if (legacyReplyExists($pdo, $threadId, $replyName, $replyMessage, $replyCreatedAt)) {
+        if (importedArchiveReplyExists($pdo, $threadId, $replyName, $replyMessage, $replyCreatedAt)) {
             $summary['skipped_replies']++;
             continue;
         }
@@ -357,19 +375,19 @@ function importLegacyBbsnoteLogFile(PDO $pdo, string $file, string $legacyDir, a
             ':url' => $replyUrl,
             ':title' => 'Re: ' . $title,
             ':message' => $replyMessage,
-            ':password_hash' => legacyImportedPasswordHash(),
+            ':password_hash' => importedArchivePasswordHash(),
             ':created_at' => $replyCreatedAt,
         ]);
         $summary['imported_replies']++;
     }
 }
 
-function legacyFields(string $line, int $count): array
+function archiveFields(string $line, int $count): array
 {
     return array_pad(explode("\t", rtrim($line, "\r\n")), $count, '');
 }
 
-function legacyToUtf8(string $value): string
+function archiveToUtf8(string $value): string
 {
     if (function_exists('mb_convert_encoding')) {
         return mb_convert_encoding($value, 'UTF-8', 'UTF-8,SJIS-win,EUC-JP,ISO-2022-JP');
@@ -377,12 +395,12 @@ function legacyToUtf8(string $value): string
     return $value;
 }
 
-function legacyText(string $value): string
+function archiveText(string $value): string
 {
     return trim(html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 }
 
-function legacyMessageToText(string $value): string
+function archiveMessageToText(string $value): string
 {
     $value = preg_replace('/<\s*br\s*\/?\s*>/i', "\n", $value) ?? $value;
     $value = preg_replace('/<\s*p\s*\/?\s*>/i', "\n\n", $value) ?? $value;
@@ -394,7 +412,7 @@ function legacyMessageToText(string $value): string
     return trim($value);
 }
 
-function legacyDateToTimestamp(string $value): string
+function archiveDateToTimestamp(string $value): string
 {
     if (preg_match('/(\d{4})\/(\d{1,2})\/(\d{1,2}).*?(\d{1,2}):(\d{1,2}):(\d{1,2})/', $value, $matches)) {
         return sprintf(
@@ -411,12 +429,12 @@ function legacyDateToTimestamp(string $value): string
     return currentTimestamp();
 }
 
-function legacyImportedPasswordHash(): string
+function importedArchivePasswordHash(): string
 {
     return password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
 }
 
-function findLegacyThread(PDO $pdo, string $name, string $title, string $message, string $createdAt): ?int
+function findImportedArchiveThread(PDO $pdo, string $name, string $title, string $message, string $createdAt): ?int
 {
     $stmt = $pdo->prepare(
         'SELECT id FROM posts
@@ -433,7 +451,7 @@ function findLegacyThread(PDO $pdo, string $name, string $title, string $message
     return $id === false ? null : (int)$id;
 }
 
-function legacyReplyExists(PDO $pdo, int $threadId, string $name, string $message, string $createdAt): bool
+function importedArchiveReplyExists(PDO $pdo, int $threadId, string $name, string $message, string $createdAt): bool
 {
     $stmt = $pdo->prepare(
         'SELECT COUNT(*) FROM posts
@@ -448,13 +466,13 @@ function legacyReplyExists(PDO $pdo, int $threadId, string $name, string $messag
     return (int)$stmt->fetchColumn() > 0;
 }
 
-function copyLegacyBbsnoteImage(PDO $pdo, string $legacyDir, string $filename, int $postId, array &$summary): void
+function copyLocalArchiveImage(PDO $pdo, string $archiveDir, string $filename, int $postId, array &$summary): void
 {
     if ($filename === '') {
         return;
     }
 
-    $source = $legacyDir . DIRECTORY_SEPARATOR . basename($filename);
+    $source = $archiveDir . DIRECTORY_SEPARATOR . basename($filename);
     if (!is_file($source)) {
         $summary['missing_images'][] = $filename;
         return;
@@ -545,23 +563,26 @@ function normalizeCount($value): int
     return $count === false || $count < 0 ? 0 : $count;
 }
 
-function buildTweetText(string $name, string $title, string $message, ?string $sourceUrl = null): string
+function buildTweetText(string $name, string $title, string $message, ?string $sourceUrl = null, ?string $hashtags = null): string
 {
-    return buildSocialPostText('x', $name, $title, $message, $sourceUrl);
+    return buildSocialPostText('x', $name, $title, $message, $sourceUrl, $hashtags);
 }
 
-function buildSocialPostText(string $platform, string $name, string $title, string $message, ?string $sourceUrl = null): string
+function buildSocialPostText(string $platform, string $name, string $title, string $message, ?string $sourceUrl = null, ?string $hashtags = null): string
 {
     $tweetMessage = preg_split('/_TWEND_/', $message, 2)[0] ?? '';
+    $tagLine = trim((string)($hashtags ?? '#ドット絵 #pixelart'));
     $text = '[DT000000：' . $title . ']' . "\n"
         . '作者：' . $name . "\n\n"
         . trim($tweetMessage) . "\n\n";
 
     if ($sourceUrl !== null && $sourceUrl !== '') {
-        $text .= '元：' . $sourceUrl . "\n";
+        $text .= '最新はこちら ' . $sourceUrl . "\n";
     }
 
-    $text .= '#ドット絵 #pixelart';
+    if ($tagLine !== '') {
+        $text .= $tagLine;
+    }
 
     return trimToSocialPostLength($text, socialPostLimit($platform), $platform === 'x');
 }
@@ -597,7 +618,7 @@ function trimToSocialPostLength(string $text, int $limit, bool $tweetWeighted = 
     }
 
     $ellipsis = '..';
-    $marker = "\n\n元：";
+    $marker = "\n\n最新はこちら ";
     $sourcePos = mb_strpos($text, $marker, 0, 'UTF-8');
     $tagPos = mb_strrpos($text, "\n#", 0, 'UTF-8');
     $tailPos = $sourcePos !== false ? $sourcePos : ($tagPos !== false ? $tagPos : false);

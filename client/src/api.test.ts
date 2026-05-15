@@ -221,6 +221,12 @@ describe('API Module', () => {
       expect(result).toEqual([]);
     });
 
+    it('should return analytics posts from mock API', async () => {
+      const result = await api.listAnalyticsPosts('admin');
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0].parent_id).toBe(0);
+    });
+
     it('should restore posts from mock API', async () => {
       const result = await api.restorePost('1', 'admin');
       expect(result).toEqual({ success: true, message: '操作が完了しました（モック）' });
