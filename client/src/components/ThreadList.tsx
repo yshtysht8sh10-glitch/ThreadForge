@@ -48,6 +48,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
   const [activePanel, setActivePanel] = useState<{ threadId: number; mode: InlineMode } | null>(null);
   const [expandedReplies, setExpandedReplies] = useState<Record<number, Post[]>>({});
   const [replyName, setReplyName] = useState(DEFAULT_REPLY_NAME);
+  const [replyNameSuffix, setReplyNameSuffix] = useState('');
   const [replyUrl, setReplyUrl] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
   const [replyPassword, setReplyPassword] = useState('');
@@ -122,6 +123,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
 
   const resetReplyDraft = () => {
     setReplyName(DEFAULT_REPLY_NAME);
+    setReplyNameSuffix('');
     setReplyUrl('');
     setReplyMessage('');
     setReplyPassword('');
@@ -193,7 +195,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
     await submitReply(thread, {
       thread_id: thread.id,
       parent_id: thread.id,
-      name: replyName,
+      name: user ? composeUserName(user.display_name, replyNameSuffix) : replyName,
       url: replyUrl,
       title: `Re: ${thread.title || '返信'}`,
       message: replyMessage,
@@ -234,6 +236,12 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
     });
   };
 
+  const deleteOwnedPost = async (post: Post) => {
+    if (!token || !window.confirm(`No.${post.display_no ?? post.id} を削除しますか？`)) return;
+    await api.deletePost(String(post.id), '', token);
+    window.location.reload();
+  };
+
   return (
     <div className="thread-list">
       {threads.length === 0 && <div className="board-message">投稿はまだありません。</div>}
@@ -261,6 +269,12 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
                 {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                 {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
               </p>
+              {user && thread.user_id === user.id && (
+                <p className="owner-post-links">
+                  <Link to={`/edit/${thread.id}`}>編集</Link>
+                  <button type="button" onClick={() => deleteOwnedPost(thread)}>削除</button>
+                </p>
+              )}
 
               {mediaUrl(thread.image_path) && (
                 <Link to={`/thread/${thread.id}`} className="board-image-link">
@@ -281,6 +295,12 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
                     {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>
                     {reply.reply_no && <> <span className="board-meta-sub">/ 返信No.{thread.display_no ?? thread.id}-{reply.reply_no}</span></>}
                   </p>
+                  {user && reply.user_id === user.id && (
+                    <p className="owner-post-links">
+                      <Link to={`/edit/${reply.id}`}>編集</Link>
+                      <button type="button" onClick={() => deleteOwnedPost(reply)}>削除</button>
+                    </p>
+                  )}
                   <div className={replyTextClassName(reply.message, settings.config)} style={replyTextStyle(reply.message, settings.config)}>
                     <LinkedText text={reply.message} />
                   </div>
@@ -304,10 +324,18 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
                     <h3>コメント</h3>
                     <button type="button" className="inline-form-close-button" onClick={() => closePanel('comment')} aria-label="コメントフォームを閉じる">×</button>
                   </div>
-                  <label>
-                    <span>名前（/30文字）<span className="required" aria-hidden="true">*</span></span>
-                    <input aria-label="名前" value={replyName} maxLength={30} onChange={(event) => setReplyName(event.target.value)} required />
-                  </label>
+                  {user ? (
+                    <label>
+                      <span>サジェスト（任意）</span>
+                      <input aria-label="サジェスト" value={replyNameSuffix} maxLength={20} onChange={(event) => setReplyNameSuffix(event.target.value)} placeholder="NAMEに @付きで表示" />
+                      <span className="inline-form-field-help">NAME: {composeUserName(user.display_name, replyNameSuffix)}</span>
+                    </label>
+                  ) : (
+                    <label>
+                      <span>名前（/30文字）<span className="required" aria-hidden="true">*</span></span>
+                      <input aria-label="名前" value={replyName} maxLength={30} onChange={(event) => setReplyName(event.target.value)} required />
+                    </label>
+                  )}
                   <label>
                     URL / HOME
                     <input value={replyUrl} onChange={(event) => setReplyUrl(event.target.value)} placeholder="https://example.com" />
@@ -400,6 +428,11 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
 function shortReactionLabel(value: string): string {
   const chars = Array.from(value.trim());
   return chars.length > 4 ? `${chars.slice(0, 4).join('')}..` : value;
+}
+
+function composeUserName(displayName: string, suffix: string): string {
+  const trimmed = suffix.trim();
+  return trimmed === '' ? displayName : `${displayName}@${trimmed}`;
 }
 
 function threadClassName(thread: Post): string {

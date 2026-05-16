@@ -240,6 +240,8 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
     case 'listBoardAnalyticsPosts':
     case 'listRankingPosts':
       return mockPosts as T;
+    case 'listUserDashboard':
+      return { success: true, posts: mockPosts, analytics_posts: mockPosts } as T;
     case 'getThread':
       const threadId = params.get('id');
       const thread = mockPosts.find(p => p.id === Number(threadId));
@@ -266,6 +268,8 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
           icon_path: null,
         },
       } as T;
+    case 'checkLoginId':
+      return { success: true, available: true } as T;
     case 'getSettings':
       return {
         success: true,
@@ -290,6 +294,8 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
     case 'updatePost':
     case 'deletePost':
     case 'recordPostView':
+    case 'recordAccess':
+    case 'claimUserPost':
     case 'restorePost':
     case 'adminDeletePosts':
     case 'updateSettings':
@@ -338,8 +344,16 @@ export const api = {
   publicSettings: async (): Promise<{ success: boolean; settings: PublicSettings }> => {
     return fetchJson<{ success: boolean; settings: PublicSettings }>(`${apiBase()}?action=publicSettings`);
   },
+  recordAccess: async (): Promise<{ success: boolean; access_count: number }> => {
+    const formData = new FormData();
+    formData.append('action', 'recordAccess');
+    return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
+  },
   search: async (q: string, scope = 'all'): Promise<SearchResult[]> => {
     return fetchJson<SearchResult[]>(`${apiBase()}?action=search&q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scope)}`);
+  },
+  checkLoginId: async (loginId: string): Promise<{ success: boolean; available: boolean; message?: string }> => {
+    return fetchJson(`${apiBase()}?action=checkLoginId&login_id=${encodeURIComponent(loginId)}`);
   },
   loginUser: async (loginId: string, password: string): Promise<{ success: boolean; token: string; user: UserProfile; message?: string }> => {
     const formData = new FormData();
@@ -378,6 +392,18 @@ export const api = {
     }
     return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
   },
+  listUserDashboard: async (token: string): Promise<{ success: boolean; posts: Post[]; analytics_posts: Post[] }> => {
+    return fetchJson(`${apiBase()}?action=listUserDashboard`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  claimUserPost: async (token: string, id: string): Promise<{ success: boolean; message: string }> => {
+    const formData = new FormData();
+    formData.append('action', 'claimUserPost');
+    formData.append('auth_token', token);
+    formData.append('id', id);
+    return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
+  },
   logoutUser: async (token: string): Promise<{ success: boolean }> => {
     const formData = new FormData();
     formData.append('action', 'logoutUser');
@@ -409,11 +435,14 @@ export const api = {
       body: payload,
     });
   },
-  deletePost: async (id: string, password: string): Promise<{ success: boolean; message: string }> => {
+  deletePost: async (id: string, password: string, token?: string | null): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();
     formData.append('action', 'deletePost');
     formData.append('id', id);
     formData.append('password', password);
+    if (token) {
+      formData.append('auth_token', token);
+    }
     return fetchJson(`${apiBase()}`, {
       method: 'POST',
       body: formData,

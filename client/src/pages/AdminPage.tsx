@@ -9,7 +9,7 @@ type Settings = {
 };
 
 type AdminTab = 'posts' | 'maintenance' | 'backup' | 'analytics' | 'settings' | 'deleted';
-type AnalyticsMetric = 'postCount' | 'commentCount' | 'viewCount' | 'boardEejanaika' | 'boardOmigoto' | 'boardGoodjob' | 'xLikes' | 'xReposts' | 'xImpressions' | 'blueskyLikes' | 'blueskyReposts' | 'mastodonBoosts' | 'mastodonFavs' | 'misskeyReactions' | 'misskeyFire' | 'misskeyEyes' | 'misskeyCry' | 'misskeyThinking' | 'misskeyParty' | 'misskeyOther';
+type AnalyticsMetric = 'postCount' | 'commentCount' | 'accessCount' | 'viewCount' | 'boardEejanaika' | 'boardOmigoto' | 'boardGoodjob' | 'xLikes' | 'xReposts' | 'xImpressions' | 'blueskyLikes' | 'blueskyReposts' | 'mastodonBoosts' | 'mastodonFavs' | 'misskeyReactions' | 'misskeyFire' | 'misskeyEyes' | 'misskeyCry' | 'misskeyThinking' | 'misskeyParty' | 'misskeyOther';
 type AnalyticsUnit = 'dayTotal' | 'dayCumulative' | 'monthTotal' | 'monthAverage' | 'monthCumulative' | 'yearTotal' | 'yearAverage' | 'yearCumulative';
 
 const DEFAULT_HIDDEN_ADMIN_PASSWORD = 'admin';
@@ -406,8 +406,9 @@ const adminTabs: Array<{ id: AdminTab; label: string }> = [
 ];
 
 const analyticsMetricOptions: Array<{ id: AnalyticsMetric; label: string; value: (post: Post) => number }> = [
-  { id: 'postCount', label: '投稿数', value: () => 1 },
-  { id: 'commentCount', label: 'コメント数', value: (post) => post.reply_count ?? post.replies?.length ?? 0 },
+  { id: 'postCount', label: '投稿数', value: (post) => post.analytics_kind === 'access' ? 0 : 1 },
+  { id: 'commentCount', label: 'コメント数', value: (post) => post.analytics_kind === 'access' ? 0 : post.reply_count ?? post.replies?.length ?? 0 },
+  { id: 'accessCount', label: 'アクセス数', value: (post) => post.access_count ?? 0 },
   { id: 'viewCount', label: '閲覧数', value: (post) => post.board_reactions?.views ?? post.view_count ?? 0 },
   { id: 'boardEejanaika', label: 'ええじゃ数', value: (post) => post.board_reactions?.eejanaika ?? 0 },
   { id: 'boardOmigoto', label: 'お美事数', value: (post) => post.board_reactions?.omigoto ?? 0 },

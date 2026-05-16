@@ -48,6 +48,12 @@ function handleApiRequest(): void
         case 'publicSettings':
             publicSettings($pdo);
             break;
+        case 'recordAccess':
+            recordAccess($pdo);
+            break;
+        case 'checkLoginId':
+            checkLoginId($pdo);
+            break;
         case 'registerUser':
             registerUser($pdo);
             break;
@@ -62,6 +68,12 @@ function handleApiRequest(): void
             break;
         case 'updateUserProfile':
             updateUserProfile($pdo);
+            break;
+        case 'listUserDashboard':
+            listUserDashboard($pdo);
+            break;
+        case 'claimUserPost':
+            claimUserPost($pdo);
             break;
         case 'createPost':
             createPost($pdo);
@@ -143,7 +155,7 @@ function buildThreadSummary(PDO $pdo, array $thread, int $replyLimit): array
     $post = buildPost($thread);
     $post['display_no'] = threadDisplayNo($pdo, (int)$thread['id']);
 
-    $replyStmt = $pdo->prepare('SELECT * FROM posts WHERE thread_id = :thread_id AND id != :thread_id AND deleted_at IS NULL ORDER BY created_at ASC LIMIT :limit');
+    $replyStmt = $pdo->prepare('SELECT ' . postSelectWithUserIcon('p') . ' FROM posts p WHERE p.thread_id = :thread_id AND p.id != :thread_id AND p.deleted_at IS NULL ORDER BY p.created_at ASC LIMIT :limit');
     $replyStmt->bindValue(':thread_id', (int)$thread['id'], PDO::PARAM_INT);
     $replyStmt->bindValue(':limit', $replyLimit, PDO::PARAM_INT);
     $replyStmt->execute();
@@ -171,6 +183,13 @@ function postSelectWithBoardStats(string $alias): string
         (SELECT COUNT(*) FROM posts r WHERE r.thread_id = ' . $prefix . 'id AND r.parent_id != 0 AND r.deleted_at IS NULL AND r.message = :goodjob_text) AS goodjob_count';
 }
 
+function postSelectWithUserIcon(string $alias): string
+{
+    $prefix = $alias . '.';
+    return $alias . '.*,
+        (SELECT u.icon_path FROM users u WHERE u.id = ' . $prefix . 'user_id) AS user_icon_path';
+}
+
 function bindBoardStatTexts(PDOStatement $stmt, PDO $pdo): void
 {
     $config = loadSettings($pdo)['config'] ?? [];
@@ -196,7 +215,7 @@ function getThread(PDO $pdo): void
         jsonResponse(['success' => false, 'message' => 'スレッドが見つかりません。'], 404);
     }
 
-    $replyStmt = $pdo->prepare('SELECT * FROM posts WHERE thread_id = :thread_id AND id != :thread_id AND deleted_at IS NULL ORDER BY created_at ASC');
+    $replyStmt = $pdo->prepare('SELECT ' . postSelectWithUserIcon('p') . ' FROM posts p WHERE p.thread_id = :thread_id AND p.id != :thread_id AND p.deleted_at IS NULL ORDER BY p.created_at ASC');
     $replyStmt->execute([':thread_id' => $id]);
     $replies = $replyStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -283,6 +302,31 @@ function appVersion(): string
     return '0.0.0-dev';
 }
 
+function recordAccess(PDO $pdo): void
+{
+    $date = (new DateTimeImmutable('now', new DateTimeZone('Asia/Tokyo')))->format('Y-m-d');
+    $stmt = $pdo->prepare(
+        'INSERT INTO access_counts (access_date, count) VALUES (:access_date, 1)
+         ON CONFLICT(access_date) DO UPDATE SET count = count + 1'
+    );
+    $stmt->execute([':access_date' => $date]);
+    $select = $pdo->prepare('SELECT count FROM access_counts WHERE access_date = :access_date');
+    $select->execute([':access_date' => $date]);
+    jsonResponse(['success' => true, 'access_count' => (int)$select->fetchColumn()]);
+}
+
+function checkLoginId(PDO $pdo): void
+{
+    $loginId = normalizeLoginId($_GET['login_id'] ?? $_POST['login_id'] ?? '');
+    if ($loginId === '') {
+        jsonResponse(['success' => true, 'available' => false, 'message' => 'IDは3-40文字の半角英数字、_、.、-で入力してください。']);
+    }
+    jsonResponse([
+        'success' => true,
+        'available' => findUserByLoginId($pdo, $loginId) === null,
+    ]);
+}
+
 function registerUser(PDO $pdo): void
 {
     $loginId = normalizeLoginId($_POST['login_id'] ?? '');
@@ -296,6 +340,9 @@ function registerUser(PDO $pdo): void
     }
     if (strlen($password) < 8) {
         jsonResponse(['success' => false, 'message' => 'ログインパスワードは8文字以上にしてください。'], 400);
+    }
+    if (findUserByLoginId($pdo, $loginId) !== null) {
+        jsonResponse(['success' => false, 'message' => 'そのIDは既に使われています。'], 409);
     }
 
     $now = currentTimestamp();
@@ -390,6 +437,86 @@ function updateUserProfile(PDO $pdo): void
     ]);
 
     jsonResponse(['success' => true, 'user' => buildUser(findUserById($pdo, (int)$user['id']))]);
+}
+
+function listUserDashboard(PDO $pdo): void
+{
+    $user = requireUser($pdo);
+    $userId = (int)$user['id'];
+    $stmt = $pdo->prepare(
+        'SELECT ' . postSelectWithBoardStats('p') . ',
+            CASE WHEN p.user_id = :can_manage_user_id THEN 1 ELSE 0 END AS can_manage,
+            CASE WHEN c.post_id IS NOT NULL THEN 1 ELSE 0 END AS claimed_by_user
+         FROM posts p
+         LEFT JOIN user_post_claims c ON c.post_id = p.id AND c.user_id = :claim_join_user_id
+         WHERE p.deleted_at IS NULL
+           AND (p.user_id = :owner_user_id OR c.user_id = :claim_filter_user_id)
+         ORDER BY p.created_at DESC'
+    );
+    bindBoardStatTexts($stmt, $pdo);
+    $stmt->bindValue(':can_manage_user_id', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':claim_join_user_id', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':owner_user_id', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':claim_filter_user_id', $userId, PDO::PARAM_INT);
+    $stmt->execute();
+    $posts = array_map(
+        fn (array $row): array => decorateUserPost($pdo, $row),
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+    );
+
+    jsonResponse([
+        'success' => true,
+        'posts' => $posts,
+        'analytics_posts' => array_values(array_filter($posts, fn (array $post): bool => (int)$post['parent_id'] === 0)),
+    ]);
+}
+
+function claimUserPost(PDO $pdo): void
+{
+    $user = requireUser($pdo);
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    if ($id === false || $id === null) {
+        jsonResponse(['success' => false, 'message' => '投稿IDが不正です。'], 400);
+    }
+    $post = findPost($pdo, $id);
+    if ((!$post || $post['deleted_at'] !== null) && $id > 0) {
+        $displayPostId = postIdFromDisplayNo($pdo, $id);
+        if ($displayPostId !== null) {
+            $id = $displayPostId;
+            $post = findPost($pdo, $id);
+        }
+    }
+    if (!$post || $post['deleted_at'] !== null) {
+        jsonResponse(['success' => false, 'message' => '投稿が見つかりません。'], 404);
+    }
+    $stmt = $pdo->prepare('INSERT OR IGNORE INTO user_post_claims (user_id, post_id, created_at) VALUES (:user_id, :post_id, :created_at)');
+    $stmt->execute([
+        ':user_id' => (int)$user['id'],
+        ':post_id' => $id,
+        ':created_at' => currentTimestamp(),
+    ]);
+    jsonResponse(['success' => true, 'message' => '自分の作品として登録しました。']);
+}
+
+function decorateUserPost(PDO $pdo, array $row): array
+{
+    $post = buildPost($row);
+    if ((int)$row['parent_id'] === 0) {
+        return withDisplayNo($pdo, $post, (int)$row['id']);
+    }
+    return withReplyNo($pdo, $post, (int)$row['thread_id'], (int)$row['id']);
+}
+
+function postIdFromDisplayNo(PDO $pdo, int $displayNo): ?int
+{
+    if ($displayNo < 1) {
+        return null;
+    }
+    $stmt = $pdo->prepare('SELECT id FROM posts WHERE parent_id = 0 AND deleted_at IS NULL ORDER BY id ASC LIMIT 1 OFFSET :offset');
+    $stmt->bindValue(':offset', $displayNo - 1, PDO::PARAM_INT);
+    $stmt->execute();
+    $id = $stmt->fetchColumn();
+    return $id === false ? null : (int)$id;
 }
 
 function createPost(PDO $pdo): void
@@ -1369,8 +1496,9 @@ function updatePost(PDO $pdo): void
     $title = normalizeString($_POST['title'] ?? '');
     $message = normalizeString($_POST['message'] ?? '');
     $password = $_POST['password'] ?? '';
+    $user = optionalUser($pdo);
 
-    if ($id === false || $id === null || $name === '' || $title === '' || $message === '' || $password === '') {
+    if ($id === false || $id === null || $name === '' || $title === '' || $message === '') {
         jsonResponse(['success' => false, 'message' => '投稿ID・名前・タイトル・本文・パスワードは必須です。'], 400);
     }
 
@@ -1379,7 +1507,8 @@ function updatePost(PDO $pdo): void
         jsonResponse(['success' => false, 'message' => '投稿が見つかりません。'], 404);
     }
 
-    if (!password_verify($password, $post['password_hash'])) {
+    $isOwner = $user && isset($post['user_id']) && (int)$post['user_id'] === (int)$user['id'];
+    if (!$isOwner && ($password === '' || !password_verify($password, $post['password_hash']))) {
         jsonResponse(['success' => false, 'message' => 'パスワードが一致しません。'], 403);
     }
 
@@ -1450,8 +1579,9 @@ function deletePost(PDO $pdo): void
 {
     $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
     $password = $_POST['password'] ?? '';
+    $user = optionalUser($pdo);
 
-    if ($id === false || $id === null || $password === '') {
+    if ($id === false || $id === null) {
         jsonResponse(['success' => false, 'message' => '投稿IDとパスワードは必須です。'], 400);
     }
 
@@ -1460,7 +1590,8 @@ function deletePost(PDO $pdo): void
         jsonResponse(['success' => false, 'message' => '投稿が見つかりません。'], 404);
     }
 
-    if (!password_verify($password, $post['password_hash'])) {
+    $isOwner = $user && isset($post['user_id']) && (int)$post['user_id'] === (int)$user['id'];
+    if (!$isOwner && ($password === '' || !password_verify($password, $post['password_hash']))) {
         jsonResponse(['success' => false, 'message' => 'パスワードが一致しません。'], 403);
     }
 
@@ -1504,8 +1635,33 @@ function listAnalyticsPosts(PDO $pdo): void
     $stmt = $pdo->prepare('SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.parent_id = 0 AND p.deleted_at IS NULL ORDER BY p.created_at ASC');
     bindBoardStatTexts($stmt, $pdo);
     $stmt->execute();
+    $posts = array_map('buildPost', $stmt->fetchAll(PDO::FETCH_ASSOC));
 
-    jsonResponse(array_map('buildPost', $stmt->fetchAll(PDO::FETCH_ASSOC)));
+    $accessStmt = $pdo->query('SELECT access_date, count FROM access_counts ORDER BY access_date ASC');
+    $accessRows = array_map(
+        fn (array $row): array => [
+            'id' => -abs((int)str_replace('-', '', (string)$row['access_date'])),
+            'thread_id' => 0,
+            'parent_id' => 0,
+            'name' => 'access',
+            'title' => 'access',
+            'message' => '',
+            'created_at' => (string)$row['access_date'] . ' 00:00:00',
+            'gdgd' => false,
+            'tweet_off' => true,
+            'user_id' => null,
+            'user_icon_path' => null,
+            'view_count' => 0,
+            'access_count' => (int)$row['count'],
+            'analytics_kind' => 'access',
+            'board_reactions' => ['views' => 0, 'eejanaika' => 0, 'omigoto' => 0, 'goodjob' => 0],
+            'social_links' => [],
+            'social_reactions' => [],
+        ],
+        $accessStmt->fetchAll(PDO::FETCH_ASSOC)
+    );
+
+    jsonResponse(array_merge($posts, $accessRows));
 }
 
 function recordPostView(PDO $pdo): void

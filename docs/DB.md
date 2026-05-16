@@ -57,11 +57,61 @@ CREATE TABLE IF NOT EXISTS posts (
   misskey_cry_count INTEGER NOT NULL DEFAULT 0,
   misskey_thinking_count INTEGER NOT NULL DEFAULT 0,
   misskey_party_count INTEGER NOT NULL DEFAULT 0,
-  misskey_other_count INTEGER NOT NULL DEFAULT 0
+  misskey_other_count INTEGER NOT NULL DEFAULT 0,
+  user_id INTEGER,
+  view_count INTEGER NOT NULL DEFAULT 0
 )
 ```
 
 Social columns store per-platform destination IDs/URLs and cached reaction counts. X keeps the `tweet_*` column names for compatibility.
+`user_id` is set only for posts/replies created while logged in. Later "this is my work" links are stored separately so more than one user can claim the same imported or historical post.
+
+## users / user_sessions Tables
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  login_id TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  display_name TEXT NOT NULL DEFAULT "",
+  post_password TEXT NOT NULL DEFAULT "",
+  home_url TEXT,
+  icon_path TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+```
+
+## user_post_claims Table
+
+```sql
+CREATE TABLE IF NOT EXISTS user_post_claims (
+  user_id INTEGER NOT NULL,
+  post_id INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, post_id)
+);
+```
+
+This table links a user to a post they marked as their own. It intentionally does not make `post_id` unique, so overlapping claims are allowed.
+
+## access_counts Table
+
+```sql
+CREATE TABLE IF NOT EXISTS access_counts (
+  access_date TEXT PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 0
+);
+```
+
+The frontend records one access when the app shell loads. Admin analytics can graph this as `accessCount`.
 
 ## settings Table
 

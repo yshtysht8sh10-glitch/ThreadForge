@@ -17,7 +17,7 @@ const RankingPage = () => {
 
   return (
     <section className="card ranking-page">
-      <h1>ランキング</h1>
+      <h1>順位</h1>
       <label>
         表示データ
         <select value={metric} onChange={(event) => setMetric(event.target.value as MetricId)}>

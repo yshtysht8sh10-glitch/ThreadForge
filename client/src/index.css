@@ -383,6 +383,26 @@ img.thumbnail {
   color: #5f86aa;
 }
 
+.owner-post-links {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin: -0.25rem 0 0.35rem;
+  font-size: 0.78rem;
+}
+
+.owner-post-links button {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9ed8ff;
+  box-shadow: none;
+  font: inherit;
+  text-decoration: underline;
+}
+
 .board-image-link {
   display: block;
   text-align: center;
@@ -985,6 +1005,50 @@ button.post-reset-button:hover {
   border: 1px solid #6f7885;
   border-radius: 6px;
   object-fit: cover;
+}
+
+.account-claim-form {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.account-analytics,
+.account-posts {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.account-post-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  border-top: 1px solid #334155;
+  padding: 0.55rem 0;
+}
+
+.account-post-row p {
+  margin: 0.25rem 0 0;
+  color: #9ca3af;
+  font-size: 0.82rem;
+}
+
+.account-post-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.account-post-actions button {
+  display: inline;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9ed8ff;
+  box-shadow: none;
+  font: inherit;
+  text-decoration: underline;
 }
 
 .ranking-list,

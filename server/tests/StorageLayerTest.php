@@ -54,6 +54,14 @@ final class StorageLayerTest extends TestCase
         $this->assertContains('tweet_retweet_count', $columnNames);
         $this->assertContains('tweet_comment_count', $columnNames);
         $this->assertContains('tweet_impression_count', $columnNames);
+        $this->assertContains('user_id', $columnNames);
+        $this->assertContains('view_count', $columnNames);
+
+        $tables = $pdo->query("SELECT name FROM sqlite_master WHERE type='table'")->fetchAll(PDO::FETCH_COLUMN);
+        $this->assertContains('users', $tables);
+        $this->assertContains('user_sessions', $tables);
+        $this->assertContains('user_post_claims', $tables);
+        $this->assertContains('access_counts', $tables);
     }
 
     // #sym:describe buildPost
@@ -88,6 +96,17 @@ final class StorageLayerTest extends TestCase
         $this->assertTrue($post['gdgd']);
         $this->assertFalse($post['tweet_off']);
         $this->assertArrayNotHasKey('tweet_impression_count', $post);
+    }
+
+    public function testUserPostClaimsAllowMultipleUsersForOnePost(): void
+    {
+        $pdo = getConnection();
+        $pdo->exec("INSERT INTO user_post_claims (user_id, post_id, created_at) VALUES (1, 10, '2026-05-16 10:00:00')");
+        $pdo->exec("INSERT INTO user_post_claims (user_id, post_id, created_at) VALUES (2, 10, '2026-05-16 10:01:00')");
+
+        $count = (int)$pdo->query('SELECT COUNT(*) FROM user_post_claims WHERE post_id = 10')->fetchColumn();
+
+        $this->assertSame(2, $count);
     }
 
     // #sym:describe normalizeString

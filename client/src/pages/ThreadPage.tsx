@@ -45,6 +45,7 @@ const ThreadPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [replyName, setReplyName] = useState('Blank');
+  const [replyNameSuffix, setReplyNameSuffix] = useState('');
   const [replyUrl, setReplyUrl] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
   const [replyPassword, setReplyPassword] = useState('');
@@ -111,6 +112,7 @@ const ThreadPage = () => {
       await loadThread();
       setReplyStatus('返信を投稿しました。');
       setReplyName('Blank');
+      setReplyNameSuffix('');
       setReplyUrl('');
       setReplyMessage('');
       setReplyPassword('');
@@ -126,7 +128,7 @@ const ThreadPage = () => {
     event.preventDefault();
     if (!id) return;
 
-    if (!replyName || !replyMessage || !replyPassword) {
+    if ((!user && !replyName) || !replyMessage || !replyPassword) {
       setError('返信には名前、本文、パスワードが必要です。');
       return;
     }
@@ -134,7 +136,7 @@ const ThreadPage = () => {
     await submitReply({
       thread_id: Number(id),
       parent_id: Number(id),
-      name: replyName,
+      name: user ? composeUserName(user.display_name, replyNameSuffix) : replyName,
       url: replyUrl,
       title: `Re: ${threadData?.thread?.title || '返信'}`,
       message: replyMessage,
@@ -147,7 +149,7 @@ const ThreadPage = () => {
     event.preventDefault();
     if (!id) return;
 
-    if (!eejanaikaName) {
+    if (!user && !eejanaikaName) {
       setError('ええじゃないか投稿には名前が必要です。');
       return;
     }
@@ -155,7 +157,7 @@ const ThreadPage = () => {
     await submitReply({
       thread_id: Number(id),
       parent_id: Number(id),
-      name: eejanaikaName,
+      name: user ? user.display_name : eejanaikaName,
       title: `Re: ${threadData?.thread?.title || '返信'}`,
       message: eejanaikaMessage,
       password: user?.post_password || 'eejanaika',
@@ -165,6 +167,12 @@ const ThreadPage = () => {
 
   const thread = threadData?.thread;
   const replies = threadData?.replies ?? [];
+
+  const deleteOwnedPost = async (post: Post) => {
+    if (!token || !window.confirm(`No.${post.display_no ?? post.id} を削除しますか？`)) return;
+    await api.deletePost(String(post.id), '', token);
+    await loadThread();
+  };
 
   return (
     <div className="thread-detail-page">
@@ -186,6 +194,12 @@ const ThreadPage = () => {
                   {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                   {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
                 </p>
+                {user && thread.user_id === user.id && (
+                  <p className="owner-post-links">
+                    <button type="button" onClick={() => navigate(`/edit/${thread.id}`)}>編集</button>
+                    <button type="button" onClick={() => deleteOwnedPost(thread)}>削除</button>
+                  </p>
+                )}
 
                 {mediaUrl(thread.image_path) && (
                   <a href={mediaUrl(thread.image_path) ?? undefined} className="board-image-link" target="_blank" rel="noreferrer">
@@ -212,6 +226,12 @@ const ThreadPage = () => {
                       {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>
                       {reply.reply_no && <> <span className="board-meta-sub">/ 返信No.{thread.display_no ?? thread.id}-{reply.reply_no}</span></>}
                     </p>
+                    {user && reply.user_id === user.id && (
+                      <p className="owner-post-links">
+                        <button type="button" onClick={() => navigate(`/edit/${reply.id}`)}>編集</button>
+                        <button type="button" onClick={() => deleteOwnedPost(reply)}>削除</button>
+                      </p>
+                    )}
                     <div className={replyTextClassName(reply.message, settings.config)} style={replyTextStyle(reply.message, settings.config)}>
                       <LinkedText text={reply.message} />
                     </div>
@@ -229,10 +249,18 @@ const ThreadPage = () => {
 
               <form aria-label="返信フォーム" onSubmit={onReplySubmit} className="inline-reply-form thread-detail-form">
                 <h3>コメント</h3>
-                <label>
-                  <span>名前（/30文字）<span className="required" aria-hidden="true">*</span></span>
-                  <input aria-label="名前" value={replyName} maxLength={30} onChange={(e) => setReplyName(e.target.value)} required />
-                </label>
+                {user ? (
+                  <label>
+                    <span>サジェスト（任意）</span>
+                    <input aria-label="サジェスト" value={replyNameSuffix} maxLength={20} onChange={(e) => setReplyNameSuffix(e.target.value)} placeholder="NAMEに @付きで表示" />
+                    <span className="inline-form-field-help">NAME: {composeUserName(user.display_name, replyNameSuffix)}</span>
+                  </label>
+                ) : (
+                  <label>
+                    <span>名前（/30文字）<span className="required" aria-hidden="true">*</span></span>
+                    <input aria-label="名前" value={replyName} maxLength={30} onChange={(e) => setReplyName(e.target.value)} required />
+                  </label>
+                )}
                 <label>
                   URL / HOME
                   <input value={replyUrl} onChange={(e) => setReplyUrl(e.target.value)} placeholder="https://example.com" />
@@ -253,10 +281,12 @@ const ThreadPage = () => {
 
               <form id="eejanaika-form" aria-label="ええじゃないかフォーム" onSubmit={onEejanaikaSubmit} className="inline-eejanaika-form thread-detail-form">
                 <h3>ええじゃないか</h3>
-                <label>
-                  <span>名前（/30文字）<span className="required" aria-hidden="true">*</span></span>
-                  <input aria-label="名前" value={eejanaikaName} maxLength={30} onChange={(e) => setEejanaikaName(e.target.value)} required />
-                </label>
+                {!user && (
+                  <label>
+                    <span>名前（/30文字）<span className="required" aria-hidden="true">*</span></span>
+                    <input aria-label="名前" value={eejanaikaName} maxLength={30} onChange={(e) => setEejanaikaName(e.target.value)} required />
+                  </label>
+                )}
                 <div className="eejanaika-options">
                   {eejanaikaOptions.map((option) => (
                     <label key={option.key} className={replyTextClassName(option.text, settings.config)} style={{ color: option.color }}>
@@ -303,6 +333,11 @@ function formatDate(value: string): string {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function composeUserName(displayName: string, suffix: string): string {
+  const trimmed = suffix.trim();
+  return trimmed === '' ? displayName : `${displayName}@${trimmed}`;
 }
 
 export default ThreadPage;

@@ -9,7 +9,7 @@ const EditPostPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { token, user } = useAuth();
   const [post, setPost] = useState<Post | null>(null);
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
@@ -81,6 +81,9 @@ const EditPostPage = () => {
     formData.append('title', title);
     formData.append('message', message);
     formData.append('password', password);
+    if (token) {
+      formData.append('auth_token', token);
+    }
     if (!isReply && settings.config.gdgdEnabled) {
       formData.append('gdgd', gdgd ? '1' : '0');
     }

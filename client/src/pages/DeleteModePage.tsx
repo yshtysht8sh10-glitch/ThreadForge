@@ -7,7 +7,7 @@ import { useAuth } from '../auth';
 
 const DeleteModePage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { token, user } = useAuth();
   const [password, setPassword] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [threads, setThreads] = useState<Post[]>([]);
@@ -59,7 +59,7 @@ const DeleteModePage = () => {
 
     try {
       const targetId = selectedIds[0];
-      const response = await api.deletePost(targetId, password);
+      const response = token ? await api.deletePost(targetId, password, token) : await api.deletePost(targetId, password);
       if (!response.success) {
         setError(`No.${targetId}: ${response.message}`);
         return;

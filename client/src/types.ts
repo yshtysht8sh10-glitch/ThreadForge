@@ -17,7 +17,11 @@ export type Post = {
   tweet_url?: string | null;
   user_id?: number | null;
   user_icon_path?: string | null;
+  can_manage?: boolean;
+  claimed_by_user?: boolean;
   view_count?: number;
+  access_count?: number;
+  analytics_kind?: 'post' | 'access';
   board_reactions?: BoardReactions;
   social_links?: SocialLinks;
   social_reactions?: SocialReactions;

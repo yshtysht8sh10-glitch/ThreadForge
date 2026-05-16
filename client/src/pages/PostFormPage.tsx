@@ -9,6 +9,7 @@ const PostFormPage = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
   const [name, setName] = useState('');
+  const [nameSuffix, setNameSuffix] = useState('');
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
@@ -41,8 +42,9 @@ const PostFormPage = () => {
   };
   const socialEnabled = Object.values(enabledSocialPlatforms).some(Boolean);
   const boardSourceUrl = `${window.location.origin}/#post-000000`;
-  const socialPreviews = socialTransferOff ? [] : createSocialPostPreviews(enabledSocialPlatforms, name, title, message, boardSourceUrl, settings.config.socialHashtags);
-  const hasInput = [name, url, title, message, password].some((value) => value.trim() !== '') || gdgd || socialTransferOff || file !== undefined;
+  const displayName = user ? composeUserName(user.display_name, nameSuffix) : name;
+  const socialPreviews = socialTransferOff ? [] : createSocialPostPreviews(enabledSocialPlatforms, displayName, title, message, boardSourceUrl, settings.config.socialHashtags);
+  const hasInput = [name, nameSuffix, url, title, message, password].some((value) => value.trim() !== '') || gdgd || socialTransferOff || file !== undefined;
 
   const handleClose = () => {
     if (!hasInput || window.confirm('入力内容は破棄されます。一覧画面に戻りますか？')) {
@@ -56,7 +58,7 @@ const PostFormPage = () => {
     setStatus(null);
 
     const payload: NewPostData = {
-      name,
+      name: displayName,
       url,
       title,
       message,
@@ -97,10 +99,18 @@ const PostFormPage = () => {
         </div>
 
         <div className="post-form-top-row">
-          <label>
-            <span className="post-form-label-title">名前（/30文字）<span className="required">*</span></span>
-            <input value={name} onChange={(event) => setName(event.target.value)} required />
-          </label>
+          {user ? (
+            <label>
+              <span className="post-form-label-title">サジェスト（任意）</span>
+              <input value={nameSuffix} onChange={(event) => setNameSuffix(event.target.value)} placeholder="NAMEに @付きで表示" />
+              <span className="post-form-field-help">NAME: {displayName}</span>
+            </label>
+          ) : (
+            <label>
+              <span className="post-form-label-title">名前（/30文字）<span className="required">*</span></span>
+              <input value={name} onChange={(event) => setName(event.target.value)} required />
+            </label>
+          )}
           {settings.config.gdgdEnabled && (
             <label className="post-form-checkbox">
               {settings.config.gdgdLabel}
@@ -165,5 +175,10 @@ const PostFormPage = () => {
     </div>
   );
 };
+
+function composeUserName(displayName: string, suffix: string): string {
+  const trimmed = suffix.trim();
+  return trimmed === '' ? displayName : `${displayName}@${trimmed}`;
+}
 
 export default PostFormPage;

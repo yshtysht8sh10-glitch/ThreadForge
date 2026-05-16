@@ -92,6 +92,22 @@ function initializeDatabase(PDO $pdo): void
     );
 
     $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS user_post_claims (
+            user_id INTEGER NOT NULL,
+            post_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (user_id, post_id)
+        )'
+    );
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS access_counts (
+            access_date TEXT PRIMARY KEY,
+            count INTEGER NOT NULL DEFAULT 0
+        )'
+    );
+
+    $pdo->exec(
         'CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -172,6 +188,12 @@ function buildPost(array $row): array
         'social_links' => buildSocialLinks($row),
         'social_reactions' => buildSocialReactions($row),
     ];
+    if (array_key_exists('can_manage', $row)) {
+        $post['can_manage'] = (bool)$row['can_manage'];
+    }
+    if (array_key_exists('claimed_by_user', $row)) {
+        $post['claimed_by_user'] = (bool)$row['claimed_by_user'];
+    }
     if (array_key_exists('reply_count', $row)) {
         $post['reply_count'] = (int)$row['reply_count'];
     }

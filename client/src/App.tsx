@@ -22,6 +22,7 @@ const AppShell = () => {
 
   useEffect(() => {
     let ignore = false;
+    api.recordAccess().catch(() => undefined);
     api.publicSettings()
       .then((response) => {
         if (!ignore && response.success) {
@@ -55,13 +56,7 @@ const AppShell = () => {
           <span className="nav-separator">|</span>
           <Link to="/search">検索</Link>
           <span className="nav-separator">|</span>
-          {user && (
-            <>
-              <Link to="/analytics">アナリティクス</Link>
-              <span className="nav-separator">|</span>
-            </>
-          )}
-          <Link to="/ranking">ランキング</Link>
+          <Link to="/ranking">順位</Link>
           <span className="nav-separator">|</span>
           <Link to="/manual">取説</Link>
           <span className="nav-separator">|</span>
