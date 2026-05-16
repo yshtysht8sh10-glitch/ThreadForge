@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import { Post } from '../types';
 import SelectableThreadList from '../components/SelectableThreadList';
+import { useAuth } from '../auth';
 
 const DeleteModePage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [password, setPassword] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [threads, setThreads] = useState<Post[]>([]);
@@ -28,6 +30,12 @@ const DeleteModePage = () => {
   useEffect(() => {
     loadThreads();
   }, []);
+
+  useEffect(() => {
+    if (user?.post_password) {
+      setPassword(user.post_password);
+    }
+  }, [user]);
 
   const toggleSelected = (targetId: string) => {
     setSelectedIds((current) => (

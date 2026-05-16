@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Route, Routes } from 'react-router-dom';
 import { api, DEFAULT_PUBLIC_SETTINGS, PublicSettings } from './api';
+import { AuthProvider, useAuth } from './auth';
 import HomePage from './pages/HomePage';
 import ThreadPage from './pages/ThreadPage';
 import PostFormPage from './pages/PostFormPage';
@@ -10,10 +11,14 @@ import AdminPage from './pages/AdminPage';
 import DeleteModePage from './pages/DeleteModePage';
 import EditModePage from './pages/EditModePage';
 import ManualPage from './pages/ManualPage';
+import LoginPage from './pages/LoginPage';
+import BoardAnalyticsPage from './pages/BoardAnalyticsPage';
+import RankingPage from './pages/RankingPage';
 import { APP_NAME, APP_VERSION } from './version';
 
-const App = () => {
+const AppShell = () => {
   const [publicSettings, setPublicSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
+  const { user } = useAuth();
 
   useEffect(() => {
     let ignore = false;
@@ -50,7 +55,17 @@ const App = () => {
           <span className="nav-separator">|</span>
           <Link to="/search">検索</Link>
           <span className="nav-separator">|</span>
+          {user && (
+            <>
+              <Link to="/analytics">アナリティクス</Link>
+              <span className="nav-separator">|</span>
+            </>
+          )}
+          <Link to="/ranking">ランキング</Link>
+          <span className="nav-separator">|</span>
           <Link to="/manual">取説</Link>
+          <span className="nav-separator">|</span>
+          <Link to="/login">{user ? user.display_name : 'ログイン'}</Link>
           <span className="nav-separator">|</span>
           <Link to="/admin" className="nav-square nav-admin-link" aria-label="管理者モード">■</Link>
         </nav>
@@ -66,6 +81,9 @@ const App = () => {
           <Route path="/edit" element={<EditModePage />} />
           <Route path="/edit/:id" element={<EditPostPage />} />
           <Route path="/manual" element={<ManualPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/analytics" element={<BoardAnalyticsPage />} />
+          <Route path="/ranking" element={<RankingPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </main>
@@ -76,6 +94,12 @@ const App = () => {
     </div>
   );
 };
+
+const App = () => (
+  <AuthProvider>
+    <AppShell />
+  </AuthProvider>
+);
 
 export function homeHref(value?: string): string {
   const raw = (value ?? '').trim();

@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { api, DEFAULT_PUBLIC_SETTINGS, PublicSettings } from '../api';
 import { NewPostData } from '../types';
 import { createSocialPostPreviews } from '../tweet';
+import { useAuth } from '../auth';
 
 const PostFormPage = () => {
   const navigate = useNavigate();
+  const { token, user } = useAuth();
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
@@ -23,6 +25,13 @@ const PostFormPage = () => {
       .then((response) => response.success && setSettings(response.settings))
       .catch(() => setSettings(DEFAULT_PUBLIC_SETTINGS));
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setName(user.display_name);
+    setUrl(user.home_url ?? '');
+    setPassword(user.post_password);
+  }, [user]);
 
   const enabledSocialPlatforms = {
     x: settings.config.tweetEnabled,
@@ -56,6 +65,7 @@ const PostFormPage = () => {
       gdgd: settings.config.gdgdEnabled ? gdgd : false,
       tweet_off: socialEnabled ? socialTransferOff : true,
       source_url: boardSourceUrl,
+      auth_token: token,
     };
 
     try {

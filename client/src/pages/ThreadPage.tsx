@@ -4,6 +4,7 @@ import { api, mediaUrl, type PublicSettings } from '../api';
 import { NewPostData, Post, ThreadResponse } from '../types';
 import LinkedText from '../components/LinkedText';
 import { eejanaikaOptionsFromSettings, replyTextClassName, replyTextStyle } from '../components/ThreadList';
+import { useAuth } from '../auth';
 
 const EEJAIKA_OPTIONS = [
   'お美事にございまする',
@@ -36,6 +37,7 @@ const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
 const ThreadPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { token, user } = useAuth();
   const [searchParams] = useSearchParams();
   const shouldFocusEejanaika = searchParams.get('mode') === 'eejanaika';
   const [threadData, setThreadData] = useState<ThreadResponse | null>(null);
@@ -86,6 +88,14 @@ const ThreadPage = () => {
   }, [eejanaikaOptions, settings.config.eejanaikaEejanaikaText]);
 
   useEffect(() => {
+    if (!user) return;
+    setReplyName(user.display_name);
+    setReplyUrl(user.home_url ?? '');
+    setReplyPassword(user.post_password);
+    setEejanaikaName(user.display_name);
+  }, [user]);
+
+  useEffect(() => {
     if (shouldFocusEejanaika) {
       document.getElementById('eejanaika-form')?.scrollIntoView({ block: 'center' });
     }
@@ -129,6 +139,7 @@ const ThreadPage = () => {
       title: `Re: ${threadData?.thread?.title || '返信'}`,
       message: replyMessage,
       password: replyPassword,
+      auth_token: token,
     });
   };
 
@@ -147,7 +158,8 @@ const ThreadPage = () => {
       name: eejanaikaName,
       title: `Re: ${threadData?.thread?.title || '返信'}`,
       message: eejanaikaMessage,
-      password: 'eejanaika',
+      password: user?.post_password || 'eejanaika',
+      auth_token: token,
     });
   };
 
@@ -169,6 +181,7 @@ const ThreadPage = () => {
 
               <div className="board-thread-body">
                 <p className="board-meta">
+                  {thread.user_icon_path && <img className="user-icon" src={mediaUrl(thread.user_icon_path) ?? undefined} alt="" />}
                   NAME：<strong>{thread.name}</strong>
                   {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                   {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
@@ -193,6 +206,7 @@ const ThreadPage = () => {
                 {replies.map((reply: Post) => (
                   <section key={reply.id} className="board-reply">
                     <p className="board-meta">
+                      {reply.user_icon_path && <img className="user-icon" src={mediaUrl(reply.user_icon_path) ?? undefined} alt="" />}
                       NAME：<strong>{reply.name}</strong>
                       {reply.url && <> <a href={reply.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                       {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>

@@ -63,7 +63,31 @@ function initializeDatabase(PDO $pdo): void
             misskey_thinking_count INTEGER NOT NULL DEFAULT 0,
             misskey_party_count INTEGER NOT NULL DEFAULT 0,
             misskey_other_count INTEGER NOT NULL DEFAULT 0,
+            user_id INTEGER,
             view_count INTEGER NOT NULL DEFAULT 0
+        )'
+    );
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            login_id TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            display_name TEXT NOT NULL DEFAULT "",
+            post_password TEXT NOT NULL DEFAULT "",
+            home_url TEXT,
+            icon_path TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )'
+    );
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS user_sessions (
+            token TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL
         )'
     );
 
@@ -102,6 +126,7 @@ function initializeDatabase(PDO $pdo): void
     ensureColumnExists($pdo, 'posts', 'misskey_thinking_count', 'INTEGER NOT NULL DEFAULT 0');
     ensureColumnExists($pdo, 'posts', 'misskey_party_count', 'INTEGER NOT NULL DEFAULT 0');
     ensureColumnExists($pdo, 'posts', 'misskey_other_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'posts', 'user_id', 'INTEGER');
     ensureColumnExists($pdo, 'posts', 'view_count', 'INTEGER NOT NULL DEFAULT 0');
 
     if (!is_dir(STORAGE_DIR)) {
@@ -140,6 +165,8 @@ function buildPost(array $row): array
         'tweet_off' => (bool)($row['tweet_off'] ?? false),
         'tweet_text' => $row['tweet_text'] ?? null,
         'tweet_url' => $row['tweet_url'] ?? null,
+        'user_id' => isset($row['user_id']) ? (int)$row['user_id'] : null,
+        'user_icon_path' => publicStoragePath($row['user_icon_path'] ?? null),
         'view_count' => (int)($row['view_count'] ?? 0),
         'board_reactions' => buildBoardReactions($row),
         'social_links' => buildSocialLinks($row),
@@ -149,6 +176,14 @@ function buildPost(array $row): array
         $post['reply_count'] = (int)$row['reply_count'];
     }
     return $post;
+}
+
+function publicStoragePath(?string $path): ?string
+{
+    if ($path === null || $path === '') {
+        return null;
+    }
+    return '/storage/data/' . basename($path);
 }
 
 function buildBoardReactions(array $row): array
@@ -504,7 +539,95 @@ function copyLocalArchiveImage(PDO $pdo, string $archiveDir, string $filename, i
 
 function normalizeString(string $value): string
 {
+    $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $value) ?? $value;
     return trim($value);
+}
+
+function normalizeLoginId(string $value): string
+{
+    $value = strtolower(trim($value));
+    return preg_match('/\A[a-z0-9_.-]{3,40}\z/', $value) ? $value : '';
+}
+
+function authToken(): string
+{
+    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (is_string($header) && preg_match('/Bearer\s+(.+)/i', $header, $matches)) {
+        return trim($matches[1]);
+    }
+    return trim((string)($_POST['auth_token'] ?? ''));
+}
+
+function optionalUser(PDO $pdo): ?array
+{
+    $token = authToken();
+    if ($token === '') {
+        return null;
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT u.* FROM user_sessions s JOIN users u ON u.id = s.user_id
+         WHERE s.token = :token AND s.expires_at > :now LIMIT 1'
+    );
+    $stmt->execute([':token' => $token, ':now' => currentTimestamp()]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $user ?: null;
+}
+
+function requireUser(PDO $pdo): array
+{
+    $user = optionalUser($pdo);
+    if (!$user) {
+        jsonResponse(['success' => false, 'message' => 'ログインしてください。'], 401);
+    }
+    return $user;
+}
+
+function createUserSession(PDO $pdo, int $userId): string
+{
+    $token = bin2hex(random_bytes(32));
+    $expires = (new DateTimeImmutable('now', new DateTimeZone('Asia/Tokyo')))
+        ->modify('+30 days')
+        ->format('Y-m-d H:i:s');
+    $stmt = $pdo->prepare('INSERT INTO user_sessions (token, user_id, created_at, expires_at) VALUES (:token, :user_id, :created_at, :expires_at)');
+    $stmt->execute([
+        ':token' => $token,
+        ':user_id' => $userId,
+        ':created_at' => currentTimestamp(),
+        ':expires_at' => $expires,
+    ]);
+    return $token;
+}
+
+function findUserById(PDO $pdo, int $id): ?array
+{
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE id = :id LIMIT 1');
+    $stmt->execute([':id' => $id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
+function findUserByLoginId(PDO $pdo, string $loginId): ?array
+{
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE login_id = :login_id LIMIT 1');
+    $stmt->execute([':login_id' => $loginId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
+function buildUser(?array $user): ?array
+{
+    if ($user === null) {
+        return null;
+    }
+    return [
+        'id' => (int)$user['id'],
+        'login_id' => (string)$user['login_id'],
+        'display_name' => (string)($user['display_name'] ?? ''),
+        'post_password' => (string)($user['post_password'] ?? ''),
+        'home_url' => $user['home_url'] ?? null,
+        'icon_path' => publicStoragePath($user['icon_path'] ?? null),
+    ];
 }
 
 function findPostById(PDO $pdo, int $id): ?array
@@ -691,7 +814,7 @@ function saveUploadedImage(array $file, int $postId): ?string
         return null;
     }
 
-    $extension = imageExtensionFromMime($file['type'] ?? '');
+    $extension = imageExtensionFromUpload($file);
     if ($extension === null) {
         return null;
     }
@@ -701,6 +824,29 @@ function saveUploadedImage(array $file, int $postId): ?string
         if (archiveExistingImage($destination) === null) {
             return null;
         }
+    }
+
+    if (!move_uploaded_file($file['tmp_name'], $destination)) {
+        return null;
+    }
+
+    return $destination;
+}
+
+function saveUploadedUserIcon(array $file, int $userId): ?string
+{
+    if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+        return null;
+    }
+
+    $extension = imageExtensionFromUpload($file);
+    if ($extension === null) {
+        return null;
+    }
+
+    $destination = STORAGE_DIR . '/user_' . $userId . '.' . $extension;
+    if (file_exists($destination) && archiveExistingImage($destination) === null) {
+        return null;
     }
 
     if (!move_uploaded_file($file['tmp_name'], $destination)) {
@@ -745,6 +891,20 @@ function imageExtensionFromMime(string $mimeType): ?string
     ];
 
     return $extensions[$mimeType] ?? null;
+}
+
+function imageExtensionFromUpload(array $file): ?string
+{
+    $tmpName = $file['tmp_name'] ?? '';
+    if (is_string($tmpName) && $tmpName !== '' && class_exists('finfo')) {
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($tmpName);
+        if (is_string($mimeType)) {
+            return imageExtensionFromMime($mimeType);
+        }
+    }
+
+    return imageExtensionFromMime((string)($file['type'] ?? ''));
 }
 
 function jsonResponse(array $data, int $status = 200): void

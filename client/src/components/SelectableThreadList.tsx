@@ -34,6 +34,7 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
 
           <div className="board-thread-body">
             <p className="board-meta">
+              {thread.user_icon_path && <img className="user-icon" src={mediaUrl(thread.user_icon_path) ?? undefined} alt="" />}
               NAME：<strong>{thread.name}</strong>
               {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
               {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
@@ -61,6 +62,7 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
                   返信No.{thread.display_no ?? thread.id}-{reply.reply_no ?? reply.id} を選択
                 </label>
                 <p className="board-meta">
+                  {reply.user_icon_path && <img className="user-icon" src={mediaUrl(reply.user_icon_path) ?? undefined} alt="" />}
                   NAME：<strong>{reply.name}</strong>
                   {reply.url && <> <a href={reply.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                   {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>

@@ -369,6 +369,16 @@ img.thumbnail {
   font-weight: 700;
 }
 
+.user-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-right: 0.35rem;
+  border: 1px solid #6f7885;
+  border-radius: 4px;
+  object-fit: cover;
+  vertical-align: middle;
+}
+
 .board-meta-sub {
   color: #5f86aa;
 }
@@ -443,6 +453,12 @@ img.thumbnail {
   flex: 0 0 auto;
 }
 
+.board-action-group-quick {
+  align-items: flex-start;
+  gap: 0.3rem;
+  max-width: 15rem;
+}
+
 .board-action-button {
   display: inline-flex;
   align-items: center;
@@ -463,6 +479,35 @@ img.thumbnail {
   border-color: var(--primary-button-border);
   color: #fff;
   box-shadow: 0 6px 14px var(--primary-button-shadow);
+}
+
+.quick-reaction-stack .quick-reaction-button {
+  min-height: 1.9rem;
+  padding: 0.22rem 0.45rem;
+  font-size: 0.78rem;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.quick-reaction-stack {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 5.8rem;
+  align-self: flex-start;
+}
+
+.quick-reaction-stack .quick-reaction-button {
+  width: 100%;
+  font-weight: 800;
+  background: #30343b;
+  border-color: var(--primary-button-border);
+  box-shadow: 0 5px 12px var(--primary-button-shadow);
+}
+
+.quick-reaction-stack .quick-reaction-button:hover {
+  background: #3b424d;
+  border-color: var(--primary-button-border);
 }
 
 .board-action-button:hover,
@@ -917,6 +962,90 @@ button.post-reset-button:hover {
 .admin-analytics-card {
   display: grid;
   gap: 1rem;
+}
+
+.account-page,
+.ranking-page,
+.board-analytics-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.account-summary,
+.analytics-total-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.account-icon-preview {
+  width: 3rem;
+  height: 3rem;
+  border: 1px solid #6f7885;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.ranking-list,
+.cumulative-chart {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.analytics-line-chart {
+  border: 1px solid var(--panel-border);
+  background: #0d1520;
+  min-height: 220px;
+  padding: 12px;
+}
+
+.analytics-line-chart svg {
+  display: block;
+  width: 100%;
+  height: 220px;
+  overflow: visible;
+}
+
+.analytics-line-chart line {
+  stroke: var(--panel-border);
+  stroke-width: 0.35;
+}
+
+.analytics-line-chart polyline {
+  fill: none;
+  stroke: #7fffc1;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.analytics-line-chart circle {
+  fill: #ffffff;
+  stroke: #3677ff;
+  stroke-width: 0.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.ranking-row,
+.cumulative-row {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) 5rem;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #334155;
+  color: #fff;
+}
+
+.cumulative-row {
+  grid-template-columns: 5rem minmax(0, 1fr) 5rem;
+}
+
+.cumulative-row i {
+  display: block;
+  height: 0.8rem;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #3f7bff, #6dffc0);
 }
 
 .admin-analytics-controls {

@@ -12,7 +12,11 @@ function handleApiRequest(): void
 {
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Referrer-Policy: same-origin');
+    header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'");
 
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
         http_response_code(204);
@@ -44,6 +48,21 @@ function handleApiRequest(): void
         case 'publicSettings':
             publicSettings($pdo);
             break;
+        case 'registerUser':
+            registerUser($pdo);
+            break;
+        case 'loginUser':
+            loginUser($pdo);
+            break;
+        case 'logoutUser':
+            logoutUser($pdo);
+            break;
+        case 'currentUser':
+            currentUser($pdo);
+            break;
+        case 'updateUserProfile':
+            updateUserProfile($pdo);
+            break;
         case 'createPost':
             createPost($pdo);
             break;
@@ -61,6 +80,12 @@ function handleApiRequest(): void
             break;
         case 'recordPostView':
             recordPostView($pdo);
+            break;
+        case 'listBoardAnalyticsPosts':
+            listBoardAnalyticsPosts($pdo);
+            break;
+        case 'listRankingPosts':
+            listRankingPosts($pdo);
             break;
         case 'restorePost':
             restorePost($pdo);
@@ -139,6 +164,7 @@ function postSelectWithBoardStats(string $alias): string
 {
     $prefix = $alias . '.';
     return $alias . '.*,
+        (SELECT u.icon_path FROM users u WHERE u.id = ' . $prefix . 'user_id) AS user_icon_path,
         (SELECT COUNT(*) FROM posts r WHERE r.thread_id = ' . $prefix . 'id AND r.parent_id != 0 AND r.deleted_at IS NULL) AS reply_count,
         (SELECT COUNT(*) FROM posts r WHERE r.thread_id = ' . $prefix . 'id AND r.parent_id != 0 AND r.deleted_at IS NULL AND r.message = :eejanaika_text) AS eejanaika_count,
         (SELECT COUNT(*) FROM posts r WHERE r.thread_id = ' . $prefix . 'id AND r.parent_id != 0 AND r.deleted_at IS NULL AND r.message = :omigoto_text) AS omigoto_count,
@@ -257,6 +283,115 @@ function appVersion(): string
     return '0.0.0-dev';
 }
 
+function registerUser(PDO $pdo): void
+{
+    $loginId = normalizeLoginId($_POST['login_id'] ?? '');
+    $password = (string)($_POST['password'] ?? '');
+    $displayName = normalizeString($_POST['display_name'] ?? $loginId);
+    $postPassword = normalizeString($_POST['post_password'] ?? '');
+    $homeUrl = normalizeUrl($_POST['home_url'] ?? null);
+
+    if ($loginId === '' || $password === '') {
+        jsonResponse(['success' => false, 'message' => 'IDとログインパスワードを入力してください。'], 400);
+    }
+    if (strlen($password) < 8) {
+        jsonResponse(['success' => false, 'message' => 'ログインパスワードは8文字以上にしてください。'], 400);
+    }
+
+    $now = currentTimestamp();
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO users (login_id, password_hash, display_name, post_password, home_url, icon_path, created_at, updated_at)
+             VALUES (:login_id, :password_hash, :display_name, :post_password, :home_url, null, :created_at, :updated_at)'
+        );
+        $stmt->execute([
+            ':login_id' => $loginId,
+            ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            ':display_name' => $displayName,
+            ':post_password' => $postPassword,
+            ':home_url' => $homeUrl,
+            ':created_at' => $now,
+            ':updated_at' => $now,
+        ]);
+    } catch (PDOException $exception) {
+        jsonResponse(['success' => false, 'message' => 'そのIDは既に使われています。'], 409);
+    }
+
+    $userId = (int)$pdo->lastInsertId();
+    if (!empty($_FILES['icon']) && $_FILES['icon']['error'] === UPLOAD_ERR_OK) {
+        $iconPath = saveUploadedUserIcon($_FILES['icon'], $userId);
+        if ($iconPath !== null) {
+            $update = $pdo->prepare('UPDATE users SET icon_path = :icon_path WHERE id = :id');
+            $update->execute([':icon_path' => $iconPath, ':id' => $userId]);
+        }
+    }
+
+    $user = findUserById($pdo, $userId);
+    jsonResponse(['success' => true, 'token' => createUserSession($pdo, $userId), 'user' => buildUser($user)]);
+}
+
+function loginUser(PDO $pdo): void
+{
+    $loginId = normalizeLoginId($_POST['login_id'] ?? '');
+    $password = (string)($_POST['password'] ?? '');
+    $user = findUserByLoginId($pdo, $loginId);
+    if (!$user || !password_verify($password, (string)$user['password_hash'])) {
+        jsonResponse(['success' => false, 'message' => 'IDまたはログインパスワードが違います。'], 403);
+    }
+
+    jsonResponse(['success' => true, 'token' => createUserSession($pdo, (int)$user['id']), 'user' => buildUser($user)]);
+}
+
+function logoutUser(PDO $pdo): void
+{
+    $token = authToken();
+    if ($token !== '') {
+        $stmt = $pdo->prepare('DELETE FROM user_sessions WHERE token = :token');
+        $stmt->execute([':token' => $token]);
+    }
+    jsonResponse(['success' => true]);
+}
+
+function currentUser(PDO $pdo): void
+{
+    $user = requireUser($pdo);
+    jsonResponse(['success' => true, 'user' => buildUser($user)]);
+}
+
+function updateUserProfile(PDO $pdo): void
+{
+    $user = requireUser($pdo);
+    $displayName = normalizeString($_POST['display_name'] ?? $user['display_name']);
+    $postPassword = normalizeString($_POST['post_password'] ?? $user['post_password']);
+    $homeUrl = normalizeUrl($_POST['home_url'] ?? null);
+    if ($displayName === '') {
+        jsonResponse(['success' => false, 'message' => '名前を入力してください。'], 400);
+    }
+
+    $iconPath = $user['icon_path'] ?? null;
+    if (!empty($_FILES['icon']) && $_FILES['icon']['error'] === UPLOAD_ERR_OK) {
+        $newIcon = saveUploadedUserIcon($_FILES['icon'], (int)$user['id']);
+        if ($newIcon === null) {
+            jsonResponse(['success' => false, 'message' => 'アイコンの保存に失敗しました。'], 400);
+        }
+        $iconPath = $newIcon;
+    }
+
+    $stmt = $pdo->prepare(
+        'UPDATE users SET display_name = :display_name, post_password = :post_password, home_url = :home_url, icon_path = :icon_path, updated_at = :updated_at WHERE id = :id'
+    );
+    $stmt->execute([
+        ':id' => (int)$user['id'],
+        ':display_name' => $displayName,
+        ':post_password' => $postPassword,
+        ':home_url' => $homeUrl,
+        ':icon_path' => $iconPath,
+        ':updated_at' => currentTimestamp(),
+    ]);
+
+    jsonResponse(['success' => true, 'user' => buildUser(findUserById($pdo, (int)$user['id']))]);
+}
+
 function createPost(PDO $pdo): void
 {
     $settings = loadSettings($pdo);
@@ -279,6 +414,9 @@ function createPost(PDO $pdo): void
     $tweetOff = $isReply || !$socialEnabled ? true : toBoolFlag($_POST['tweet_off'] ?? $_POST['TweetOFF'] ?? false);
     $tweetUrl = null;
     $socialHashtags = (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart');
+
+    $user = optionalUser($pdo);
+    $userId = $user ? (int)$user['id'] : null;
 
     if ($name === '' || $title === '' || $message === '' || $password === '') {
         jsonResponse(['success' => false, 'message' => '名前・タイトル・本文・パスワードは必須です。'], 400);
@@ -303,10 +441,10 @@ function createPost(PDO $pdo): void
 
     $stmt = $pdo->prepare(
         'INSERT INTO posts (
-            thread_id, parent_id, name, url, title, message, image_path, password_hash, created_at, gdgd,
+            thread_id, parent_id, name, url, title, message, image_path, password_hash, created_at, gdgd, user_id,
             tweet_off, tweet_text, tweet_url, tweet_like_count, tweet_retweet_count, tweet_comment_count, tweet_impression_count
         ) VALUES (
-            :thread_id, :parent_id, :name, :url, :title, :message, :image_path, :password_hash, :created_at, :gdgd,
+            :thread_id, :parent_id, :name, :url, :title, :message, :image_path, :password_hash, :created_at, :gdgd, :user_id,
             :tweet_off, :tweet_text, :tweet_url, :tweet_like_count, :tweet_retweet_count, :tweet_comment_count, :tweet_impression_count
         )'
     );
@@ -321,6 +459,7 @@ function createPost(PDO $pdo): void
         ':password_hash' => $hash,
         ':created_at' => $createdAt,
         ':gdgd' => $gdgd ? 1 : 0,
+        ':user_id' => $userId,
         ':tweet_off' => $tweetOff ? 1 : 0,
         ':tweet_text' => $tweetText,
         ':tweet_url' => null,
@@ -1385,6 +1524,23 @@ function recordPostView(PDO $pdo): void
     $select = $pdo->prepare('SELECT view_count FROM posts WHERE id = :id');
     $select->execute([':id' => $id]);
     jsonResponse(['success' => true, 'view_count' => (int)$select->fetchColumn()]);
+}
+
+function listBoardAnalyticsPosts(PDO $pdo): void
+{
+    $stmt = $pdo->prepare('SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.parent_id = 0 AND p.deleted_at IS NULL ORDER BY p.id ASC');
+    bindBoardStatTexts($stmt, $pdo);
+    $stmt->execute();
+
+    jsonResponse(array_map(
+        fn (array $row): array => withDisplayNo($pdo, buildPost($row), (int)$row['id']),
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+    ));
+}
+
+function listRankingPosts(PDO $pdo): void
+{
+    listBoardAnalyticsPosts($pdo);
 }
 
 function restorePost(PDO $pdo): void

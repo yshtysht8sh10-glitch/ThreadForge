@@ -1,4 +1,4 @@
-import { NewPostData, Post, ThreadResponse, SearchResult } from './types';
+import { NewPostData, Post, ThreadResponse, SearchResult, UserProfile } from './types';
 import { APP_NAME, APP_VERSION } from './version';
 
 export type PublicSettings = {
@@ -237,6 +237,8 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
     case 'listDeletedPosts':
       return [] as T;
     case 'listAnalyticsPosts':
+    case 'listBoardAnalyticsPosts':
+    case 'listRankingPosts':
       return mockPosts as T;
     case 'getThread':
       const threadId = params.get('id');
@@ -248,6 +250,22 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
       return post as T;
     case 'publicSettings':
       return { success: true, settings: DEFAULT_PUBLIC_SETTINGS } as T;
+    case 'loginUser':
+    case 'registerUser':
+    case 'currentUser':
+    case 'updateUserProfile':
+      return {
+        success: true,
+        token: 'mock-token',
+        user: {
+          id: 1,
+          login_id: 'blank',
+          display_name: 'Blank',
+          post_password: 'password',
+          home_url: 'https://example.com',
+          icon_path: null,
+        },
+      } as T;
     case 'getSettings':
       return {
         success: true,
@@ -323,6 +341,49 @@ export const api = {
   search: async (q: string, scope = 'all'): Promise<SearchResult[]> => {
     return fetchJson<SearchResult[]>(`${apiBase()}?action=search&q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scope)}`);
   },
+  loginUser: async (loginId: string, password: string): Promise<{ success: boolean; token: string; user: UserProfile; message?: string }> => {
+    const formData = new FormData();
+    formData.append('action', 'loginUser');
+    formData.append('login_id', loginId);
+    formData.append('password', password);
+    return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
+  },
+  registerUser: async (payload: { login_id: string; password: string; display_name?: string; post_password?: string; home_url?: string; icon?: File | null }): Promise<{ success: boolean; token: string; user: UserProfile; message?: string }> => {
+    const formData = new FormData();
+    formData.append('action', 'registerUser');
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === undefined || value === null) return;
+      if (key === 'icon' && value instanceof File) {
+        formData.append('icon', value);
+      } else {
+        formData.append(key, String(value));
+      }
+    });
+    return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
+  },
+  currentUser: async (token: string): Promise<{ success: boolean; user: UserProfile }> => {
+    return fetchJson(`${apiBase()}?action=currentUser`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  },
+  updateUserProfile: async (payload: { token: string; display_name: string; post_password: string; home_url?: string; icon?: File | null }): Promise<{ success: boolean; user: UserProfile; message?: string }> => {
+    const formData = new FormData();
+    formData.append('action', 'updateUserProfile');
+    formData.append('auth_token', payload.token);
+    formData.append('display_name', payload.display_name);
+    formData.append('post_password', payload.post_password);
+    formData.append('home_url', payload.home_url ?? '');
+    if (payload.icon) {
+      formData.append('icon', payload.icon);
+    }
+    return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
+  },
+  logoutUser: async (token: string): Promise<{ success: boolean }> => {
+    const formData = new FormData();
+    formData.append('action', 'logoutUser');
+    formData.append('auth_token', token);
+    return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
+  },
   createPost: async (payload: NewPostData): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();
     Object.entries(payload).forEach(([key, value]) => {
@@ -372,6 +433,12 @@ export const api = {
   },
   listAnalyticsPosts: async (adminPassword: string): Promise<Post[]> => {
     return fetchJson<Post[]>(`${apiBase()}?action=listAnalyticsPosts&admin_password=${encodeURIComponent(adminPassword)}`);
+  },
+  listBoardAnalyticsPosts: async (): Promise<Post[]> => {
+    return fetchJson<Post[]>(`${apiBase()}?action=listBoardAnalyticsPosts`);
+  },
+  listRankingPosts: async (): Promise<Post[]> => {
+    return fetchJson<Post[]>(`${apiBase()}?action=listRankingPosts`);
   },
   restorePost: async (id: string, adminPassword: string): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();

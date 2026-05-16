@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api, mediaUrl, type PublicSettings } from '../api';
 import { BoardReactions, NewPostData, Post } from '../types';
 import LinkedText from './LinkedText';
+import { useAuth } from '../auth';
 
 type ThreadListProps = {
   threads: Post[];
@@ -41,6 +42,7 @@ const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
 };
 
 const ThreadList = ({ threads, action }: ThreadListProps) => {
+  const { token, user } = useAuth();
   const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
   const viewedPostIds = useRef<Set<number>>(new Set());
   const [activePanel, setActivePanel] = useState<{ threadId: number; mode: InlineMode } | null>(null);
@@ -67,6 +69,16 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
       return available ? current : settings.config.eejanaikaEejanaikaText;
     });
   }, [eejanaikaOptions, settings.config.eejanaikaEejanaikaText]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    setReplyName(user.display_name || DEFAULT_REPLY_NAME);
+    setReplyUrl(user.home_url ?? '');
+    setReplyPassword(user.post_password ?? '');
+    setEejanaikaName(user.display_name || DEFAULT_REPLY_NAME);
+  }, [user]);
 
   useEffect(() => {
     if (!('IntersectionObserver' in window)) {
@@ -186,6 +198,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
       title: `Re: ${thread.title || '返信'}`,
       message: replyMessage,
       password: replyPassword,
+      auth_token: token,
     });
   };
 
@@ -202,7 +215,22 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
       name: eejanaikaName,
       title: `Re: ${thread.title || '返信'}`,
       message: eejanaikaMessage,
-      password: 'eejanaika',
+      password: user?.post_password || 'eejanaika',
+      auth_token: token,
+    });
+  };
+
+  const quickReaction = async (thread: Post, message: string) => {
+    if (!user) return;
+    await submitReply(thread, {
+      thread_id: thread.id,
+      parent_id: thread.id,
+      name: user.display_name,
+      url: user.home_url ?? '',
+      title: `Re: ${thread.title || '返信'}`,
+      message,
+      password: user.post_password || 'eejanaika',
+      auth_token: token,
     });
   };
 
@@ -228,6 +256,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
 
             <div className="board-thread-body">
               <p className="board-meta">
+                {thread.user_icon_path && <img className="user-icon" src={mediaUrl(thread.user_icon_path) ?? undefined} alt="" />}
                 NAME：<strong>{thread.name}</strong>
                 {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                 {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
@@ -246,6 +275,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
               {replies.map((reply) => (
                 <section key={reply.id} className="board-reply">
                   <p className="board-meta">
+                    {reply.user_icon_path && <img className="user-icon" src={mediaUrl(reply.user_icon_path) ?? undefined} alt="" />}
                     NAME：<strong>{reply.name}</strong>
                     {reply.url && <> <a href={reply.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                     {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>
@@ -331,8 +361,26 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
               <footer className="board-thread-actions">
                 <SocialRows thread={displayedThread} enabled={settings.config} />
                 {!panelMode && (
-                  <div className="board-action-group">
-                    {action ? action(thread) : (
+                  <div className={user && !action ? 'board-action-group board-action-group-quick' : 'board-action-group'}>
+                    {action ? action(thread) : user ? (
+                      <>
+                        <button type="button" className="board-action-button" onClick={() => openPanel(thread.id, 'comment')}>コメント</button>
+                        <span className="quick-reaction-stack">
+                          {eejanaikaOptions.map((option) => (
+                            <button
+                              type="button"
+                              className="board-action-button quick-reaction-button"
+                              key={option.key}
+                              title={option.text}
+                              style={{ color: option.color }}
+                              onClick={() => quickReaction(thread, option.text)}
+                            >
+                              {shortReactionLabel(option.text)}
+                            </button>
+                          ))}
+                        </span>
+                      </>
+                    ) : (
                       <>
                         <button type="button" className="board-action-button" onClick={() => openPanel(thread.id, 'comment')}>コメント</button>
                         <button type="button" className="board-action-button" onClick={() => openPanel(thread.id, 'eejanaika')}>ええじゃないか</button>
@@ -348,6 +396,11 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
     </div>
   );
 };
+
+function shortReactionLabel(value: string): string {
+  const chars = Array.from(value.trim());
+  return chars.length > 4 ? `${chars.slice(0, 4).join('')}..` : value;
+}
 
 function threadClassName(thread: Post): string {
   const classes = ['board-thread'];

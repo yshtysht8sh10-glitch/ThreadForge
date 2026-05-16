@@ -3,11 +3,13 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api, DEFAULT_PUBLIC_SETTINGS, PublicSettings } from '../api';
 import { Post } from '../types';
 import { createSocialPostPreviews } from '../tweet';
+import { useAuth } from '../auth';
 
 const EditPostPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [post, setPost] = useState<Post | null>(null);
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
@@ -45,6 +47,13 @@ const EditPostPage = () => {
       .then((response) => response.success && setSettings(response.settings))
       .catch(() => setSettings(DEFAULT_PUBLIC_SETTINGS));
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setName(user.display_name);
+    setUrl(user.home_url ?? '');
+    setPassword((current) => current || user.post_password);
+  }, [user]);
 
   const enabledSocialPlatforms = {
     x: Boolean(settings.config.tweetEnabled),
