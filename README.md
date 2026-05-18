@@ -30,9 +30,10 @@ Backend:
 ```powershell
 cd server
 composer install
-$env:DOTEITA_ADMIN_PASSWORD='admin'
 php -S 127.0.0.1:8000 -t .
 ```
+
+On first access to the admin screen, set the administrator password in the browser. For recovery or scripted setup, you may also start the server with `THREADFORGE_ADMIN_PASSWORD`.
 
 Then open:
 
@@ -83,7 +84,7 @@ X, Bluesky, Mastodon, and Misskey integrations are disabled by default. In this 
 
 When SNS posting is enabled, top-level posts can be copied to enabled SNS platforms at creation time. X, Bluesky, Mastodon, and Misskey receive the post image when one is attached. SNS text includes a "latest is here" link back to the top list anchor for the board post, and long text is trimmed with `..` instead of blocking submission.
 
-Post edits update the board only and do not edit or repost to SNS. Cached reaction counts can be refreshed manually from the admin maintenance screen or automatically through either the local `server/cron.php` script or the protected API URL shown in the admin screen. Automatic reaction refresh targets only social posts from the last 7 days.
+Post edits update the board only and do not edit or repost to SNS. Cached reaction counts can be refreshed manually from the admin maintenance screen or automatically through either the local `server/cron.php` script or the protected API URL shown in the admin screen. Automatic reaction refresh targets all non-deleted top-level posts that have SNS post IDs.
 
 ## Documentation Map
 

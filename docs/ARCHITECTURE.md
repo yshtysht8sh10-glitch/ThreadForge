@@ -107,7 +107,7 @@ Display:
 - SNS text includes a "latest is here" link to the board-list anchor for the post.
 - Editing a top-level post does not update or repost to SNS. Replies never use SNS posting.
 - Reaction refresh can be run from the admin maintenance tab, `server/cron.php`, or an API-key-protected external scheduler URL.
-- Automatic reaction refresh targets only non-deleted top-level posts created within the last 7 days.
+- Automatic reaction refresh targets all non-deleted top-level posts that have SNS post IDs.
 - Displayed metrics are X impressions/likes/reposts, Bluesky likes/reposts/quotes, Mastodon boosts/favorites, and Misskey reaction buckets.
 
 ## Safe Text Display

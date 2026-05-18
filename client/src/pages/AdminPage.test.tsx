@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+﻿import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import AdminPage from './AdminPage';
@@ -12,6 +12,8 @@ vi.mock('../api', () => ({
     listDeletedPosts: vi.fn(),
     listAnalyticsPosts: vi.fn(),
     getSettings: vi.fn(),
+    adminStatus: vi.fn(),
+    initializeAdminPassword: vi.fn(),
     adminDeletePosts: vi.fn(),
     importBackup: vi.fn(),
     updateSettings: vi.fn(),
@@ -87,9 +89,12 @@ describe('AdminPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.localStorage.clear();
+    window.localStorage.setItem('threadforgeAdminPassword', 'admin-secret');
     vi.mocked(api.listThreads).mockResolvedValue([thread as any]);
     vi.mocked(api.listDeletedPosts).mockResolvedValue([deletedReply as any]);
     vi.mocked(api.listAnalyticsPosts).mockResolvedValue(analyticsThreads as any);
+    vi.mocked(api.adminStatus).mockResolvedValue({ success: true, adminPasswordConfigured: true });
+    vi.mocked(api.initializeAdminPassword).mockResolvedValue({ success: true, message: '管理者パスワードを設定しました。' });
     vi.mocked(api.getSettings).mockResolvedValue({
       success: true,
       settings: {
@@ -123,9 +128,76 @@ describe('AdminPage', () => {
 
     expect(screen.getByRole('heading', { name: '管理' })).toBeInTheDocument();
     expect(screen.queryByLabelText('管理パスワード')).not.toBeInTheDocument();
-    expect(await screen.findByRole('button', { name: '投稿管理' })).toBeInTheDocument();
-    expect(api.listDeletedPosts).toHaveBeenCalledWith('admin');
-    expect(api.getSettings).toHaveBeenCalledWith('admin');
+    expect(await screen.findByRole('button', { name: '一括削除' })).toBeInTheDocument();
+    expect(api.listDeletedPosts).toHaveBeenCalledWith('admin-secret');
+    expect(api.getSettings).toHaveBeenCalledWith('admin-secret');
+  });
+
+  it('shows the requested admin tab order and can exit the admin screen', async () => {
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    const nav = await screen.findByRole('navigation', { name: '管理メニュー' });
+    expect(within(nav).getAllByRole('button').map((button) => button.textContent)).toEqual([
+      '一括削除',
+      '投稿復元',
+      '保守',
+      'アナリティクス',
+      '掲示板設定',
+      '掲示板デザイン',
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: '管理画面から出る' }));
+
+    expect(screen.getByRole('button', { name: '管理画面に入る' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: '管理メニュー' })).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('threadforgeAdminPassword')).toBeNull();
+  });
+
+  it('imports design JSON and saves it as skin settings', async () => {
+    vi.mocked(api.updateSettings).mockResolvedValue({ success: true, message: '設定を保存しました。' });
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '掲示板デザイン' }));
+    const designPanel = screen.getByRole('heading', { name: '掲示板デザイン' }).closest('section')!;
+    const file = new File([JSON.stringify({ normalFrameColor: '#112233' })], 'threadforge-design.json', { type: 'application/json' });
+    fireEvent.change(within(designPanel).getByLabelText('掲示板デザインJSONファイル'), { target: { files: [file] } });
+
+    expect(await screen.findByText('掲示板デザインJSONを読み込みました。保存すると反映されます。')).toBeInTheDocument();
+    fireEvent.click(within(designPanel).getByRole('button', { name: '設定を保存' }));
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skin: expect.objectContaining({ normalFrameColor: '#112233' }),
+      }),
+      'admin-secret',
+    ));
+  });
+  it('sets the first admin password from the admin screen', async () => {
+    window.localStorage.clear();
+    vi.mocked(api.adminStatus).mockResolvedValue({ success: true, adminPasswordConfigured: false });
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/初期設定が未完了です/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('初期管理者パスワード'), { target: { value: 'first-secret' } });
+    fireEvent.change(screen.getByLabelText('確認'), { target: { value: 'first-secret' } });
+    fireEvent.click(screen.getByRole('button', { name: '管理者パスワードを設定' }));
+
+    await waitFor(() => expect(api.initializeAdminPassword).toHaveBeenCalledWith('first-secret'));
+    await waitFor(() => expect(api.getSettings).toHaveBeenCalledWith('first-secret'));
+    expect(window.localStorage.getItem('threadforgeAdminPassword')).toBe('first-secret');
   });
 
   it('bulk deletes multiple checked posts without post passwords', async () => {
@@ -140,7 +212,7 @@ describe('AdminPage', () => {
     fireEvent.click(screen.getByLabelText('返信No.1-1 を選択'));
     fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を一括削除' }));
 
-    await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['1', '2'], 'admin'));
+    await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['1', '2'], 'admin-secret'));
   });
 
   it('edits HOME and manual settings from the settings tab', async () => {
@@ -155,7 +227,7 @@ describe('AdminPage', () => {
 
     const settingsPanel = screen.getByRole('heading', { name: '掲示板設定' }).closest('section')!;
     fireEvent.change(within(settingsPanel).getByLabelText('HOMEリンク先'), { target: { value: 'https://threadforge.example/' } });
-    fireEvent.change(within(settingsPanel).getByLabelText('取説タイトル'), { target: { value: 'サイトの使い方' } });
+    fireEvent.change(within(settingsPanel).getByLabelText('掲示板/取説タイトル'), { target: { value: 'サイトの使い方' } });
     fireEvent.change(within(settingsPanel).getByLabelText('取説本文'), { target: { value: '管理画面で編集した取説です。' } });
     fireEvent.click(within(settingsPanel).getByRole('button', { name: '設定を保存' }));
 
@@ -167,7 +239,7 @@ describe('AdminPage', () => {
           manualBody: '管理画面で編集した取説です。',
         }),
       }),
-      'admin',
+      'admin-secret',
     ));
   });
 
@@ -193,6 +265,7 @@ describe('AdminPage', () => {
           normalFrameColor: '#a23dff',
         },
       },
+      system: { adminPasswordConfigured: true },
     });
 
     render(
@@ -218,19 +291,25 @@ describe('AdminPage', () => {
     expect(within(settingsPanel).getByDisplayValue('token-secret')).toBeDisabled();
   });
 
-  it('does not expose local archive import in the backup tab', async () => {
+  it('keeps backup controls in maintenance without exposing local archive import', async () => {
     render(
       <MemoryRouter>
         <AdminPage />
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'バックアップ' }));
+    expect(screen.queryByRole('button', { name: 'バックアップ' })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: '保守' }));
 
+    expect(screen.getByText('運用中のデータ保全、復元、外部SNS情報の更新、管理者パスワード変更を行います。')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '管理者パスワード変更' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'SNSリアクション更新' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '投稿データ インポート/エクスポート' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'エクスポート' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'インポート' })).toBeInTheDocument();
     expect(screen.queryByText('ローカルアーカイブログ追加インポート')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('ローカルアーカイブログディレクトリ')).not.toBeInTheDocument();
   });
-
   it('shows analytics chart and aggregates selected metrics by unit', async () => {
     render(
       <MemoryRouter>
@@ -267,7 +346,7 @@ describe('AdminPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: '削除済み' }));
+    fireEvent.click(await screen.findByRole('button', { name: '投稿復元' }));
 
     expect(screen.getByText(/No\.12-2/)).toBeInTheDocument();
     expect(screen.queryByText(/No\.514/)).not.toBeInTheDocument();

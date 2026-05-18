@@ -48,6 +48,9 @@ function handleApiRequest(): void
         case 'publicSettings':
             publicSettings($pdo);
             break;
+        case 'adminStatus':
+            adminStatus($pdo);
+            break;
         case 'recordAccess':
             recordAccess($pdo);
             break;
@@ -129,6 +132,9 @@ function handleApiRequest(): void
         case 'getSettings':
             getSettings($pdo);
             break;
+        case 'initializeAdminPassword':
+            initializeAdminPassword($pdo);
+            break;
         case 'updateSettings':
             updateSettings($pdo);
             break;
@@ -141,7 +147,7 @@ function handleApiRequest(): void
 }
 function listThreads(PDO $pdo): void
 {
-    [$limit, $offset] = paginationParams();
+    [$limit, $offset] = paginationParams($pdo);
     $targetId = filter_input(INPUT_GET, 'target_id', FILTER_VALIDATE_INT);
     if ($targetId !== false && $targetId !== null) {
         $targetStmt = $pdo->prepare('SELECT id, created_at FROM posts WHERE id = :id AND parent_id = 0 AND deleted_at IS NULL LIMIT 1');
@@ -158,12 +164,18 @@ function listThreads(PDO $pdo): void
                 ':created_at' => (string)$target['created_at'],
                 ':id' => (int)$target['id'],
             ]);
-            $offset = intdiv((int)$beforeStmt->fetchColumn(), $limit) * $limit;
+            $offset = $limit === null ? 0 : intdiv((int)$beforeStmt->fetchColumn(), $limit) * $limit;
         }
     }
-    $stmt = $pdo->prepare('SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.parent_id = 0 AND p.deleted_at IS NULL ORDER BY p.created_at DESC, p.id DESC LIMIT :limit OFFSET :offset');
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    $sql = 'SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.parent_id = 0 AND p.deleted_at IS NULL ORDER BY p.created_at DESC, p.id DESC';
+    if ($limit !== null) {
+        $sql .= ' LIMIT :limit OFFSET :offset';
+    }
+    $stmt = $pdo->prepare($sql);
+    if ($limit !== null) {
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    }
     bindBoardStatTexts($stmt, $pdo);
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -271,7 +283,7 @@ function searchPosts(PDO $pdo): void
         jsonResponse([]);
     }
 
-    [$limit, $offset] = paginationParams();
+    [$limit, $offset] = paginationParams($pdo);
     $pattern = '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%';
     $scope = $_GET['scope'] ?? 'all';
     $where = match ($scope) {
@@ -280,10 +292,16 @@ function searchPosts(PDO $pdo): void
         'name' => 'p.name LIKE :q ESCAPE "\\"',
         default => '(p.title LIKE :q ESCAPE "\\" OR p.message LIKE :q ESCAPE "\\" OR p.name LIKE :q ESCAPE "\\")',
     };
-    $stmt = $pdo->prepare('SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.deleted_at IS NULL AND ' . $where . ' ORDER BY p.created_at DESC LIMIT :limit OFFSET :offset');
+    $sql = 'SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.deleted_at IS NULL AND ' . $where . ' ORDER BY p.created_at DESC';
+    if ($limit !== null) {
+        $sql .= ' LIMIT :limit OFFSET :offset';
+    }
+    $stmt = $pdo->prepare($sql);
     $stmt->bindValue(':q', $pattern, PDO::PARAM_STR);
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    if ($limit !== null) {
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    }
     bindBoardStatTexts($stmt, $pdo);
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -662,7 +680,7 @@ function adminPasswordMatches(PDO $pdo, string $password): bool
         return password_verify($password, $hash);
     }
 
-    $configured = getenv('DOTEITA_ADMIN_PASSWORD') ?: 'admin';
+    $configured = getenv('THREADFORGE_ADMIN_PASSWORD') ?: '';
     return hash_equals($configured, $password);
 }
 
@@ -754,7 +772,7 @@ function createPost(PDO $pdo): void
 
     $imagePath = null;
     if (allowsImageUpload($threadId, $parentId) && !empty($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
-        $imagePath = saveUploadedImage($_FILES['file'], $insertedId);
+        $imagePath = saveUploadedImage($_FILES['file'], $insertedId, allowedImageExtensionsFromConfig($config));
         if ($imagePath === null) {
             $pdo->rollBack();
             jsonResponse(['success' => false, 'message' => '画像のアップロードに失敗しました。'], 400);
@@ -1454,6 +1472,7 @@ function imageMimeType(string $imagePath): ?string
         'jpg' => 'image/jpeg',
         'jpeg' => 'image/jpeg',
         'gif' => 'image/gif',
+        'bmp' => 'image/bmp',
     ][$extension] ?? null;
 }
 
@@ -1679,7 +1698,7 @@ function updatePost(PDO $pdo): void
 
     $imagePath = $post['image_path'];
     if (!$isReply && !empty($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
-        $newImage = saveUploadedImage($_FILES['file'], $id);
+        $newImage = saveUploadedImage($_FILES['file'], $id, allowedImageExtensionsFromConfig($config));
         if ($newImage === null) {
             jsonResponse(['success' => false, 'message' => '画像のアップロードに失敗しました。'], 400);
         }
@@ -1783,10 +1802,16 @@ function deletePost(PDO $pdo): void
 function listDeletedPosts(PDO $pdo): void
 {
     requireAdmin();
-    [$limit, $offset] = paginationParams();
-    $stmt = $pdo->prepare('SELECT * FROM posts WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT :limit OFFSET :offset');
-    $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    [$limit, $offset] = paginationParams($pdo);
+    $sql = 'SELECT * FROM posts WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC';
+    if ($limit !== null) {
+        $sql .= ' LIMIT :limit OFFSET :offset';
+    }
+    $stmt = $pdo->prepare($sql);
+    if ($limit !== null) {
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    }
     $stmt->execute();
 
     jsonResponse(array_map(
@@ -1903,7 +1928,7 @@ function requireAdmin(): void
         return;
     }
 
-    $configured = getenv('DOTEITA_ADMIN_PASSWORD') ?: 'admin';
+    $configured = getenv('THREADFORGE_ADMIN_PASSWORD') ?: '';
     if ($configured === '' || !hash_equals($configured, (string)$provided)) {
         jsonResponse(['success' => false, 'message' => '管理者認証に失敗しました。'], 403);
     }
@@ -2004,23 +2029,19 @@ function requireCronApiKey(PDO $pdo): void
     }
 }
 
-function runSocialReactionRefresh(PDO $pdo, int $recentDays = 7): array
+function runSocialReactionRefresh(PDO $pdo): array
 {
     $settings = loadSettings($pdo);
-    $cutoff = (new DateTimeImmutable('now', new DateTimeZone('Asia/Tokyo')))
-        ->modify('-' . $recentDays . ' days')
-        ->format('Y-m-d H:i:s');
     $stmt = $pdo->prepare(
         "SELECT * FROM posts
          WHERE deleted_at IS NULL
            AND parent_id = 0
-           AND created_at >= :cutoff
            AND (
              tweet_url IS NOT NULL OR bluesky_uri IS NOT NULL OR mastodon_id IS NOT NULL OR misskey_id IS NOT NULL
            )
          ORDER BY id ASC"
     );
-    $stmt->execute([':cutoff' => $cutoff]);
+    $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $updated = 0;
@@ -2040,7 +2061,7 @@ function runSocialReactionRefresh(PDO $pdo, int $recentDays = 7): array
         'updated' => $updated,
         'errors' => $errors,
         'checked_posts' => count($rows),
-        'recent_days' => $recentDays,
+        'recent_days' => null,
     ];
 }
 
@@ -2324,6 +2345,7 @@ function getSettings(PDO $pdo): void
             'cronPath' => cronScriptPath(),
             'cronApiUrl' => cronApiUrl(),
             'cronApiKey' => $cronApiKey,
+            'adminPasswordConfigured' => adminPasswordHash($pdo) !== '',
         ],
     ]);
 }
@@ -2359,6 +2381,29 @@ function ensureCronApiKey(PDO $pdo): string
     return $key;
 }
 
+function allowedImageExtensionsFromConfig(array $config): array
+{
+    $default = ['gif', 'png', 'jpeg', 'jpg', 'bmp'];
+    $raw = $config['allowedImageTypes'] ?? $default;
+    if (is_string($raw)) {
+        $raw = array_map('trim', explode(',', $raw));
+    }
+    if (!is_array($raw)) {
+        return $default;
+    }
+    $allowed = array_values(array_intersect($default, array_map(
+        fn ($value): string => strtolower((string)$value),
+        $raw
+    )));
+    if (in_array('jpeg', $allowed, true) && !in_array('jpg', $allowed, true)) {
+        $allowed[] = 'jpg';
+    }
+    if (in_array('jpg', $allowed, true) && !in_array('jpeg', $allowed, true)) {
+        $allowed[] = 'jpeg';
+    }
+    return $allowed === [] ? $default : $allowed;
+}
+
 function publicSettings(PDO $pdo): void
 {
     $settings = loadSettings($pdo);
@@ -2385,6 +2430,7 @@ function publicSettings(PDO $pdo): void
                 'eejanaikaEejanaikaText' => (string)($config['eejanaikaEejanaikaText'] ?? 'ええじゃないか'),
                 'eejanaikaEejanaikaColor' => (string)($config['eejanaikaEejanaikaColor'] ?? '#fff200'),
                 'socialHashtags' => (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart'),
+                'allowedImageTypes' => allowedImageExtensionsFromConfig($config),
             ],
         ],
     ]);
@@ -2397,8 +2443,39 @@ function updateSettings(PDO $pdo): void
     if (!is_array($settings)) {
         jsonResponse(['success' => false, 'message' => '設定データが正しくありません。'], 400);
     }
+    if (isset($settings['config']) && is_array($settings['config']) && array_key_exists('bbsTitle', $settings['config'])) {
+        $settings['config']['manualTitle'] = (string)$settings['config']['bbsTitle'];
+    }
     saveSettings($pdo, $settings);
     jsonResponse(['success' => true, 'message' => '設定を保存しました。']);
+}
+
+function adminStatus(PDO $pdo): void
+{
+    jsonResponse([
+        'success' => true,
+        'adminPasswordConfigured' => adminPasswordHash($pdo) !== '',
+    ]);
+}
+
+function initializeAdminPassword(PDO $pdo): void
+{
+    if (adminPasswordHash($pdo) !== '') {
+        jsonResponse(['success' => false, 'message' => '管理者パスワードは設定済みです。'], 409);
+    }
+
+    $newPassword = trim((string)($_POST['new_admin_password'] ?? ''));
+    if ($newPassword === '') {
+        jsonResponse(['success' => false, 'message' => '管理者パスワードを入力してください。'], 400);
+    }
+
+    $settings = loadSettings($pdo);
+    $settings['security']['adminPasswordHash'] = password_hash($newPassword, PASSWORD_DEFAULT);
+    if (isset($settings['config']) && is_array($settings['config']) && array_key_exists('bbsTitle', $settings['config'])) {
+        $settings['config']['manualTitle'] = (string)$settings['config']['bbsTitle'];
+    }
+    saveSettings($pdo, $settings);
+    jsonResponse(['success' => true, 'message' => '管理者パスワードを設定しました。']);
 }
 
 function changeAdminPassword(PDO $pdo): void
@@ -2411,6 +2488,9 @@ function changeAdminPassword(PDO $pdo): void
 
     $settings = loadSettings($pdo);
     $settings['security']['adminPasswordHash'] = password_hash($newPassword, PASSWORD_DEFAULT);
+    if (isset($settings['config']) && is_array($settings['config']) && array_key_exists('bbsTitle', $settings['config'])) {
+        $settings['config']['manualTitle'] = (string)$settings['config']['bbsTitle'];
+    }
     saveSettings($pdo, $settings);
     jsonResponse(['success' => true, 'message' => '管理パスワードを変更しました。']);
 }
@@ -2450,15 +2530,37 @@ function defaultSettings(): array
             'eejanaikaEejanaikaText' => 'ええじゃないか',
             'eejanaikaEejanaikaColor' => '#fff200',
             'socialHashtags' => '#ドット絵 #pixelart',
-            'logView' => 20,
+            'logView' => '',
             'maxUploadBytes' => 5100000,
             'maxImageWidth' => 1280,
             'maxImageHeight' => 960,
+            'allowedImageTypes' => ['gif', 'png', 'jpeg', 'jpg', 'bmp'],
         ],
         'skin' => [
             'normalFrameColor' => '#a23dff',
             'gdgdFrameColor' => '#6dffc0',
             'backgroundColor' => '#000000',
+            'pageTextColor' => '#ffffff',
+            'linkColor' => '#58a6ff',
+            'panelBackgroundColor' => '#101821',
+            'panelTitleBackgroundColor' => '#5b6572',
+            'panelBorderColor' => '#738196',
+            'labelColor' => '#8fc0ff',
+            'inputBackgroundColor' => '#30343a',
+            'inputTextColor' => '#ffffff',
+            'buttonBackgroundColor' => '#3f74ff',
+            'buttonTextColor' => '#ffffff',
+            'buttonBorderColor' => '#8fb0ff',
+            'secondaryButtonBackgroundColor' => '#2f333b',
+            'secondaryButtonTextColor' => '#ffffff',
+            'secondaryButtonBorderColor' => '#7a8495',
+            'normalHeaderColor' => '#39988a',
+            'normalTextColor' => '#ffffff',
+            'gdgdHeaderColor' => '#7f00a8',
+            'gdgdTextColor' => '#ffffff',
+            'replyBorderColor' => '#7a8495',
+            'dangerColor' => '#ff7c7c',
+            'successColor' => '#8dff8d',
         ],
         'security' => [
             'adminPasswordHash' => '',
@@ -2554,6 +2656,7 @@ function loadSettings(PDO $pdo): array
     if (($settings['config']['gdgdLabel'] ?? '') === 'gdgd投稿') {
         $settings['config']['gdgdLabel'] = '特殊投稿';
     }
+    $settings['config']['manualTitle'] = (string)($settings['config']['bbsTitle'] ?? 'ThreadForge');
     $defaultBodies = [legacyDefaultManualBody(), previousDefaultManualBody()];
     if (is_string($settings['config']['manualBody'] ?? null)) {
         $body = (string)$settings['config']['manualBody'];
@@ -2580,11 +2683,20 @@ function saveSettings(PDO $pdo, array $settings): void
     }
 }
 
-function paginationParams(): array
+function paginationParams(PDO $pdo): array
 {
     $page = filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT) ?: 1;
-    $limit = filter_input(INPUT_GET, 'limit', FILTER_VALIDATE_INT) ?: 50;
+    $requestLimit = filter_input(INPUT_GET, 'limit', FILTER_VALIDATE_INT);
+    $settings = loadSettings($pdo);
+    $configuredLimit = filter_var($settings['config']['logView'] ?? null, FILTER_VALIDATE_INT);
     $page = max(1, $page);
-    $limit = min(100, max(1, $limit));
+    if ($requestLimit !== false && $requestLimit !== null) {
+        $limit = min(100, max(1, $requestLimit));
+        return [$limit, ($page - 1) * $limit];
+    }
+    if ($configuredLimit === false || $configuredLimit === null || $configuredLimit <= 0) {
+        return [null, 0];
+    }
+    $limit = min(1000, max(1, $configuredLimit));
     return [$limit, ($page - 1) * $limit];
 }

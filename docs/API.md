@@ -64,7 +64,7 @@ Fields:
 - `password`: required
 - `thread_id`: optional. New top-level posts use `0` or omit it
 - `parent_id`: optional. New top-level posts use `0` or omit it
-- `file`: optional. PNG/JPEG/GIF. Top-level posts only
+- `file`: optional. Allowed formats are configured by the admin from GIF, PNG, JPEG, JPG, and BMP. Top-level posts only
 - `gdgd`: optional. Top-level posts only
 - `tweet_off`: optional. Top-level posts only. UI label is "SNS transfer OFF"
 - `source_url`: optional. Top-level posts only. Board-list anchor URL for SNS text. If omitted, the API derives it from the request origin
@@ -139,7 +139,7 @@ Returns RSS 2.0 XML with up to 30 latest non-deleted top-level posts.
 
 Admin-only action that fetches reaction counts from stored SNS post URLs/IDs and caches them.
 
-Targets are non-deleted top-level posts created within the last 7 days.
+Targets are all non-deleted top-level posts that have SNS post IDs.
 
 Fetched metrics:
 
@@ -154,13 +154,13 @@ Scheduler-friendly reaction refresh endpoint for external periodic jobs.
 
 Use the `cronApiKey` shown in the admin screen. This endpoint is intended for GitHub Actions or external HTTP schedulers.
 
-Targets are the same as `refreshSocialReactions`: non-deleted top-level posts created within the last 7 days.
+Targets are the same as `refreshSocialReactions`: all non-deleted top-level posts that have SNS post IDs.
 
 For local server Cron, register the `server/cron.php` file path shown in the admin screen.
 
 ## GET `?action=listDeletedPosts&admin_password={password}`
 
-Admin-only action that returns soft-deleted posts. `admin_password` must match the `DOTEITA_ADMIN_PASSWORD` environment variable.
+Admin-only action that returns soft-deleted posts. `admin_password` must match the configured admin password or the optional `THREADFORGE_ADMIN_PASSWORD` environment variable.
 
 ## GET `?action=listAnalyticsPosts&admin_password={password}`
 

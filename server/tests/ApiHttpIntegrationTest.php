@@ -82,16 +82,46 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->assertFalse($missing['json']['success']);
     }
 
-    public function testDefaultAdminPasswordCanOpenSettingsWhenNoPasswordIsConfigured(): void
+    public function testAdminSettingsStayClosedWhenNoPasswordIsConfigured(): void
     {
+        $status = $this->getJson(['action' => 'adminStatus']);
+        $this->assertSame(200, $status['status']);
+        $this->assertFalse($status['json']['adminPasswordConfigured']);
+
         $denied = $this->getJson(['action' => 'getSettings', 'admin_password' => 'wrong']);
         $this->assertSame(403, $denied['status']);
         $this->assertFalse($denied['json']['success']);
 
-        $allowed = $this->getJson(['action' => 'getSettings', 'admin_password' => 'admin']);
+        $defaultPassword = $this->getJson(['action' => 'getSettings', 'admin_password' => 'admin']);
+        $this->assertSame(403, $defaultPassword['status']);
+        $this->assertFalse($defaultPassword['json']['success']);
+
+        $this->setAdminPassword('admin-secret');
+        $allowed = $this->getJson(['action' => 'getSettings', 'admin_password' => 'admin-secret']);
         $this->assertSame(200, $allowed['status']);
         $this->assertTrue($allowed['json']['success']);
-        $this->assertArrayHasKey('settings', $allowed['json']);
+        $this->assertTrue($allowed['json']['system']['adminPasswordConfigured']);
+    }
+
+    public function testInitializeAdminPasswordAllowsFirstBrowserSetupOnly(): void
+    {
+        $created = $this->postForm([
+            'action' => 'initializeAdminPassword',
+            'new_admin_password' => 'first-secret',
+        ]);
+        $this->assertSame(200, $created['status']);
+        $this->assertTrue($created['json']['success']);
+
+        $allowed = $this->getJson(['action' => 'getSettings', 'admin_password' => 'first-secret']);
+        $this->assertSame(200, $allowed['status']);
+        $this->assertTrue($allowed['json']['system']['adminPasswordConfigured']);
+
+        $second = $this->postForm([
+            'action' => 'initializeAdminPassword',
+            'new_admin_password' => 'second-secret',
+        ]);
+        $this->assertSame(409, $second['status']);
+        $this->assertFalse($second['json']['success']);
     }
 
     public function testDeletingThreadSoftDeletesRepliesWithoutPhysicalDeletion(): void

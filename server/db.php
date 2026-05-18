@@ -858,7 +858,7 @@ function deleteImage(?string $path): void
     }
 }
 
-function saveUploadedImage(array $file, int $postId): ?string
+function saveUploadedImage(array $file, int $postId, ?array $allowedExtensions = null): ?string
 {
     if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
         return null;
@@ -891,6 +891,9 @@ function saveUploadedUserIcon(array $file, int $userId): ?string
 
     $extension = imageExtensionFromUpload($file);
     if ($extension === null) {
+        return null;
+    }
+    if ($allowedExtensions !== null && !in_array($extension, $allowedExtensions, true)) {
         return null;
     }
 
@@ -938,6 +941,8 @@ function imageExtensionFromMime(string $mimeType): ?string
         'image/png' => 'png',
         'image/jpeg' => 'jpg',
         'image/gif' => 'gif',
+        'image/bmp' => 'bmp',
+        'image/x-ms-bmp' => 'bmp',
     ];
 
     return $extensions[$mimeType] ?? null;

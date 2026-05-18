@@ -64,7 +64,7 @@ Content-Type:
 - `password`: 必須
 - `thread_id`: 任意。新規親投稿では `0` または未指定
 - `parent_id`: 任意。新規親投稿では `0` または未指定
-- `file`: 任意。PNG/JPEG/GIF。親投稿のみ
+- `file`: 任意。管理者が GIF/PNG/JPEG/JPG/BMP から許可した形式。親投稿のみ
 - `gdgd`: 任意。親投稿のみ
 - `tweet_off`: 任意。親投稿のみ。UIでは `SNS転記OFF`
 - `source_url`: 任意。親投稿のみ。SNS本文に載せる掲示板一覧アンカーURL。未指定時はリクエスト元から推定
@@ -139,7 +139,7 @@ Content-Type:
 
 管理者向けに、保存済みSNS投稿URL/IDからリアクション数を取得してキャッシュします。
 
-対象は、作成から7日以内の未削除親投稿です。
+対象は、SNS投稿IDを持つ未削除親投稿すべてです。
 
 取得指標:
 
@@ -154,13 +154,13 @@ Content-Type:
 
 APIキーは管理画面に表示される `cronApiKey` を使います。GitHub Actions や外部HTTPスケジューラから呼び出す想定です。
 
-対象は `refreshSocialReactions` と同じく、作成から7日以内の未削除親投稿です。
+対象は `refreshSocialReactions` と同じく、SNS投稿IDを持つ未削除親投稿すべてです。
 
 ローカルサーバーのCronを使う場合は、管理画面に表示される `server/cron.php` のファイルパスをCron設定に登録します。
 
 ## GET `?action=listDeletedPosts&admin_password={password}`
 
-管理者向けに削除済み投稿を返します。`admin_password` は `DOTEITA_ADMIN_PASSWORD` 環境変数と一致する必要があります。
+管理者向けに削除済み投稿を返します。`admin_password` は設定済みの管理者パスワード、または任意の `THREADFORGE_ADMIN_PASSWORD` 環境変数と一致する必要があります。
 
 ## GET `?action=listAnalyticsPosts&admin_password={password}`
 

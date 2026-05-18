@@ -43,6 +43,7 @@ const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     eejanaikaEejanaikaText: 'ええじゃないか',
     eejanaikaEejanaikaColor: '#fff200',
     socialHashtags: '#ドット絵 #pixelart',
+    allowedImageTypes: ['gif', 'png', 'jpeg', 'jpg', 'bmp'],
   },
 };
 

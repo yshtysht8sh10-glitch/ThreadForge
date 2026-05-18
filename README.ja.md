@@ -25,14 +25,16 @@ npm install
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
+
 バックエンド:
 
 ```powershell
 cd server
 composer install
-$env:DOTEITA_ADMIN_PASSWORD='admin'
 php -S 127.0.0.1:8000 -t .
 ```
+
+初回はブラウザの管理画面で管理者パスワードを設定してください。復旧や自動セットアップ用には `THREADFORGE_ADMIN_PASSWORD` も使えます。
 
 起動後、次の URL を開きます。
 
@@ -75,7 +77,7 @@ vendor/bin/phpunit
 - `server/database.sqlite`
 - `server/storage/data/*`
 
-これらは Git 管理外です。環境間でデータを移す場合は、管理画面のバックアップ/エクスポート機能を使います。
+これらは Git 管理外です。環境間でデータを移す場合は、保守画面の投稿データインポート/エクスポート機能を使います。
 
 ## SNS転記の運用
 
@@ -83,7 +85,7 @@ X、Bluesky、Mastodon、Misskey 連携はデフォルト OFF です。この状
 
 SNS転記が有効な場合、新規の親投稿作成時に ON の SNS へ転記します。画像が添付されている場合、X、Bluesky、Mastodon、Misskey へ画像も送信します。SNS本文には「最新はこちら」と掲示板一覧の当該投稿アンカー URL を含め、文字数上限を超える場合は送信を止めず `..` で省略します。
 
-投稿編集は掲示板内だけに反映し、SNS側の既存投稿は編集・再投稿しません。SNSリアクション数は管理画面から手動更新できるほか、`server/cron.php` または管理画面に表示される APIキー付きURLから自動更新できます。自動更新の対象は作成から7日以内のSNS投稿です。
+投稿編集は掲示板内だけに反映し、SNS側の既存投稿は編集・再投稿しません。SNSリアクション数は管理画面から手動更新できるほか、`server/cron.php` または管理画面に表示される APIキー付きURLから自動更新できます。自動更新の対象は、SNS投稿IDを持つ未削除の親投稿すべてです。
 
 ## ドキュメント
 

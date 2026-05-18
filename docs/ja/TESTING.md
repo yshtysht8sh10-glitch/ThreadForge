@@ -49,7 +49,7 @@ npm test
 - `saveUploadedImage()` が通常ファイルに対して `null` を返すこと
 - SNS文言生成、「最新はこちら」URL、投稿IDプレースホルダー置換、X文字数計算、SNS別省略、`_TWEND_`
 - X、Bluesky、Mastodon、Misskey へのSNS画像転記
-- SNSリアクション取得の手動実行、ローカルCron、APIキー付き外部定期実行、7日対象制限
+- SNSリアクション取得の手動実行、ローカルCron、APIキー付き外部定期実行、全対象更新
 - ローカルアーカイブログ取り込みの非破壊・重複スキップ動作
 - 重複投稿判定
 - URL正規化

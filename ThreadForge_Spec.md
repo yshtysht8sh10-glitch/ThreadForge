@@ -58,7 +58,7 @@ ThreadForge is presented as a new self-hosted board engine that can be adapted f
 
 ## Admin Features
 
-The admin page uses `DOTEITA_ADMIN_PASSWORD` on the backend.
+The admin page uses the configured administrator password. `THREADFORGE_ADMIN_PASSWORD` is available as an optional recovery/setup override.
 
 Implemented:
 
@@ -145,7 +145,7 @@ Public UI reads a safe subset of settings through `?action=publicSettings`:
 - X uses weighted character counting; the other platform previews use normal character length.
 - Cached reaction counts are displayed as simple same-color metrics, with platform destination markers aligned by row.
 - Cached reaction refresh can be run manually from admin maintenance, by local `server/cron.php`, or by the API endpoint `?action=cronRefreshSocialReactions&api_key=...`.
-- Automatic reaction refresh targets only non-deleted top-level posts created within the last 7 days.
+- Automatic reaction refresh targets all non-deleted top-level posts that have SNS post IDs.
 
 ## Comment and Fixed-Comment Forms
 

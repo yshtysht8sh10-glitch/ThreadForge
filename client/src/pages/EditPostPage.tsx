@@ -5,6 +5,8 @@ import { Post } from '../types';
 import { useAuth } from '../auth';
 import { clampUserNameSuffix, composeUserName, userNameSuffixLimit } from '../name';
 
+const DEFAULT_ALLOWED_IMAGE_TYPES = ['gif', 'png', 'jpeg', 'jpg', 'bmp'];
+
 const EditPostPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -67,6 +69,8 @@ const EditPostPage = () => {
   const nameSuffixLimit = user ? userNameSuffixLimit(user.display_name) : 0;
   const displayName = user ? composeUserName(user.display_name, nameSuffix) : name;
   const imagePreviewUrl = filePreviewUrl ?? mediaUrl(post?.image_path);
+  const allowedImageTypes = settings.config.allowedImageTypes ?? DEFAULT_PUBLIC_SETTINGS.config.allowedImageTypes ?? DEFAULT_ALLOWED_IMAGE_TYPES;
+  const acceptedImageTypes = allowedImageTypes.map((extension) => `.${extension}`).join(',');
   const cardClassName = [
     'card',
     'edit-post-card',
@@ -169,7 +173,7 @@ const EditPostPage = () => {
                     <img src={imagePreviewUrl} alt={title || '投稿画像'} />
                   </section>
                 )}
-                <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+                <input type="file" accept={acceptedImageTypes} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
               </div>
             )}
             <label>

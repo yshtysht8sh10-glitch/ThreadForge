@@ -6,6 +6,8 @@ import { createSocialPostPreviews } from '../tweet';
 import { useAuth } from '../auth';
 import { clampUserNameSuffix, composeUserName, userNameSuffixLimit } from '../name';
 
+const DEFAULT_ALLOWED_IMAGE_TYPES = ['gif', 'png', 'jpeg', 'jpg', 'bmp'];
+
 const PostFormPage = () => {
   const navigate = useNavigate();
   const { token, user } = useAuth();
@@ -58,6 +60,9 @@ const PostFormPage = () => {
   const displayName = user ? composeUserName(user.display_name, nameSuffix) : name;
   const socialPreviews = socialTransferOff ? [] : createSocialPostPreviews(enabledSocialPlatforms, displayName, title, message, boardSourceUrl, settings.config.socialHashtags);
   const hasInput = [name, nameSuffix, url, title, message, password].some((value) => value.trim() !== '') || gdgd || socialTransferOff || file !== undefined;
+  const allowedImageTypes = settings.config.allowedImageTypes ?? DEFAULT_PUBLIC_SETTINGS.config.allowedImageTypes ?? DEFAULT_ALLOWED_IMAGE_TYPES;
+  const acceptedImageTypes = allowedImageTypes.map((extension) => `.${extension}`).join(',');
+  const acceptedImageTypeLabel = allowedImageTypes.map((extension) => extension.toUpperCase()).join('・');
 
   const handleClose = () => {
     if (!hasInput || window.confirm('入力内容は破棄されます。一覧画面に戻りますか？')) {
@@ -161,9 +166,9 @@ const PostFormPage = () => {
             </section>
           )}
           <label>
-            <input type="file" accept="image/png,image/gif" onChange={(event) => setFile(event.target.files?.[0])} />
+            <input type="file" accept={acceptedImageTypes} onChange={(event) => setFile(event.target.files?.[0])} />
           </label>
-          <span className="post-form-field-help">※PNG・GIF が使用できます。最大データサイズは 5100 KB までです。</span>
+          <span className="post-form-field-help">※{acceptedImageTypeLabel} が使用できます。最大データサイズは 5100 KB までです。</span>
         </div>
 
         <label>

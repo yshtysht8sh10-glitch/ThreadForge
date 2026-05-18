@@ -1,22 +1,21 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { api, apiBase } from '../api';
 import { Post } from '../types';
 import SelectableThreadList from '../components/SelectableThreadList';
 
 type Settings = {
-  config: Record<string, string | number | boolean>;
-  skin: Record<string, string | number | boolean>;
+  config: Record<string, SettingValue>;
+  skin: Record<string, SettingValue>;
 };
 
-type AdminTab = 'posts' | 'maintenance' | 'backup' | 'analytics' | 'settings' | 'deleted';
+type SettingValue = string | number | boolean | string[];
+type AdminTab = 'posts' | 'deleted' | 'maintenance' | 'analytics' | 'settings' | 'design';
 type AnalyticsMetric = 'postCount' | 'commentCount' | 'accessCount' | 'viewCount' | 'boardEejanaika' | 'boardOmigoto' | 'boardGoodjob' | 'xLikes' | 'xReposts' | 'xImpressions' | 'blueskyLikes' | 'blueskyReposts' | 'mastodonBoosts' | 'mastodonFavs' | 'misskeyReactions' | 'misskeyFire' | 'misskeyEyes' | 'misskeyCry' | 'misskeyThinking' | 'misskeyParty' | 'misskeyOther';
 type AnalyticsUnit = 'dayTotal' | 'dayCumulative' | 'monthTotal' | 'monthAverage' | 'monthCumulative' | 'yearTotal' | 'yearAverage' | 'yearCumulative';
 
-const DEFAULT_HIDDEN_ADMIN_PASSWORD = 'admin';
-
 const AdminPage = () => {
   const [adminPassword, setAdminPassword] = useState(() => {
-    return window.localStorage.getItem('threadforgeAdminPassword') || DEFAULT_HIDDEN_ADMIN_PASSWORD;
+    return window.localStorage.getItem('threadforgeAdminPassword') || '';
   });
   const [activeTab, setActiveTab] = useState<AdminTab>('posts');
   const [threads, setThreads] = useState<Post[]>([]);
@@ -27,8 +26,11 @@ const AdminPage = () => {
   const [cronPath, setCronPath] = useState('');
   const [cronApiUrl, setCronApiUrl] = useState('');
   const [cronApiKey, setCronApiKey] = useState('');
-  const [backupFile, setBackupFile] = useState<File | null>(null);
+  const [adminPasswordConfigured, setAdminPasswordConfigured] = useState<boolean | null>(null);
+  const backupImportInputRef = useRef<HTMLInputElement | null>(null);
   const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [initialAdminPassword, setInitialAdminPassword] = useState('');
+  const [initialAdminPasswordConfirm, setInitialAdminPasswordConfirm] = useState('');
   const [analyticsMetric, setAnalyticsMetric] = useState<AnalyticsMetric>('postCount');
   const [analyticsUnit, setAnalyticsUnit] = useState<AnalyticsUnit>('monthTotal');
   const [status, setStatus] = useState<string | null>('管理データを読み込み中...');
@@ -51,23 +53,34 @@ const AdminPage = () => {
       setCronPath(settingResponse.system?.cronPath ?? '');
       setCronApiUrl(settingResponse.system?.cronApiUrl ?? '');
       setCronApiKey(settingResponse.system?.cronApiKey ?? '');
+      setAdminPasswordConfigured(settingResponse.system?.adminPasswordConfigured ?? null);
       setSelectedIds([]);
       window.localStorage.setItem('threadforgeAdminPassword', password);
       setStatus('管理データを読み込みました。');
     } catch (err) {
-      if (password !== DEFAULT_HIDDEN_ADMIN_PASSWORD) {
-        window.localStorage.removeItem('threadforgeAdminPassword');
-        setAdminPassword(DEFAULT_HIDDEN_ADMIN_PASSWORD);
-        await loadAll(DEFAULT_HIDDEN_ADMIN_PASSWORD);
-        return;
-      }
+      window.localStorage.removeItem('threadforgeAdminPassword');
+      setAdminPassword('');
       setError((err as Error).message);
       setStatus(null);
     }
   };
 
   useEffect(() => {
-    loadAll();
+    const boot = async () => {
+      try {
+        const response = await api.adminStatus();
+        setAdminPasswordConfigured(response.adminPasswordConfigured);
+        if (adminPassword !== '') {
+          await loadAll(adminPassword);
+          return;
+        }
+        setStatus(null);
+      } catch (err) {
+        setError((err as Error).message);
+        setStatus(null);
+      }
+    };
+    boot();
   }, []);
 
   const guarded = (callback: () => Promise<void>) => async (event?: FormEvent) => {
@@ -78,6 +91,25 @@ const AdminPage = () => {
 
   const submitAdminPassword = guarded(async () => {
     await loadAll(adminPassword);
+  });
+
+  const initializeAdminPassword = guarded(async () => {
+    if (!initialAdminPassword.trim()) {
+      setError('管理者パスワードを入力してください。');
+      return;
+    }
+    if (initialAdminPassword !== initialAdminPasswordConfirm) {
+      setError('確認用パスワードが一致しません。');
+      return;
+    }
+    const response = await api.initializeAdminPassword(initialAdminPassword);
+    setStatus(response.message);
+    setAdminPassword(initialAdminPassword);
+    setAdminPasswordConfigured(true);
+    window.localStorage.setItem('threadforgeAdminPassword', initialAdminPassword);
+    setInitialAdminPassword('');
+    setInitialAdminPasswordConfirm('');
+    await loadAll(initialAdminPassword);
   });
 
   const reloadThreads = async () => {
@@ -116,20 +148,26 @@ const AdminPage = () => {
     await reloadDeletedPosts();
   };
 
-  const exportBackup = () => {
-    window.location.href = `${apiBase()}?action=exportBackup&admin_password=${encodeURIComponent(adminPassword)}`;
-  };
+  const exportBackup = guarded(async () => {
+    setStatus('エクスポート中...');
+    const response = await fetch(`${apiBase()}?action=exportBackup&admin_password=${encodeURIComponent(adminPassword)}`);
+    if (!response.ok) {
+      throw new Error(`${response.status} ${response.statusText}`);
+    }
+    await saveBlobWithPicker(await response.blob(), 'threadforge-backup.json');
+    setStatus('投稿データをエクスポートしました。');
+  });
 
-  const importBackup = guarded(async () => {
-    if (!backupFile) {
+  const importBackupFile = async (file: File | null) => {
+    if (!file) {
       setError('インポートするバックアップJSONを選択してください。');
       return;
     }
     setStatus('インポート中...');
-    const response = await api.importBackup(backupFile, adminPassword);
+    const response = await api.importBackup(file, adminPassword);
     setStatus(response.message);
     await loadAll();
-  });
+  };
 
   const refreshSocialReactions = guarded(async () => {
     setStatus('SNSリアクションを更新中...');
@@ -148,6 +186,52 @@ const AdminPage = () => {
     setStatus(response.message);
   });
 
+  const exitAdmin = () => {
+    window.localStorage.removeItem('threadforgeAdminPassword');
+    setAdminPassword('');
+    setSettings(null);
+    setThreads([]);
+    setDeletedPosts([]);
+    setAnalyticsPosts([]);
+    setSelectedIds([]);
+    setAdminPasswordConfigured(null);
+    setActiveTab('posts');
+    setStatus('管理画面から出ました。');
+    setError(null);
+  };
+
+  const exportSettingsJson = async (section: keyof Settings) => {
+    if (!settings) {
+      setError('設定を読み込んでください。');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(settings[section], null, 2)], { type: 'application/json' });
+    await saveBlobWithPicker(blob, section === 'skin' ? 'threadforge-design.json' : 'threadforge-settings.json');
+  };
+
+  const importSettingsJson = async (section: keyof Settings, file: File | null) => {
+    if (!file) {
+      return;
+    }
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('JSONの形式が正しくありません。');
+      }
+      setSettings((current) => current ? {
+        ...current,
+        [section]: {
+          ...current[section],
+          ...parsed,
+        },
+      } : current);
+      setStatus(`${section === 'skin' ? '掲示板デザイン' : '掲示板設定'}JSONを読み込みました。保存すると反映されます。`);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
   const changeAdminPassword = guarded(async () => {
     if (!newAdminPassword.trim()) {
       setError('新しい管理パスワードを入力してください。');
@@ -156,19 +240,24 @@ const AdminPage = () => {
     const response = await api.changeAdminPassword(adminPassword, newAdminPassword);
     setStatus(response.message);
     setAdminPassword(newAdminPassword);
+    setAdminPasswordConfigured(true);
     window.localStorage.setItem('threadforgeAdminPassword', newAdminPassword);
     setNewAdminPassword('');
   });
 
-  const updateSetting = (section: keyof Settings, key: string, value: string) => {
+  const updateSetting = (section: keyof Settings, key: string, value: SettingValue) => {
     setSettings((current) => {
       if (!current) return current;
+      const nextSection = {
+        ...current[section],
+        [key]: value,
+      };
+      if (section === 'config' && key === 'bbsTitle') {
+        nextSection.manualTitle = value;
+      }
       return {
         ...current,
-        [section]: {
-          ...current[section],
-          [key]: value,
-        },
+        [section]: nextSection,
       };
     });
   };
@@ -177,20 +266,58 @@ const AdminPage = () => {
     <div className="admin-page">
       <section className="card admin-system-card">
         <h1>管理</h1>
-        <form className="admin-auth-form" onSubmit={submitAdminPassword}>
-          <label>
-            管理者パスワード
-            <input
-              type="password"
-              value={adminPassword}
-              onChange={(event) => setAdminPassword(event.target.value)}
-              autoComplete="current-password"
-            />
-          </label>
-          <button type="submit">管理画面に入る</button>
-        </form>        <div className="admin-system-message" aria-live="polite">
+        {settings ? (
+          <div className="admin-auth-form">
+            <label>
+              管理者パスワード
+              <input type="password" value="********" readOnly />
+            </label>
+            <button type="button" className="secondary" onClick={exitAdmin}>管理画面から出る</button>
+          </div>
+        ) : adminPasswordConfigured === false ? (
+          <form className="admin-auth-form admin-initial-setup-form" onSubmit={initializeAdminPassword}>
+            <label>
+              初期管理者パスワード
+              <input
+                type="password"
+                value={initialAdminPassword}
+                onChange={(event) => setInitialAdminPassword(event.target.value)}
+                autoComplete="new-password"
+              />
+            </label>
+            <label>
+              確認
+              <input
+                type="password"
+                value={initialAdminPasswordConfirm}
+                onChange={(event) => setInitialAdminPasswordConfirm(event.target.value)}
+                autoComplete="new-password"
+              />
+            </label>
+            <button type="submit">管理者パスワードを設定</button>
+          </form>
+        ) : (
+          <form className="admin-auth-form" onSubmit={submitAdminPassword}>
+            <label>
+              管理者パスワード
+              <input
+                type="password"
+                value={adminPassword}
+                onChange={(event) => setAdminPassword(event.target.value)}
+                autoComplete="current-password"
+              />
+            </label>
+            <button type="submit">管理画面に入る</button>
+          </form>
+        )}
+        <div className="admin-system-message" aria-live="polite">
           {status && <p className="status">{status}</p>}
           {error && <p className="error">エラー: {error}</p>}
+          {adminPasswordConfigured === false && !settings && (
+            <p className="warning">
+              初期設定が未完了です。ここで管理者パスワードを設定してください。
+            </p>
+          )}
         </div>
       </section>
 
@@ -221,64 +348,59 @@ const AdminPage = () => {
           )}
 
           {activeTab === 'maintenance' && (
-            <section className="card">
-              <div className="form-card">
-                <h2>cron設定</h2>
-                <p>SNSリアクションはcronまたは外部サービスから自動更新できます。更新対象は投稿から7日以内の親投稿のみです。</p>
-                <label>
-                  Cron用ファイルパス
-                  <input value={cronPath} readOnly onFocus={(event) => event.currentTarget.select()} />
-                </label>
-                <label>
-                  API定期実行URL
-                  <input value={`${cronApiUrl}${cronApiKey}`} readOnly onFocus={(event) => event.currentTarget.select()} />
-                </label>
-                <label>
-                  APIキー
-                  <input value={cronApiKey} readOnly onFocus={(event) => event.currentTarget.select()} />
-                </label>
-              </div>
-              <h2>管理パスワード変更</h2>
-              <div className="button-row align-right">
-                <button type="button" onClick={refreshSocialReactions}>SNSリアクションを更新</button>
-              </div>
-              <form onSubmit={changeAdminPassword} className="form-card">
-                <label>
-                  新しい管理パスワード
-                  <input type="password" value={newAdminPassword} onChange={(event) => setNewAdminPassword(event.target.value)} />
-                </label>
-                <div className="button-row align-right">
-                  <button type="submit">管理パスワードを変更</button>
+            <section className="card admin-maintenance-card">
+              <h2>保守</h2>
+              <p>運用中のデータ保全、復元、外部SNS情報の更新、管理者パスワード変更を行います。</p>
+
+              <section className="admin-maintenance-section">
+                <h3>管理者パスワード変更</h3>
+                <div className="admin-maintenance-section-body">
+                  <p>管理画面へ入るためのパスワードを変更します。変更後は新しいパスワードで入り直してください。</p>
+                  <form onSubmit={changeAdminPassword} className="admin-maintenance-form">
+                    <label>
+                      新しい管理者パスワード
+                      <input type="password" value={newAdminPassword} onChange={(event) => setNewAdminPassword(event.target.value)} />
+                    </label>
+                    <div className="button-row align-right">
+                      <button type="submit">変更</button>
+                    </div>
+                  </form>
                 </div>
-              </form>
+              </section>
+
+              <section className="admin-maintenance-section">
+                <h3>SNSリアクション更新</h3>
+                <div className="admin-maintenance-section-body">
+                  <p>SNS側のリアクション数を手動で取得し直します。cronを待たずに最新化したい場合に使います。</p>
+                  <div className="button-row align-right">
+                    <button type="button" onClick={refreshSocialReactions}>更新</button>
+                  </div>
+                </div>
+              </section>
+
+              <section className="admin-maintenance-section">
+                <h3>投稿データ インポート/エクスポート</h3>
+                <div className="admin-maintenance-section-body">
+                  <p>投稿データと画像をバックアップJSONとして保存、またはバックアップJSONから復元します。</p>
+                  <div className="admin-import-export-actions">
+                    <button type="button" className="secondary" onClick={exportBackup}>エクスポート</button>
+                    <button type="button" className="secondary" onClick={() => backupImportInputRef.current?.click()}>インポート</button>
+                    <input
+                      ref={backupImportInputRef}
+                      type="file"
+                      aria-label="投稿データJSONファイル"
+                      accept="application/json,.json"
+                      className="visually-hidden-file"
+                      onChange={(event) => {
+                        void guarded(() => importBackupFile(event.currentTarget.files?.[0] ?? null))();
+                        event.currentTarget.value = '';
+                      }}
+                    />
+                  </div>
+                </div>
+              </section>
             </section>
           )}
-
-          {activeTab === 'backup' && (
-            <div className="admin-backup-stack">
-              <section className="card">
-                <h2>バックアップ</h2>
-                <p>DBと画像をまとめてバックアップJSONとしてダウンロードします。</p>
-                <div className="button-row align-right">
-                  <button type="button" onClick={exportBackup}>DBと画像をエクスポート</button>
-                </div>
-              </section>
-              <section className="card">
-                <h2>インポート</h2>
-                <p>バックアップJSONをアップロードしてDBと画像を復元します。</p>
-                <form onSubmit={importBackup} className="form-card">
-                  <label>
-                    バックアップJSON
-                    <input type="file" accept="application/json,.json" onChange={(event) => setBackupFile(event.target.files?.[0] ?? null)} />
-                  </label>
-                  <div className="button-row align-right">
-                    <button type="submit">インポートして復元</button>
-                  </div>
-                </form>
-              </section>
-            </div>
-          )}
-
           {activeTab === 'analytics' && (
             <section className="card admin-analytics-card">
               <h2>アナリティクス</h2>
@@ -307,17 +429,58 @@ const AdminPage = () => {
           {activeTab === 'settings' && (
             <section className="card">
               <h2>掲示板設定</h2>
-              <p>HOMEリンク先、取説、投稿機能、色設定をここで設定できます。</p>
+              <p>HOMEリンク先、取説、投稿機能、SNS連携、cron設定をここで設定できます。</p>
+              <div className="form-card">
+                <h3>cron設定</h3>
+                <p>SNSリアクションはcronまたは外部サービスから自動更新できます。</p>
+                <label>
+                  Cron用ファイルパス
+                  <input value={cronPath} readOnly onFocus={(event) => event.currentTarget.select()} />
+                </label>
+                <label>
+                  API定期実行URL
+                  <input value={`${cronApiUrl}${cronApiKey}`} readOnly onFocus={(event) => event.currentTarget.select()} />
+                </label>
+                <label>
+                  APIキー
+                  <input value={cronApiKey} readOnly onFocus={(event) => event.currentTarget.select()} />
+                </label>
+              </div>
               <SettingsForm
-                values={{ ...settings.config, ...settings.skin }}
+                values={settings.config}
+                groups={configSettingGroups}
+                onChange={(key, value) => updateSetting('config', key, value)}
+              />
+              <div className="button-row align-right">
+                <button type="button" onClick={saveSettings}>設定を保存</button>
+              </div>
+              <SettingsJsonTools
+                label="掲示板設定"
+                onExport={() => exportSettingsJson('config')}
+                onImport={(file) => importSettingsJson('config', file)}
+              />
+            </section>
+          )}
+
+          {activeTab === 'design' && (
+            <section className="card">
+              <h2>掲示板デザイン</h2>
+              <p>投稿枠や背景など、見た目に関する設定をここで調整できます。</p>
+              <SettingsForm
+                values={{ ...settings.skin, ...settings.config }}
+                groups={designSettingGroups}
                 onChange={(key, value) => updateSetting(key in settings.skin ? 'skin' : 'config', key, value)}
               />
               <div className="button-row align-right">
                 <button type="button" onClick={saveSettings}>設定を保存</button>
               </div>
+              <SettingsJsonTools
+                label="掲示板デザイン"
+                onExport={() => exportSettingsJson('skin')}
+                onImport={(file) => importSettingsJson('skin', file)}
+              />
             </section>
           )}
-
           {activeTab === 'deleted' && (
             <section className="card">
               <h2>削除済み投稿</h2>
@@ -326,7 +489,7 @@ const AdminPage = () => {
                 <div className="admin-deleted-row" key={post.id}>
                   <strong>No.{adminDisplayNo(post)} {post.title || '無題'}</strong>
                   <span>{post.name} / 削除日時: {post.deleted_at}</span>
-                  <button type="button" onClick={() => restore(post.id)}>復元する</button>
+                  <button type="button" className="secondary" onClick={() => restore(post.id)}>復元</button>
                 </div>
               ))}
             </section>
@@ -339,14 +502,16 @@ const AdminPage = () => {
 
 function SettingsForm({
   values,
+  groups,
   onChange,
 }: {
-  values: Record<string, string | number | boolean>;
-  onChange: (key: string, value: string) => void;
+  values: Record<string, SettingValue>;
+  groups: SettingGroup[];
+  onChange: (key: string, value: SettingValue) => void;
 }) {
   return (
     <>
-      {settingGroups.map((group) => {
+      {groups.map((group) => {
         const keys = group.keys.filter((key) => key in values);
         if (keys.length === 0) {
           return null;
@@ -359,8 +524,53 @@ function SettingsForm({
               const label = settingLabels[key] ?? key;
               const stringValue = String(value);
               const disabled = isDisabledPlatformSetting(values, key);
+              if (key === 'allowedImageTypes') {
+                const selected = Array.isArray(value) ? value.map(String) : String(value).split(',').map((item) => item.trim()).filter(Boolean);
+                return (
+                  <fieldset key={key} className="admin-setting-wide admin-checkbox-group">
+                    <legend>{label}</legend>
+                    {allowedImageTypeOptions.map((extension) => (
+                      <label key={extension}>
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(extension)}
+                          onChange={(event) => {
+                            const next = event.target.checked
+                              ? [...new Set([...selected, extension])]
+                              : selected.filter((item) => item !== extension);
+                            onChange(key, next);
+                          }}
+                        />
+                        <span>{extension}</span>
+                      </label>
+                    ))}
+                  </fieldset>
+                );
+              }
+              if (isReactionTextKey(key)) {
+                const colorKey = reactionColorKeyForTextKey(key);
+                return (
+                  <label key={key} className="admin-setting-inline-row admin-setting-wide">
+                    <span>{label}</span>
+                    <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
+                    {colorKey && (
+                      <>
+                        <input type="color" value={String(values[colorKey] ?? '#ffffff')} onChange={(event) => onChange(colorKey, event.target.value)} />
+                        <input value={String(values[colorKey] ?? '')} onChange={(event) => onChange(colorKey, event.target.value)} />
+                      </>
+                    )}
+                  </label>
+                );
+              }
+              if (isReactionColorKey(key)) {
+                return null;
+              }
+              const labelClassName = [
+                key === 'manualBody' ? 'admin-setting-wide' : '',
+                key.endsWith('Color') ? 'admin-color-row' : '',
+              ].filter(Boolean).join(' ') || undefined;
               return (
-                <label key={key} className={key === 'manualBody' ? 'admin-setting-wide' : undefined}>
+                <label key={key} className={labelClassName}>
                   <span>{label}</span>
                   {key === 'manualBody' ? (
                     <textarea value={stringValue} rows={12} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
@@ -372,7 +582,10 @@ function SettingsForm({
                   ) : isSecretSetting(key) ? (
                     <input type="password" value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
                   ) : key.endsWith('Color') ? (
-                    <input type="color" value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
+                    <>
+                      <input type="color" value={toColorInputValue(stringValue)} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
+                      <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
+                    </>
                   ) : (
                     <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
                   )}
@@ -394,7 +607,7 @@ function isSecretSetting(key: string): boolean {
   return key.endsWith('Secret') || key.endsWith('Token') || key === 'blueskyAppPassword';
 }
 
-function isDisabledPlatformSetting(values: Record<string, string | number | boolean>, key: string): boolean {
+function isDisabledPlatformSetting(values: Record<string, SettingValue>, key: string): boolean {
   const platformPrefixes = [
     ['tweet', 'tweetEnabled'],
     ['bluesky', 'blueskyEnabled'],
@@ -408,9 +621,34 @@ function isDisabledPlatformSetting(values: Record<string, string | number | bool
   return !(values[match[1]] === true || values[match[1]] === 'true');
 }
 
-const settingGroups = [
-  { title: '基本', keys: ['bbsTitle', 'homePageUrl', 'manualTitle', 'manualBody', 'gdgdEnabled', 'gdgdLabel', 'logView', 'maxUploadBytes', 'maxImageWidth', 'maxImageHeight', 'normalFrameColor', 'gdgdFrameColor', 'backgroundColor'] },
-  { title: '簡単リアクション', keys: ['eejanaikaOmigotoText', 'eejanaikaOmigotoColor', 'eejanaikaGoodjobText', 'eejanaikaGoodjobColor', 'eejanaikaEejanaikaText', 'eejanaikaEejanaikaColor'] },
+type SettingGroup = { title: string; keys: string[] };
+
+const allowedImageTypeOptions = ['gif', 'png', 'jpeg', 'jpg', 'bmp'];
+
+const reactionRows = [
+  { textKey: 'eejanaikaOmigotoText', colorKey: 'eejanaikaOmigotoColor' },
+  { textKey: 'eejanaikaGoodjobText', colorKey: 'eejanaikaGoodjobColor' },
+  { textKey: 'eejanaikaEejanaikaText', colorKey: 'eejanaikaEejanaikaColor' },
+];
+
+function isReactionTextKey(key: string): boolean {
+  return reactionRows.some((row) => row.textKey === key);
+}
+
+function isReactionColorKey(key: string): boolean {
+  return reactionRows.some((row) => row.colorKey === key);
+}
+
+function reactionColorKeyForTextKey(key: string): string | undefined {
+  return reactionRows.find((row) => row.textKey === key)?.colorKey;
+}
+
+function toColorInputValue(value: string): string {
+  return /^#[0-9a-fA-F]{6}$/.test(value) ? value : '#ffffff';
+}
+
+const configSettingGroups: SettingGroup[] = [
+  { title: '基本', keys: ['bbsTitle', 'homePageUrl', 'manualBody', 'gdgdEnabled', 'gdgdLabel', 'logView', 'maxUploadBytes', 'maxImageWidth', 'maxImageHeight', 'allowedImageTypes'] },
   { title: 'SNS共通', keys: ['socialHashtags'] },
   { title: 'X', keys: ['tweetEnabled', 'tweetBaseUrl', 'tweetConsumerKey', 'tweetConsumerSecret', 'tweetAccessToken', 'tweetAccessTokenSecret'] },
   { title: 'Bluesky', keys: ['blueskyEnabled', 'blueskyServiceUrl', 'blueskyPublicApiUrl', 'blueskyHandle', 'blueskyAppPassword'] },
@@ -418,13 +656,18 @@ const settingGroups = [
   { title: 'Misskey', keys: ['misskeyEnabled', 'misskeyInstanceUrl', 'misskeyAccessToken'] },
 ];
 
+const designSettingGroups: SettingGroup[] = [
+  { title: '簡単リアクション', keys: ['eejanaikaOmigotoText', 'eejanaikaOmigotoColor', 'eejanaikaGoodjobText', 'eejanaikaGoodjobColor', 'eejanaikaEejanaikaText', 'eejanaikaEejanaikaColor'] },
+  { title: '色設定', keys: ['backgroundColor', 'pageTextColor', 'linkColor', 'panelBackgroundColor', 'panelTitleBackgroundColor', 'panelBorderColor', 'labelColor', 'inputBackgroundColor', 'inputTextColor', 'buttonBackgroundColor', 'buttonTextColor', 'buttonBorderColor', 'secondaryButtonBackgroundColor', 'secondaryButtonTextColor', 'secondaryButtonBorderColor', 'normalFrameColor', 'normalHeaderColor', 'normalTextColor', 'gdgdFrameColor', 'gdgdHeaderColor', 'gdgdTextColor', 'replyBorderColor', 'dangerColor', 'successColor'] },
+];
+
 const adminTabs: Array<{ id: AdminTab; label: string }> = [
-  { id: 'posts', label: '投稿管理' },
+  { id: 'posts', label: '一括削除' },
+  { id: 'deleted', label: '投稿復元' },
   { id: 'maintenance', label: '保守' },
-  { id: 'backup', label: 'バックアップ' },
   { id: 'analytics', label: 'アナリティクス' },
   { id: 'settings', label: '掲示板設定' },
-  { id: 'deleted', label: '削除済み' },
+  { id: 'design', label: '掲示板デザイン' },
 ];
 
 const analyticsMetricOptions: Array<{ id: AnalyticsMetric; label: string; value: (post: Post) => number }> = [
@@ -499,6 +742,71 @@ function AnalyticsChart({ rows }: { rows: AnalyticsRow[] }) {
       </div>
     </div>
   );
+}
+
+function SettingsJsonTools({
+  label,
+  onExport,
+  onImport,
+}: {
+  label: string;
+  onExport: () => void | Promise<void>;
+  onImport: (file: File | null) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  return (
+    <div className="admin-json-tools form-card">
+      <h3>{label} インポート/エクスポート</h3>
+      <div className="admin-import-export-actions">
+        <button type="button" className="secondary" onClick={() => { void onExport(); }}>エクスポート</button>
+        <button type="button" className="secondary" onClick={() => inputRef.current?.click()}>インポート</button>
+        <input
+          ref={inputRef}
+          type="file"
+          aria-label={`${label}JSONファイル`}
+          accept="application/json,.json"
+          className="visually-hidden-file"
+          onChange={(event) => {
+            onImport(event.target.files?.[0] ?? null);
+            event.currentTarget.value = '';
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+type WindowWithFilePicker = Window & {
+  showSaveFilePicker?: (options: {
+    suggestedName?: string;
+    types?: Array<{ description: string; accept: Record<string, string[]> }>;
+  }) => Promise<{
+    createWritable: () => Promise<{
+      write: (blob: Blob) => Promise<void>;
+      close: () => Promise<void>;
+    }>;
+  }>;
+};
+
+async function saveBlobWithPicker(blob: Blob, suggestedName: string): Promise<void> {
+  const picker = (window as WindowWithFilePicker).showSaveFilePicker;
+  if (picker) {
+    const handle = await picker({
+      suggestedName,
+      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = suggestedName;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function AnalyticsLineChart({ rows, max }: { rows: AnalyticsRow[]; max: number }) {
@@ -621,7 +929,7 @@ function formatAnalyticsValue(value: number): string {
 }
 
 const settingLabels: Record<string, string> = {
-  bbsTitle: '掲示板タイトル',
+  bbsTitle: '掲示板/取説タイトル',
   homePageUrl: 'HOMEリンク先',
   manualTitle: '取説タイトル',
   manualBody: '取説本文',
@@ -643,12 +951,12 @@ const settingLabels: Record<string, string> = {
   misskeyEnabled: 'Misskey機能',
   misskeyInstanceUrl: 'MisskeyインスタンスURL',
   misskeyAccessToken: 'Misskey Access Token',
-  eejanaikaOmigotoText: 'お美事の文字列',
-  eejanaikaOmigotoColor: 'お美事の文字色',
-  eejanaikaGoodjobText: 'いい仕事の文字列',
-  eejanaikaGoodjobColor: 'いい仕事の文字色',
-  eejanaikaEejanaikaText: 'ええじゃの文字列',
-  eejanaikaEejanaikaColor: 'ええじゃの文字色',
+  eejanaikaOmigotoText: 'リアクション1',
+  eejanaikaOmigotoColor: 'リアクション1の文字色',
+  eejanaikaGoodjobText: 'リアクション2',
+  eejanaikaGoodjobColor: 'リアクション2の文字色',
+  eejanaikaEejanaikaText: 'リアクション3',
+  eejanaikaEejanaikaColor: 'リアクション3の文字色',
   socialHashtags: 'SNS投稿ハッシュタグ',
   gdgdEnabled: '特殊投稿機能',
   gdgdLabel: '特殊投稿の表示名',
@@ -656,9 +964,31 @@ const settingLabels: Record<string, string> = {
   maxUploadBytes: '最大アップロードサイズ(byte)',
   maxImageWidth: '最大画像幅(px)',
   maxImageHeight: '最大画像高さ(px)',
+  allowedImageTypes: 'アップロード可能な画像形式',
   normalFrameColor: '通常投稿の枠色',
+  normalHeaderColor: '通常投稿の見出し色',
+  normalTextColor: '通常投稿の文字色',
   gdgdFrameColor: '特殊投稿の枠色',
+  gdgdHeaderColor: '特殊投稿の見出し色',
+  gdgdTextColor: '特殊投稿の文字色',
   backgroundColor: '背景色',
+  pageTextColor: 'ページ文字色',
+  linkColor: 'リンク色',
+  panelBackgroundColor: 'パネル背景色',
+  panelTitleBackgroundColor: 'パネル見出し背景色',
+  panelBorderColor: 'パネル枠色',
+  labelColor: 'ラベル色',
+  inputBackgroundColor: '入力欄背景色',
+  inputTextColor: '入力欄文字色',
+  buttonBackgroundColor: 'ボタン背景色',
+  buttonTextColor: 'ボタン文字色',
+  buttonBorderColor: 'ボタン枠色',
+  secondaryButtonBackgroundColor: 'グレーボタン背景色',
+  secondaryButtonTextColor: 'グレーボタン文字色',
+  secondaryButtonBorderColor: 'グレーボタン枠色',
+  replyBorderColor: '返信区切り線色',
+  dangerColor: '警告色',
+  successColor: '成功色',
 };
 
 function adminDisplayNo(post: Post): string {

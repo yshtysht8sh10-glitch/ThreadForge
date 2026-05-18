@@ -20,6 +20,7 @@ export type PublicSettings = {
     eejanaikaEejanaikaText: string;
     eejanaikaEejanaikaColor: string;
     socialHashtags: string;
+    allowedImageTypes: string[];
   };
 };
 
@@ -41,6 +42,7 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     eejanaikaEejanaikaText: 'ええじゃないか',
     eejanaikaEejanaikaColor: '#fff200',
     socialHashtags: '#ドット絵 #pixelart',
+    allowedImageTypes: ['gif', 'png', 'jpeg', 'jpg', 'bmp'],
     manualBody: [
       'この取説は、このサイトを利用する方向けの案内です。',
       '',
@@ -135,7 +137,7 @@ export const DEFAULT_ADMIN_SETTINGS = {
     misskeyEnabled: false,
     misskeyInstanceUrl: '',
     misskeyAccessToken: '',
-    logView: 20,
+    logView: '',
     maxUploadBytes: 5100000,
     maxImageWidth: 1280,
     maxImageHeight: 960,
@@ -144,6 +146,27 @@ export const DEFAULT_ADMIN_SETTINGS = {
     normalFrameColor: '#a23dff',
     gdgdFrameColor: '#6dffc0',
     backgroundColor: '#000000',
+    pageTextColor: '#ffffff',
+    linkColor: '#58a6ff',
+    panelBackgroundColor: '#101821',
+    panelTitleBackgroundColor: '#5b6572',
+    panelBorderColor: '#738196',
+    labelColor: '#8fc0ff',
+    inputBackgroundColor: '#30343a',
+    inputTextColor: '#ffffff',
+    buttonBackgroundColor: '#3f74ff',
+    buttonTextColor: '#ffffff',
+    buttonBorderColor: '#8fb0ff',
+    secondaryButtonBackgroundColor: '#2f333b',
+    secondaryButtonTextColor: '#ffffff',
+    secondaryButtonBorderColor: '#7a8495',
+    normalHeaderColor: '#39988a',
+    normalTextColor: '#ffffff',
+    gdgdHeaderColor: '#7f00a8',
+    gdgdTextColor: '#ffffff',
+    replyBorderColor: '#7a8495',
+    dangerColor: '#ff7c7c',
+    successColor: '#8dff8d',
   },
 };
 
@@ -336,6 +359,8 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
       } as T;
     case 'checkLoginId':
       return { success: true, available: true } as T;
+    case 'adminStatus':
+      return { success: true, adminPasswordConfigured: true } as T;
     case 'getSettings':
       return {
         success: true,
@@ -344,6 +369,7 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
           cronPath: '/home/example/threadforge/server/cron.php',
           cronApiUrl: 'https://example.com/api.php?action=cronRefreshSocialReactions&api_key=',
           cronApiKey: 'mock-cron-api-key',
+          adminPasswordConfigured: true,
         },
       } as T;
     case 'search':
@@ -366,6 +392,7 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
     case 'restorePost':
     case 'adminDeletePosts':
     case 'updateSettings':
+    case 'initializeAdminPassword':
     case 'changeAdminPassword':
     case 'importBackup':
       return { success: true, message: '操作が完了しました（モック）' } as T;
@@ -583,8 +610,20 @@ export const api = {
       body: formData,
     });
   },
-  getSettings: async (adminPassword: string): Promise<{ success: boolean; settings: any; system?: { cronPath?: string; cronApiUrl?: string; cronApiKey?: string } }> => {
+  getSettings: async (adminPassword: string): Promise<{ success: boolean; settings: any; system?: { cronPath?: string; cronApiUrl?: string; cronApiKey?: string; adminPasswordConfigured?: boolean } }> => {
     return fetchJson(`${apiBase()}?action=getSettings&admin_password=${encodeURIComponent(adminPassword)}`);
+  },
+  adminStatus: async (): Promise<{ success: boolean; adminPasswordConfigured: boolean }> => {
+    return fetchJson(`${apiBase()}?action=adminStatus`);
+  },
+  initializeAdminPassword: async (newPassword: string): Promise<{ success: boolean; message: string }> => {
+    const formData = new FormData();
+    formData.append('action', 'initializeAdminPassword');
+    formData.append('new_admin_password', newPassword);
+    return fetchJson(`${apiBase()}`, {
+      method: 'POST',
+      body: formData,
+    });
   },
   updateSettings: async (settings: any, adminPassword: string): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();
