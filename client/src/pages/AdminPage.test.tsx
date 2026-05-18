@@ -100,7 +100,7 @@ describe('AdminPage', () => {
           manualBody: '取説本文',
           tweetEnabled: true,
           gdgdEnabled: true,
-          gdgdLabel: 'gdgd投稿',
+          gdgdLabel: '特殊投稿',
         },
         skin: { normalFrameColor: '#a23dff' },
       },
@@ -155,6 +155,7 @@ describe('AdminPage', () => {
 
     const settingsPanel = screen.getByRole('heading', { name: '掲示板設定' }).closest('section')!;
     fireEvent.change(within(settingsPanel).getByLabelText('HOMEリンク先'), { target: { value: 'https://threadforge.example/' } });
+    fireEvent.change(within(settingsPanel).getByLabelText('取説タイトル'), { target: { value: 'サイトの使い方' } });
     fireEvent.change(within(settingsPanel).getByLabelText('取説本文'), { target: { value: '管理画面で編集した取説です。' } });
     fireEvent.click(within(settingsPanel).getByRole('button', { name: '設定を保存' }));
 
@@ -162,6 +163,7 @@ describe('AdminPage', () => {
       expect.objectContaining({
         config: expect.objectContaining({
           homePageUrl: 'https://threadforge.example/',
+          manualTitle: 'サイトの使い方',
           manualBody: '管理画面で編集した取説です。',
         }),
       }),
@@ -199,7 +201,7 @@ describe('AdminPage', () => {
       </MemoryRouter>,
     );
 
-    const settingsTab = (await screen.findAllByRole('button'))[4];
+    const settingsTab = await screen.findByRole('button', { name: '掲示板設定' });
     fireEvent.click(settingsTab);
 
     const settingsPanel = screen.getByDisplayValue('https://twitter.com/example/status/').closest('section')!;

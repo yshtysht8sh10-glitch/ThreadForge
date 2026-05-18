@@ -72,8 +72,14 @@ function handleApiRequest(): void
         case 'listUserDashboard':
             listUserDashboard($pdo);
             break;
+        case 'listUserPosts':
+            listUserPosts($pdo);
+            break;
         case 'claimUserPost':
             claimUserPost($pdo);
+            break;
+        case 'unclaimUserPost':
+            unclaimUserPost($pdo);
             break;
         case 'createPost':
             createPost($pdo);
@@ -136,7 +142,26 @@ function handleApiRequest(): void
 function listThreads(PDO $pdo): void
 {
     [$limit, $offset] = paginationParams();
-    $stmt = $pdo->prepare('SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.parent_id = 0 AND p.deleted_at IS NULL ORDER BY p.created_at DESC LIMIT :limit OFFSET :offset');
+    $targetId = filter_input(INPUT_GET, 'target_id', FILTER_VALIDATE_INT);
+    if ($targetId !== false && $targetId !== null) {
+        $targetStmt = $pdo->prepare('SELECT id, created_at FROM posts WHERE id = :id AND parent_id = 0 AND deleted_at IS NULL LIMIT 1');
+        $targetStmt->execute([':id' => $targetId]);
+        $target = $targetStmt->fetch(PDO::FETCH_ASSOC);
+        if ($target) {
+            $beforeStmt = $pdo->prepare(
+                'SELECT COUNT(*) FROM posts
+                 WHERE parent_id = 0
+                   AND deleted_at IS NULL
+                   AND (created_at > :created_at OR (created_at = :created_at AND id > :id))'
+            );
+            $beforeStmt->execute([
+                ':created_at' => (string)$target['created_at'],
+                ':id' => (int)$target['id'],
+            ]);
+            $offset = intdiv((int)$beforeStmt->fetchColumn(), $limit) * $limit;
+        }
+    }
+    $stmt = $pdo->prepare('SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.parent_id = 0 AND p.deleted_at IS NULL ORDER BY p.created_at DESC, p.id DESC LIMIT :limit OFFSET :offset');
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
     bindBoardStatTexts($stmt, $pdo);
@@ -177,6 +202,8 @@ function postSelectWithBoardStats(string $alias): string
     $prefix = $alias . '.';
     return $alias . '.*,
         (SELECT u.icon_path FROM users u WHERE u.id = ' . $prefix . 'user_id) AS user_icon_path,
+        (SELECT u.display_name FROM users u WHERE u.id = ' . $prefix . 'user_id) AS user_display_name,
+        ' . postRevisionSelect($alias) . ',
         (SELECT COUNT(*) FROM posts r WHERE r.thread_id = ' . $prefix . 'id AND r.parent_id != 0 AND r.deleted_at IS NULL) AS reply_count,
         (SELECT COUNT(*) FROM posts r WHERE r.thread_id = ' . $prefix . 'id AND r.parent_id != 0 AND r.deleted_at IS NULL AND r.message = :eejanaika_text) AS eejanaika_count,
         (SELECT COUNT(*) FROM posts r WHERE r.thread_id = ' . $prefix . 'id AND r.parent_id != 0 AND r.deleted_at IS NULL AND r.message = :omigoto_text) AS omigoto_count,
@@ -187,7 +214,16 @@ function postSelectWithUserIcon(string $alias): string
 {
     $prefix = $alias . '.';
     return $alias . '.*,
-        (SELECT u.icon_path FROM users u WHERE u.id = ' . $prefix . 'user_id) AS user_icon_path';
+        (SELECT u.icon_path FROM users u WHERE u.id = ' . $prefix . 'user_id) AS user_icon_path,
+        (SELECT u.display_name FROM users u WHERE u.id = ' . $prefix . 'user_id) AS user_display_name,
+        ' . postRevisionSelect($alias);
+}
+
+function postRevisionSelect(string $alias): string
+{
+    $postId = $alias . '.id';
+    return '(SELECT COUNT(*) FROM post_revisions pr WHERE pr.post_id = ' . $postId . ') AS revision_count,
+        (SELECT group_concat(pr2.revised_at, char(10)) FROM post_revisions pr2 WHERE pr2.post_id = ' . $postId . ') AS revision_dates';
 }
 
 function bindBoardStatTexts(PDOStatement $stmt, PDO $pdo): void
@@ -252,7 +288,7 @@ function searchPosts(PDO $pdo): void
     $stmt->execute();
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    jsonResponse(array_map('buildPost', $rows));
+    jsonResponse(array_map(fn (array $row): array => decorateUserPost($pdo, $row), $rows));
 }
 
 function rssFeed(PDO $pdo): void
@@ -341,6 +377,9 @@ function registerUser(PDO $pdo): void
     if (strlen($password) < 8) {
         jsonResponse(['success' => false, 'message' => 'ログインパスワードは8文字以上にしてください。'], 400);
     }
+    if ($displayName === '' || utf8Length($displayName) > 30) {
+        jsonResponse(['success' => false, 'message' => '名前は1-30文字で入力してください。'], 400);
+    }
     if (findUserByLoginId($pdo, $loginId) !== null) {
         jsonResponse(['success' => false, 'message' => 'そのIDは既に使われています。'], 409);
     }
@@ -414,6 +453,9 @@ function updateUserProfile(PDO $pdo): void
     if ($displayName === '') {
         jsonResponse(['success' => false, 'message' => '名前を入力してください。'], 400);
     }
+    if (utf8Length($displayName) > 30) {
+        jsonResponse(['success' => false, 'message' => '名前は1-30文字で入力してください。'], 400);
+    }
 
     $iconPath = $user['icon_path'] ?? null;
     if (!empty($_FILES['icon']) && $_FILES['icon']['error'] === UPLOAD_ERR_OK) {
@@ -471,31 +513,97 @@ function listUserDashboard(PDO $pdo): void
     ]);
 }
 
+function listUserPosts(PDO $pdo): void
+{
+    $userId = filter_input(INPUT_GET, 'user_id', FILTER_VALIDATE_INT);
+    if ($userId === false || $userId === null) {
+        jsonResponse(['success' => false, 'message' => 'ユーザーIDが不正です。'], 400);
+    }
+    $user = findUserById($pdo, $userId);
+    if (!$user) {
+        jsonResponse(['success' => false, 'message' => 'ユーザーが見つかりません。'], 404);
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT ' . postSelectWithBoardStats('p') . ',
+            CASE WHEN c.post_id IS NOT NULL THEN 1 ELSE 0 END AS claimed_by_user
+         FROM posts p
+         LEFT JOIN user_post_claims c ON c.post_id = p.id AND c.user_id = :claim_join_user_id
+         WHERE p.deleted_at IS NULL
+           AND p.parent_id = 0
+           AND (p.user_id = :owner_user_id OR c.user_id = :claim_filter_user_id)
+         ORDER BY p.created_at DESC'
+    );
+    bindBoardStatTexts($stmt, $pdo);
+    $stmt->bindValue(':claim_join_user_id', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':owner_user_id', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':claim_filter_user_id', $userId, PDO::PARAM_INT);
+    $stmt->execute();
+    $posts = array_map(
+        fn (array $row): array => withDisplayNo($pdo, buildPost($row), (int)$row['id']),
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+    );
+
+    jsonResponse([
+        'success' => true,
+        'user' => buildUser($user),
+        'posts' => $posts,
+    ]);
+}
+
 function claimUserPost(PDO $pdo): void
 {
     $user = requireUser($pdo);
     $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
     if ($id === false || $id === null) {
-        jsonResponse(['success' => false, 'message' => '投稿IDが不正です。'], 400);
+        jsonResponse(['success' => false, 'message' => '投稿Noが不正です。'], 400);
     }
-    $post = findPost($pdo, $id);
-    if ((!$post || $post['deleted_at'] !== null) && $id > 0) {
-        $displayPostId = postIdFromDisplayNo($pdo, $id);
-        if ($displayPostId !== null) {
-            $id = $displayPostId;
-            $post = findPost($pdo, $id);
-        }
+
+    $displayPostId = postIdFromDisplayNo($pdo, $id);
+    if ($displayPostId === null) {
+        jsonResponse(['success' => false, 'message' => '投稿が見つかりません。'], 404);
     }
+    $id = $displayPostId;
+    $post = findPostById($pdo, $id);
     if (!$post || $post['deleted_at'] !== null) {
         jsonResponse(['success' => false, 'message' => '投稿が見つかりません。'], 404);
     }
-    $stmt = $pdo->prepare('INSERT OR IGNORE INTO user_post_claims (user_id, post_id, created_at) VALUES (:user_id, :post_id, :created_at)');
+
+    $existsStmt = $pdo->prepare('SELECT 1 FROM user_post_claims WHERE user_id = :user_id AND post_id = :post_id');
+    $existsStmt->execute([':user_id' => (int)$user['id'], ':post_id' => $id]);
+    if (!$existsStmt->fetchColumn()) {
+        $stmt = $pdo->prepare('INSERT INTO user_post_claims (user_id, post_id, created_at) VALUES (:user_id, :post_id, :created_at)');
+        $stmt->execute([
+            ':user_id' => (int)$user['id'],
+            ':post_id' => $id,
+            ':created_at' => currentTimestamp(),
+        ]);
+    }
+
+    jsonResponse(['success' => true, 'message' => '自分の作品として登録しました。']);
+}
+
+function unclaimUserPost(PDO $pdo): void
+{
+    $user = requireUser($pdo);
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    if ($id === false || $id === null) {
+        jsonResponse(['success' => false, 'message' => '投稿Noが不正です。'], 400);
+    }
+
+    $displayPostId = postIdFromDisplayNo($pdo, $id);
+    if ($displayPostId === null) {
+        jsonResponse(['success' => false, 'message' => '投稿が見つかりません。'], 404);
+    }
+    $id = $displayPostId;
+
+    $stmt = $pdo->prepare('DELETE FROM user_post_claims WHERE user_id = :user_id AND post_id = :post_id');
     $stmt->execute([
         ':user_id' => (int)$user['id'],
         ':post_id' => $id,
-        ':created_at' => currentTimestamp(),
     ]);
-    jsonResponse(['success' => true, 'message' => '自分の作品として登録しました。']);
+
+    jsonResponse(['success' => true, 'message' => '自分の作品から解除しました。']);
 }
 
 function decorateUserPost(PDO $pdo, array $row): array
@@ -512,11 +620,50 @@ function postIdFromDisplayNo(PDO $pdo, int $displayNo): ?int
     if ($displayNo < 1) {
         return null;
     }
-    $stmt = $pdo->prepare('SELECT id FROM posts WHERE parent_id = 0 AND deleted_at IS NULL ORDER BY id ASC LIMIT 1 OFFSET :offset');
+    $stmt = $pdo->prepare('SELECT id FROM posts WHERE parent_id = 0 ORDER BY id ASC LIMIT 1 OFFSET :offset');
     $stmt->bindValue(':offset', $displayNo - 1, PDO::PARAM_INT);
     $stmt->execute();
     $id = $stmt->fetchColumn();
     return $id === false ? null : (int)$id;
+}
+
+function isPresetCommentPost(PDO $pdo, array $post): bool
+{
+    if ((int)($post['parent_id'] ?? 0) === 0) {
+        return false;
+    }
+    $config = loadSettings($pdo)['config'] ?? [];
+    return isPresetCommentMessage($config, (string)($post['message'] ?? ''));
+}
+
+function isPresetCommentMessage(array $config, string $message): bool
+{
+    return in_array($message, [
+        (string)($config['eejanaikaEejanaikaText'] ?? 'ええじゃないか'),
+        (string)($config['eejanaikaOmigotoText'] ?? 'お美事にございまする'),
+        (string)($config['eejanaikaGoodjobText'] ?? 'いい仕事してますねぇ'),
+    ], true);
+}
+
+function adminPasswordHash(PDO $pdo): string
+{
+    $settings = loadSettings($pdo);
+    return (string)($settings['security']['adminPasswordHash'] ?? '');
+}
+
+function adminPasswordMatches(PDO $pdo, string $password): bool
+{
+    if ($password === '') {
+        return false;
+    }
+
+    $hash = adminPasswordHash($pdo);
+    if ($hash !== '') {
+        return password_verify($password, $hash);
+    }
+
+    $configured = getenv('DOTEITA_ADMIN_PASSWORD') ?: 'admin';
+    return hash_equals($configured, $password);
 }
 
 function createPost(PDO $pdo): void
@@ -562,7 +709,9 @@ function createPost(PDO $pdo): void
         $parentId = 0;
     }
 
-    $hash = password_hash($password, PASSWORD_DEFAULT);
+    $isPresetReply = $isReply && isPresetCommentMessage($config, $message);
+    $adminHash = $isPresetReply ? adminPasswordHash($pdo) : '';
+    $hash = $adminHash !== '' ? $adminHash : password_hash($password, PASSWORD_DEFAULT);
 
     $pdo->beginTransaction();
 
@@ -901,15 +1050,15 @@ function publishFederatedPostsFromSettings(array $settings, string $name, string
     $results = [];
 
     if (toBoolFlag($config['blueskyEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart')), $postId);
+        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#繝峨ャ繝育ｵｵ #pixelart')), $postId);
         $results['bluesky'] = publishBlueskyPost($config, $text, $imagePath);
     }
     if (toBoolFlag($config['mastodonEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart')), $postId);
+        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#繝峨ャ繝育ｵｵ #pixelart')), $postId);
         $results['mastodon'] = publishMastodonPost($config, $text, $imagePath);
     }
     if (toBoolFlag($config['misskeyEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart')), $postId);
+        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#繝峨ャ繝育ｵｵ #pixelart')), $postId);
         $results['misskey'] = publishMisskeyPost($config, $text, $imagePath);
     }
 
@@ -922,15 +1071,15 @@ function updateFederatedPostsFromSettings(array $settings, array $post, string $
     $results = [];
 
     if (toBoolFlag($config['blueskyEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart')), $postId);
+        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#繝峨ャ繝育ｵｵ #pixelart')), $postId);
         $results['bluesky'] = updateBlueskyPost($config, $text, (string)($post['bluesky_uri'] ?? ''), $imagePath);
     }
     if (toBoolFlag($config['mastodonEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart')), $postId);
+        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#繝峨ャ繝育ｵｵ #pixelart')), $postId);
         $results['mastodon'] = updateMastodonPost($config, $text, (string)($post['mastodon_id'] ?? ''), $imagePath);
     }
     if (toBoolFlag($config['misskeyEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart')), $postId);
+        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#繝峨ャ繝育ｵｵ #pixelart')), $postId);
         $results['misskey'] = publishMisskeyPost($config, $text, $imagePath);
     }
 
@@ -1499,12 +1648,15 @@ function updatePost(PDO $pdo): void
     $user = optionalUser($pdo);
 
     if ($id === false || $id === null || $name === '' || $title === '' || $message === '') {
-        jsonResponse(['success' => false, 'message' => '投稿ID・名前・タイトル・本文・パスワードは必須です。'], 400);
+        jsonResponse(['success' => false, 'message' => '投稿ID・名前・タイトル・本文は必須です。'], 400);
     }
 
     $post = findActivePostById($pdo, $id);
     if (!$post) {
         jsonResponse(['success' => false, 'message' => '投稿が見つかりません。'], 404);
+    }
+    if (isPresetCommentPost($pdo, $post)) {
+        jsonResponse(['success' => false, 'message' => '定型コメントは編集できません。'], 403);
     }
 
     $isOwner = $user && isset($post['user_id']) && (int)$post['user_id'] === (int)$user['id'];
@@ -1536,39 +1688,49 @@ function updatePost(PDO $pdo): void
 
     $tweetText = $post['tweet_text'] ?? null;
 
-    $stmt = $pdo->prepare(
-        'UPDATE posts SET
-            name = :name,
-            url = :url,
-            title = :title,
-            message = :message,
-            image_path = :image_path,
-            gdgd = :gdgd,
-            tweet_off = :tweet_off,
-            tweet_text = :tweet_text,
-            tweet_url = :tweet_url,
-            tweet_like_count = :tweet_like_count,
-            tweet_retweet_count = :tweet_retweet_count,
-            tweet_comment_count = :tweet_comment_count,
-            tweet_impression_count = :tweet_impression_count
-         WHERE id = :id'
-    );
-    $stmt->execute([
-        ':id' => $id,
-        ':name' => $name,
-        ':url' => $url,
-        ':title' => $title,
-        ':message' => $message,
-        ':image_path' => $imagePath,
-        ':gdgd' => $gdgd ? 1 : 0,
-        ':tweet_off' => $tweetOff ? 1 : 0,
-        ':tweet_text' => $tweetText,
-        ':tweet_url' => $tweetUrl,
-        ':tweet_like_count' => normalizeCount($post['tweet_like_count'] ?? 0),
-        ':tweet_retweet_count' => normalizeCount($post['tweet_retweet_count'] ?? 0),
-        ':tweet_comment_count' => normalizeCount($post['tweet_comment_count'] ?? 0),
-        ':tweet_impression_count' => normalizeCount($post['tweet_impression_count'] ?? 0),
-    ]);
+    $revisedAt = currentTimestamp();
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare(
+            'UPDATE posts SET
+                name = :name,
+                url = :url,
+                title = :title,
+                message = :message,
+                image_path = :image_path,
+                gdgd = :gdgd,
+                tweet_off = :tweet_off,
+                tweet_text = :tweet_text,
+                tweet_url = :tweet_url,
+                tweet_like_count = :tweet_like_count,
+                tweet_retweet_count = :tweet_retweet_count,
+                tweet_comment_count = :tweet_comment_count,
+                tweet_impression_count = :tweet_impression_count
+             WHERE id = :id'
+        );
+        $stmt->execute([
+            ':id' => $id,
+            ':name' => $name,
+            ':url' => $url,
+            ':title' => $title,
+            ':message' => $message,
+            ':image_path' => $imagePath,
+            ':gdgd' => $gdgd ? 1 : 0,
+            ':tweet_off' => $tweetOff ? 1 : 0,
+            ':tweet_text' => $tweetText,
+            ':tweet_url' => $tweetUrl,
+            ':tweet_like_count' => normalizeCount($post['tweet_like_count'] ?? 0),
+            ':tweet_retweet_count' => normalizeCount($post['tweet_retweet_count'] ?? 0),
+            ':tweet_comment_count' => normalizeCount($post['tweet_comment_count'] ?? 0),
+            ':tweet_impression_count' => normalizeCount($post['tweet_impression_count'] ?? 0),
+        ]);
+        $revisionStmt = $pdo->prepare('INSERT INTO post_revisions (post_id, revised_at) VALUES (:post_id, :revised_at)');
+        $revisionStmt->execute([':post_id' => $id, ':revised_at' => $revisedAt]);
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
 
     $responseMessage = '投稿を更新しました。';
 
@@ -1582,7 +1744,7 @@ function deletePost(PDO $pdo): void
     $user = optionalUser($pdo);
 
     if ($id === false || $id === null) {
-        jsonResponse(['success' => false, 'message' => '投稿IDとパスワードは必須です。'], 400);
+        jsonResponse(['success' => false, 'message' => '投稿IDが不正です。'], 400);
     }
 
     $post = findActivePostById($pdo, $id);
@@ -1591,7 +1753,11 @@ function deletePost(PDO $pdo): void
     }
 
     $isOwner = $user && isset($post['user_id']) && (int)$post['user_id'] === (int)$user['id'];
-    if (!$isOwner && ($password === '' || !password_verify($password, $post['password_hash']))) {
+    $isPresetComment = isPresetCommentPost($pdo, $post);
+    $passwordMatches = $isPresetComment
+        ? adminPasswordMatches($pdo, (string)$password)
+        : ($password !== '' && password_verify($password, $post['password_hash']));
+    if (!$isOwner && !$passwordMatches) {
         jsonResponse(['success' => false, 'message' => 'パスワードが一致しません。'], 403);
     }
 
@@ -1737,7 +1903,7 @@ function requireAdmin(): void
         return;
     }
 
-    $configured = getenv('DOTEITA_ADMIN_PASSWORD') ?: '';
+    $configured = getenv('DOTEITA_ADMIN_PASSWORD') ?: 'admin';
     if ($configured === '' || !hash_equals($configured, (string)$provided)) {
         jsonResponse(['success' => false, 'message' => '管理者認証に失敗しました。'], 403);
     }
@@ -2045,6 +2211,7 @@ function exportBackup(PDO $pdo): void
 {
     requireAdmin();
     $posts = $pdo->query('SELECT * FROM posts ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
+    $revisions = $pdo->query('SELECT * FROM post_revisions ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
     $images = [];
     if (is_dir(STORAGE_DIR)) {
         foreach (glob(STORAGE_DIR . '/*') ?: [] as $path) {
@@ -2058,6 +2225,7 @@ function exportBackup(PDO $pdo): void
         'backup_version' => 1,
         'exported_at' => currentTimestamp(),
         'posts' => $posts,
+        'post_revisions' => $revisions,
         'images' => $images,
         'settings' => loadSettings($pdo),
     ];
@@ -2081,6 +2249,7 @@ function importBackup(PDO $pdo): void
     }
 
     $pdo->beginTransaction();
+    $pdo->exec('DELETE FROM post_revisions');
     $pdo->exec('DELETE FROM posts');
     $stmt = $pdo->prepare(
         'INSERT INTO posts (
@@ -2112,6 +2281,16 @@ function importBackup(PDO $pdo): void
             ':tweet_retweet_count' => (int)($row['tweet_retweet_count'] ?? 0),
             ':tweet_comment_count' => (int)($row['tweet_comment_count'] ?? 0),
             ':tweet_impression_count' => (int)($row['tweet_impression_count'] ?? 0),
+        ]);
+    }
+    $revisionStmt = $pdo->prepare(
+        'INSERT INTO post_revisions (id, post_id, revised_at) VALUES (:id, :post_id, :revised_at)'
+    );
+    foreach (($payload['post_revisions'] ?? []) as $row) {
+        $revisionStmt->execute([
+            ':id' => (int)($row['id'] ?? 0),
+            ':post_id' => (int)($row['post_id'] ?? 0),
+            ':revised_at' => (string)($row['revised_at'] ?? currentTimestamp()),
         ]);
     }
     $pdo->commit();
@@ -2191,14 +2370,14 @@ function publicSettings(PDO $pdo): void
             'config' => [
                 'bbsTitle' => (string)($config['bbsTitle'] ?? 'ThreadForge'),
                 'homePageUrl' => (string)($config['homePageUrl'] ?? '/'),
-                'manualTitle' => (string)($config['manualTitle'] ?? 'ThreadForge 取扱説明書'),
+                'manualTitle' => (string)($config['manualTitle'] ?? 'ThreadForge'),
                 'manualBody' => (string)($config['manualBody'] ?? defaultManualBody()),
                 'tweetEnabled' => toBoolFlag($config['tweetEnabled'] ?? false),
                 'blueskyEnabled' => toBoolFlag($config['blueskyEnabled'] ?? false),
                 'mastodonEnabled' => toBoolFlag($config['mastodonEnabled'] ?? false),
                 'misskeyEnabled' => toBoolFlag($config['misskeyEnabled'] ?? false),
                 'gdgdEnabled' => toBoolFlag($config['gdgdEnabled'] ?? true),
-                'gdgdLabel' => (string)($config['gdgdLabel'] ?? 'gdgd投稿'),
+                'gdgdLabel' => (string)($config['gdgdLabel'] ?? '特殊投稿'),
                 'eejanaikaOmigotoText' => (string)($config['eejanaikaOmigotoText'] ?? 'お美事にございまする'),
                 'eejanaikaOmigotoColor' => (string)($config['eejanaikaOmigotoColor'] ?? '#ff72ff'),
                 'eejanaikaGoodjobText' => (string)($config['eejanaikaGoodjobText'] ?? 'いい仕事してますねぇ'),
@@ -2242,7 +2421,7 @@ function defaultSettings(): array
         'config' => [
             'bbsTitle' => 'ThreadForge',
             'homePageUrl' => '/',
-            'manualTitle' => 'ThreadForge 取扱説明書',
+            'manualTitle' => 'ThreadForge',
             'manualBody' => defaultManualBody(),
             'tweetEnabled' => false,
             'tweetBaseUrl' => 'https://twitter.com/MUGEN87112020/status/',
@@ -2263,7 +2442,7 @@ function defaultSettings(): array
             'misskeyInstanceUrl' => '',
             'misskeyAccessToken' => '',
             'gdgdEnabled' => true,
-            'gdgdLabel' => 'gdgd投稿',
+            'gdgdLabel' => '特殊投稿',
             'eejanaikaOmigotoText' => 'お美事にございまする',
             'eejanaikaOmigotoColor' => '#ff72ff',
             'eejanaikaGoodjobText' => 'いい仕事してますねぇ',
@@ -2291,25 +2470,74 @@ function defaultSettings(): array
 function defaultManualBody(): string
 {
     return implode("\n", [
-        'ThreadForge は、スレッド形式で作品や記事を投稿できる掲示板です。',
+        'この取説は、このサイトを利用する方向けの案内です。',
         '',
-        '投稿',
-        '新規投稿ではタイトル、本文、画像、gdgd投稿、SNS転記OFFを指定できます。',
-        'SNS転記関連の項目は新規投稿と投稿編集で使います。返信では表示されません。',
+        '# 【HOME】',
+        '- サイト管理者が設定したHOMEリンクへ移動します。',
         '',
-        '返信',
-        '返信では名前、URL / HOME、本文、パスワードを入力できます。',
-        '返信に画像投稿はありません。',
+        '# 【一覧】',
+        '## 投稿を見る',
+        '- 投稿作品とコメントの一部を新しい順に確認できます。',
+        '- 作品画像、タイトル、本文、作者名、投稿日時、閲覧数、コメント数、簡単リアクション数、SNSリアクション数が表示されます。',
+        '- タイトルや画像を選ぶと、その投稿の個別ページを開きます。',
+        '- 作者アイコンにカーソルを合わせると拡大表示され、クリックするとその作者の作品一覧を表示できます。',
+        '## コメントと簡単リアクション',
+        '- 各投稿にはコメントできます。',
+        '- 簡単リアクションでは、サイトで設定された定型文を短いコメントとして送信できます。',
         '',
-        '削除と編集',
-        '削除は画面上から非表示にしますが、内部データは保持します。',
-        '投稿と返信は、投稿時のパスワードで編集または削除できます。',
+        '# 【投稿】',
+        '- 投稿では名前、タイトル、URL / HOME、画像、本文、投稿パスワードを入力します。',
+        '- 画像はPNGとGIFを使用できます。選択した画像は投稿前にプレビューできます。',
+        '- 特殊投稿が有効なサイトでは、通常投稿とは別の枠色で投稿できます。',
+        '- SNS転記が有効なサイトでは、投稿時にSNSへ転記できます。SNS転記OFFを選ぶと転記しません。',
         '',
-        '管理',
-        '管理画面では一括削除、バックアップ、インポート、設定変更を行えます。',
+        '# 【削除】',
+        '- 投稿やコメントは、投稿時のパスワードで削除できます。',
+        '- 削除した投稿は消え、管理者しか復元できないため慎重に操作してください。',
+        '- 親投稿を削除すると、その投稿についていたコメントも非表示になります。',
+        '- 定型文の簡単リアクションを削除するには、管理者パスワードが必要です。',
+        '',
+        '# 【編集】',
+        '- 投稿やコメントは、投稿時のパスワードで編集できます。',
+        '- 投稿編集では、タイトル、本文、URL / HOME、画像を変更できます。',
+        '- 画像を選ぶと、現在の画像プレビューが選択した画像に切り替わります。',
+        '- SNS側に転記された内容には編集内容は反映されません。',
+        '- 定型文の簡単リアクションは編集できません。',
+        '',
+        '# 【検索】',
+        '- キーワードで投稿やコメントを検索できます。',
+        '- 検索結果から一覧内の該当投稿位置へ移動できます。',
+        '',
+        '# 【順位】',
+        '- コメント数、閲覧数、いいね数などの項目を選び、数が多い順に投稿を確認できます。',
+        '- 順位から一覧内の該当投稿位置へ移動できます。',
+        '',
+        '# 【取説】',
+        '- このサイトの使い方を確認できます。',
+        '',
+        '# 【ログイン】',
+        '- ID、ログインパスワード、アイコンを登録してログインできます。',
+        '- ログイン中は投稿や返信の名前欄が、名前とひとことを組み合わせた表示になります。',
+        '- ログイン中の投稿や返信には、名前の前にアイコンが表示されます。',
+        '- ログイン中は、設定した名前、投稿パスワード、URL / HOMEが投稿画面や返信画面の初期値になります。',
+        '',
+        '# 【ユーザーページ】',
+        '- ユーザー設定では、名前、投稿パスワード、URL / HOME、アイコンを変更できます。',
+        '- 自分の投稿や返信の一覧を確認できます。',
+        '- 自分のIDで投稿したものは、一覧から表示、編集、削除できます。',
+        '- 自分の作品として紐づけた投稿は作品一覧や統計に含まれます。',
+        '- 自分の投稿作品について、閲覧数やリアクション数などの統計を確認できます。',
     ]);
 }
+function legacyDefaultManualBody(): string
+{
+    return '';
+}
 
+function previousDefaultManualBody(): string
+{
+    return '';
+}
 function loadSettings(PDO $pdo): array
 {
     $settings = defaultSettings();
@@ -2319,6 +2547,22 @@ function loadSettings(PDO $pdo): array
         if (is_array($decoded)) {
             $settings[(string)$row['key']] = array_merge($settings[(string)$row['key']] ?? [], $decoded);
         }
+    }
+    if (($settings['config']['manualTitle'] ?? '') === 'ThreadForge 取扱説明書') {
+        $settings['config']['manualTitle'] = 'ThreadForge';
+    }
+    if (($settings['config']['gdgdLabel'] ?? '') === 'gdgd投稿') {
+        $settings['config']['gdgdLabel'] = '特殊投稿';
+    }
+    $defaultBodies = [legacyDefaultManualBody(), previousDefaultManualBody()];
+    if (is_string($settings['config']['manualBody'] ?? null)) {
+        $body = (string)$settings['config']['manualBody'];
+        if (str_starts_with($body, 'ThreadForge は、スレッド形式で作品や記事を投稿できる掲示板です。')) {
+            $defaultBodies[] = $body;
+        }
+    }
+    if (in_array(($settings['config']['manualBody'] ?? ''), $defaultBodies, true)) {
+        $settings['config']['manualBody'] = defaultManualBody();
     }
     return $settings;
 }

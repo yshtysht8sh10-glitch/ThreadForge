@@ -1,19 +1,26 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { Post } from '../types';
 import ThreadList from '../components/ThreadList';
 
 const HomePage = () => {
+  const [searchParams] = useSearchParams();
   const [threads, setThreads] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const targetId = searchParams.get('target');
 
   useEffect(() => {
-    api.listThreads()
-      .then((items) => setThreads(items))
+    setLoading(true);
+    api.listThreads(targetId)
+      .then((items) => {
+        setThreads(items);
+        setError(null);
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [targetId]);
 
   useLayoutEffect(() => {
     if (loading || error || !window.location.hash) return;

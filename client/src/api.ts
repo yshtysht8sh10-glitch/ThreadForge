@@ -27,13 +27,13 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   config: {
     bbsTitle: 'ThreadForge',
     homePageUrl: '/',
-    manualTitle: 'ThreadForge 取扱説明書',
+    manualTitle: 'ThreadForge',
     tweetEnabled: false,
     blueskyEnabled: false,
     mastodonEnabled: false,
     misskeyEnabled: false,
     gdgdEnabled: true,
-    gdgdLabel: 'gdgd投稿',
+    gdgdLabel: '特殊投稿',
     eejanaikaOmigotoText: 'お美事にございまする',
     eejanaikaOmigotoColor: '#ff72ff',
     eejanaikaGoodjobText: 'いい仕事してますねぇ',
@@ -42,22 +42,75 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     eejanaikaEejanaikaColor: '#fff200',
     socialHashtags: '#ドット絵 #pixelart',
     manualBody: [
-      'ThreadForge は、スレッド形式で作品や記事を投稿できる掲示板です。',
+      'この取説は、このサイトを利用する方向けの案内です。',
       '',
-      '投稿',
-      '新規投稿ではタイトル、本文、画像、gdgd投稿、SNS転記OFFを指定できます。',
-      'SNS転記関連の項目は新規投稿と投稿編集で使います。返信では表示されません。',
+      '# 【HOME】',
+      '- サイト管理者が設定したHOMEリンクへ移動します。',
+      '- 外部サイトやトップページなど、このサイトごとの案内先が開きます。',
       '',
-      '返信',
-      '返信では名前、URL / HOME、本文、パスワードを入力できます。',
-      '返信に画像投稿はありません。',
+      '# 【一覧】',
+      '## 投稿を見る',
+      '- 投稿作品とコメントの一部を新しい順に確認できます。',
+      '- 作品画像、タイトル、本文、作者名、投稿日時、閲覧数、コメント数、簡単リアクション数、SNSリアクション数が表示されます。',
+      '- タイトルや画像を選ぶと、その投稿の個別ページを開けます。',
+      '## コメントと簡単リアクション',
+      '- 投稿ごとにコメントフォームを開けます。',
+      '- 簡単リアクションでは、サイトで設定された定型文を短いコメントとして送信できます。',
+      '- ログイン中は一覧上の簡単リアクションボタンから、設定済みの名前ですぐ投稿できます。',
+      '## 作者アイコン',
+      '- 作者アイコンにカーソルを合わせると拡大表示されます。',
+      '- 作者アイコンをクリックすると、その作者の作品一覧を表示できます。',
       '',
-      '削除と編集',
-      '削除は画面上から非表示にしますが、内部データは保持します。',
-      '投稿と返信は、投稿時のパスワードで編集または削除できます。',
+      '# 【投稿】',
+      '## 入力項目',
+      '- 名前、タイトル、URL / HOME、画像、本文、投稿パスワードを入力します。',
+      '- 画像はPNGとGIFを使用できます。選択した画像は投稿前にプレビューできます。',
+      '- 投稿パスワードは、あとから編集や削除をするときに使います。',
+      '## 投稿オプション',
+      '- {{gdgdLabel}}が有効なサイトでは、通常投稿とは別の枠色で投稿できます。',
+      '- SNS転記が有効なサイトでは、投稿時にSNSへ転記できます。',
+      '- SNS転記OFFを選ぶとSNSへ転記しません。',
       '',
-      '管理',
-      '管理画面では一括削除、バックアップ、インポート、設定変更を行えます。',
+      '# 【削除】',
+      '- 投稿やコメントは、投稿時のパスワードで削除できます。',
+      '- 削除した投稿は消え、管理者しか復元できないため慎重に操作してください。',
+      '- 親投稿を削除すると、その投稿についたコメントも非表示になります。',
+      '- 定型文の簡単リアクションを削除するには、管理者パスワードが必要です。',
+      '',
+      '# 【編集】',
+      '- 投稿やコメントは、投稿時のパスワードで編集できます。',
+      '- 定型文の簡単リアクションは編集できません。',
+      '- 投稿を編集しても、すでにSNSへ転記された内容は変更されません。',
+      '- 投稿を削除した場合は、対応するSNS投稿も削除されます。',
+      '- 編集された投稿やコメントには rev01 のような編集回数が表示されます。カーソルを合わせると編集日時を確認できます。',
+      '',
+      '# 【検索】',
+      '- タイトル、本文、投稿者名を対象に投稿を探せます。',
+      '- 検索結果を選ぶと、一覧の該当投稿位置へ移動します。',
+      '',
+      '# 【順位】',
+      '- コメント数、閲覧数、簡単リアクション数、SNSリアクション数などを選び、数が多い投稿を確認できます。',
+      '- タイトルを選ぶと、一覧の該当投稿位置へ移動します。',
+      '',
+      '# 【取説】',
+      '- このページです。',
+      '',
+      '# 【ログイン】',
+      '## ID作成とログイン',
+      '- IDとログインパスワードを作成してログインできます。',
+      '- ID作成時には、同じIDが使われていないか確認されます。',
+      '- ログインすると、名前、投稿パスワード、URL / HOME、アイコンを保存できます。',
+      '## ログイン中の投稿',
+      '- 投稿やコメントでは、NAME欄の代わりに「ひとこと」を入力できます。',
+      '- 名前は「ユーザー名@ひとこと」として表示されます。',
+      '- 自分の投稿やコメントには、画面上に編集/削除リンクが表示されます。',
+      '',
+      '# 【ユーザーページ】',
+      '- ログイン後の個人ページでは、自分の投稿/返信一覧を確認できます。',
+      '- 自分の投稿作品の統計を確認できます。',
+      '- 過去投稿を自分の作品として紐づけできます。',
+      '- 自分の作品として紐づけた投稿は作品一覧や統計に含まれます。',
+      '- 作者アイコンや作者ページから、そのユーザーが投稿した作品と、自分の作品として紐づけた作品を確認できます。',
     ].join('\n'),
   },
 };
@@ -242,6 +295,19 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
       return mockPosts as T;
     case 'listUserDashboard':
       return { success: true, posts: mockPosts, analytics_posts: mockPosts } as T;
+    case 'listUserPosts':
+      return {
+        success: true,
+        user: {
+          id: 1,
+          login_id: 'blank',
+          display_name: 'Blank',
+          post_password: '',
+          home_url: null,
+          icon_path: null,
+        },
+        posts: mockPosts.filter((post) => post.parent_id === 0),
+      } as T;
     case 'getThread':
       const threadId = params.get('id');
       const thread = mockPosts.find(p => p.id === Number(threadId));
@@ -296,6 +362,7 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
     case 'recordPostView':
     case 'recordAccess':
     case 'claimUserPost':
+    case 'unclaimUserPost':
     case 'restorePost':
     case 'adminDeletePosts':
     case 'updateSettings':
@@ -322,8 +389,9 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
 }
 
 export const api = {
-  listThreads: async (): Promise<Post[]> => {
-    return fetchJson<Post[]>(`${apiBase()}?action=listThreads`);
+  listThreads: async (targetId?: number | string | null): Promise<Post[]> => {
+    const target = targetId ? `&target_id=${encodeURIComponent(String(targetId))}` : '';
+    return fetchJson<Post[]>(`${apiBase()}?action=listThreads${target}`);
   },
   rss: async (): Promise<string> => {
     const response = await fetch(`${apiBase()}?action=rss`);
@@ -397,9 +465,19 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` },
     });
   },
+  listUserPosts: async (userId: string): Promise<{ success: boolean; user: UserProfile; posts: Post[] }> => {
+    return fetchJson(`${apiBase()}?action=listUserPosts&user_id=${encodeURIComponent(userId)}`);
+  },
   claimUserPost: async (token: string, id: string): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();
     formData.append('action', 'claimUserPost');
+    formData.append('auth_token', token);
+    formData.append('id', id);
+    return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
+  },
+  unclaimUserPost: async (token: string, id: string): Promise<{ success: boolean; message: string }> => {
+    const formData = new FormData();
+    formData.append('action', 'unclaimUserPost');
     formData.append('auth_token', token);
     formData.append('id', id);
     return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });

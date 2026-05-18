@@ -265,7 +265,10 @@ describe('API Module', () => {
       const result = await api.publicSettings();
       expect(result).toEqual({ success: true, settings: DEFAULT_PUBLIC_SETTINGS });
       expect(result.settings.config.homePageUrl).toBe('/');
-      expect(result.settings.config.manualBody).toContain('返信に画像投稿はありません。');
+      expect(result.settings.config.manualTitle).toBe('ThreadForge');
+      expect(result.settings.config.manualBody).toContain('この取説は、このサイトを利用する方向けの案内です。');
+      expect(result.settings.config.manualBody).toContain('# 【HOME】');
+      expect(result.settings.config.manualBody).toContain('# 【ユーザーページ】');
     });
   });
 });

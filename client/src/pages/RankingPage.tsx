@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { metricOptions, MetricId, metricValue } from '../metrics';
 import { Post } from '../types';
+import UserIconLink from '../components/UserIconLink';
 
 const RankingPage = () => {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -13,7 +14,18 @@ const RankingPage = () => {
     api.listRankingPosts().then(setPosts).catch((err) => setError((err as Error).message));
   }, []);
 
-  const ranked = useMemo(() => [...posts].sort((a, b) => metricValue(b, metric) - metricValue(a, metric)), [metric, posts]);
+  const ranked = useMemo(() => {
+    const sorted = [...posts].sort((a, b) => metricValue(b, metric) - metricValue(a, metric));
+    return sorted.map((post, index) => {
+      const value = metricValue(post, metric);
+      const previousHigherCount = sorted.slice(0, index).filter((item) => metricValue(item, metric) > value).length;
+      return {
+        post,
+        value,
+        rank: previousHigherCount + 1,
+      };
+    });
+  }, [metric, posts]);
 
   return (
     <section className="card ranking-page">
@@ -26,16 +38,34 @@ const RankingPage = () => {
       </label>
       {error && <p className="error">{error}</p>}
       <div className="ranking-list">
-        {ranked.map((post, index) => (
-          <Link className="ranking-row" to={`/thread/${post.id}`} key={post.id}>
-            <span>{index + 1}</span>
-            <strong>No.{post.display_no ?? post.id} {post.title || '無題'}</strong>
-            <b>{metricValue(post, metric).toLocaleString('ja-JP')}</b>
-          </Link>
+        {ranked.map(({ post, rank, value }) => (
+          <div className={`ranking-row ${rankClassName(rank, value)}`} key={post.id}>
+            <span className="ranking-position">{rank}</span>
+            <strong className="ranking-title">
+              <Link to={listTargetHref(post)}>No.{post.display_no ?? post.id} {post.title || '無題'}</Link>
+              <span className="ranking-author">
+                <UserIconLink post={post} />
+                NAME: {post.name}
+              </span>
+            </strong>
+            <b>{value.toLocaleString('ja-JP')}</b>
+          </div>
         ))}
       </div>
     </section>
   );
 };
+
+function rankClassName(rank: number, value: number): string {
+  if (value <= 0) return '';
+  if (rank === 1) return 'ranking-row-gold';
+  if (rank === 2) return 'ranking-row-silver';
+  if (rank === 3) return 'ranking-row-bronze';
+  return '';
+}
+
+function listTargetHref(post: Post): string {
+  return `/?target=${encodeURIComponent(String(post.id))}#post-${post.id}`;
+}
 
 export default RankingPage;

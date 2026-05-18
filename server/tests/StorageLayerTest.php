@@ -62,6 +62,7 @@ final class StorageLayerTest extends TestCase
         $this->assertContains('user_sessions', $tables);
         $this->assertContains('user_post_claims', $tables);
         $this->assertContains('access_counts', $tables);
+        $this->assertContains('post_revisions', $tables);
     }
 
     // #sym:describe buildPost

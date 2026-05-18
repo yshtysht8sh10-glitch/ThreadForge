@@ -60,6 +60,8 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->assertSame('Alice Updated', $fetched['json']['name']);
         $this->assertSame('Updated title', $fetched['json']['title']);
         $this->assertSame('Updated body', $fetched['json']['message']);
+        $this->assertSame(1, $fetched['json']['revision_count']);
+        $this->assertCount(1, $fetched['json']['revision_dates']);
 
         $deleted = $this->postForm([
             'action' => 'deletePost',
@@ -78,6 +80,18 @@ final class ApiHttpIntegrationTest extends TestCase
         $missing = $this->getJson(['action' => 'getPost', 'id' => (string)$id]);
         $this->assertSame(404, $missing['status']);
         $this->assertFalse($missing['json']['success']);
+    }
+
+    public function testDefaultAdminPasswordCanOpenSettingsWhenNoPasswordIsConfigured(): void
+    {
+        $denied = $this->getJson(['action' => 'getSettings', 'admin_password' => 'wrong']);
+        $this->assertSame(403, $denied['status']);
+        $this->assertFalse($denied['json']['success']);
+
+        $allowed = $this->getJson(['action' => 'getSettings', 'admin_password' => 'admin']);
+        $this->assertSame(200, $allowed['status']);
+        $this->assertTrue($allowed['json']['success']);
+        $this->assertArrayHasKey('settings', $allowed['json']);
     }
 
     public function testDeletingThreadSoftDeletesRepliesWithoutPhysicalDeletion(): void
@@ -240,6 +254,271 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->assertFalse($missing['json']['success']);
     }
 
+    public function testPresetReactionReplyCannotBeEditedThroughHttp(): void
+    {
+        $this->postForm([
+            'action' => 'createPost',
+            'name' => 'Thread author',
+            'title' => 'Thread title',
+            'message' => 'Thread body',
+            'password' => 'secret',
+        ]);
+        $threadId = (int)$this->latestPost()['id'];
+
+        $this->postForm([
+            'action' => 'createPost',
+            'thread_id' => (string)$threadId,
+            'parent_id' => (string)$threadId,
+            'name' => 'Blank',
+            'title' => 'Re: Thread title',
+            'message' => 'ええじゃないか',
+            'password' => 'reply-secret',
+        ]);
+        $replyId = (int)$this->latestPost()['id'];
+
+        $updated = $this->postForm([
+            'action' => 'updatePost',
+            'id' => (string)$replyId,
+            'name' => 'Blank',
+            'title' => 'Re: Thread title',
+            'message' => 'Edited body',
+            'password' => 'reply-secret',
+        ]);
+
+        $this->assertSame(403, $updated['status']);
+        $this->assertFalse($updated['json']['success']);
+        $this->assertSame('ええじゃないか', $this->postById($replyId)['message']);
+    }
+
+    public function testPresetReactionReplyUsesAdminPasswordForDeletion(): void
+    {
+        $this->setAdminPassword('admin-secret');
+
+        $this->postForm([
+            'action' => 'createPost',
+            'name' => 'Thread author',
+            'title' => 'Thread title',
+            'message' => 'Thread body',
+            'password' => 'secret',
+        ]);
+        $threadId = (int)$this->latestPost()['id'];
+
+        $created = $this->postForm([
+            'action' => 'createPost',
+            'thread_id' => (string)$threadId,
+            'parent_id' => (string)$threadId,
+            'name' => 'Blank',
+            'title' => 'Re: Thread title',
+            'message' => 'ええじゃないか',
+            'password' => 'eejanaika',
+        ]);
+        $this->assertSame(200, $created['status']);
+        $replyId = (int)$this->latestPost()['id'];
+
+        $oldFixedPassword = $this->postForm([
+            'action' => 'deletePost',
+            'id' => (string)$replyId,
+            'password' => 'eejanaika',
+        ]);
+        $this->assertSame(403, $oldFixedPassword['status']);
+        $this->assertFalse($oldFixedPassword['json']['success']);
+        $this->assertNull($this->postById($replyId)['deleted_at']);
+
+        $adminPassword = $this->postForm([
+            'action' => 'deletePost',
+            'id' => (string)$replyId,
+            'password' => 'admin-secret',
+        ]);
+        $this->assertSame(200, $adminPassword['status']);
+        $this->assertTrue($adminPassword['json']['success']);
+        $this->assertNotNull($this->postById($replyId)['deleted_at']);
+    }
+
+    public function testUserDisplayNameIsLimitedToThirtyCharacters(): void
+    {
+        $tooLong = str_repeat('a', 31);
+        $rejected = $this->postForm([
+            'action' => 'registerUser',
+            'login_id' => 'longname',
+            'password' => 'password123',
+            'display_name' => $tooLong,
+            'post_password' => 'secret',
+        ]);
+        $this->assertSame(400, $rejected['status']);
+        $this->assertFalse($rejected['json']['success']);
+
+        $registered = $this->postForm([
+            'action' => 'registerUser',
+            'login_id' => 'validname',
+            'password' => 'password123',
+            'display_name' => str_repeat('b', 30),
+            'post_password' => 'secret',
+        ]);
+        $this->assertSame(200, $registered['status']);
+        $this->assertTrue($registered['json']['success']);
+
+        $updated = $this->postForm([
+            'action' => 'updateUserProfile',
+            'auth_token' => $registered['json']['token'],
+            'display_name' => $tooLong,
+            'post_password' => 'secret',
+        ]);
+        $this->assertSame(400, $updated['status']);
+        $this->assertFalse($updated['json']['success']);
+    }
+
+    public function testListThreadsCanLoadPageContainingTargetPost(): void
+    {
+        $firstId = $this->insertPost('A', 'First', 'Body', '2026-05-01 10:00:00');
+        $this->insertPost('B', 'Second', 'Body', '2026-05-02 10:00:00');
+        $this->insertPost('C', 'Third', 'Body', '2026-05-03 10:00:00');
+
+        $response = $this->getJson([
+            'action' => 'listThreads',
+            'limit' => '2',
+            'target_id' => (string)$firstId,
+        ]);
+
+        $this->assertSame(200, $response['status']);
+        $this->assertContains($firstId, array_column($response['json'], 'id'));
+    }
+
+    public function testLegacyDefaultManualSettingsUseCurrentDefaults(): void
+    {
+        getConnection()
+            ->prepare('REPLACE INTO settings (key, value) VALUES (:key, :value)')
+            ->execute([
+                ':key' => 'config',
+                ':value' => json_encode([
+                    'manualTitle' => 'ThreadForge 取扱説明書',
+                    'manualBody' => implode("\n", [
+                        'ThreadForge は、スレッド形式で作品や記事を投稿できる掲示板です。',
+                        '',
+                        '投稿',
+                        '新規投稿ではタイトル、本文、画像、gdgd投稿、SNS転記OFFを指定できます。',
+                        'SNS転記関連の項目は新規投稿と投稿編集で使います。返信では表示されません。',
+                        '',
+                        '返信',
+                        '返信では名前、URL / HOME、本文、パスワードを入力できます。',
+                        '返信に画像投稿はありません。',
+                        '',
+                        '削除と編集',
+                        '削除は画面上から非表示にしますが、内部データは保持します。',
+                        '投稿と返信は、投稿時のパスワードで編集または削除できます。',
+                        '',
+                        '管理',
+                        '管理画面では一括削除、バックアップ、インポート、設定変更を行えます。',
+                    ]),
+                ], JSON_UNESCAPED_UNICODE),
+            ]);
+
+        $response = $this->getJson(['action' => 'publicSettings']);
+
+        $this->assertSame(200, $response['status']);
+        $this->assertSame('ThreadForge', $response['json']['settings']['config']['manualTitle']);
+        $this->assertSame('特殊投稿', $response['json']['settings']['config']['gdgdLabel']);
+        $this->assertStringContainsString('この取説は、このサイトを利用する方向けの案内です。', $response['json']['settings']['config']['manualBody']);
+        $this->assertStringContainsString('# 【HOME】', $response['json']['settings']['config']['manualBody']);
+        $this->assertStringContainsString('# 【ユーザーページ】', $response['json']['settings']['config']['manualBody']);
+    }
+
+    public function testListUserPostsReturnsOwnedAndClaimedParentPostsOnly(): void
+    {
+        $userId = $this->insertUser('owner', 'Owner');
+        $otherUserId = $this->insertUser('other', 'Other');
+        $ownedId = $this->insertPost('Owner', 'Owned title', 'Owned body', '2026-05-01 10:00:00', $userId);
+        $claimedId = $this->insertPost('Other', 'Claimed title', 'Claimed body', '2026-05-01 11:00:00', $otherUserId);
+        $this->insertReply($ownedId, 'Owner reply', '2026-05-01 12:00:00', $userId);
+
+        getConnection()->prepare('INSERT INTO user_post_claims (user_id, post_id, created_at) VALUES (:user_id, :post_id, :created_at)')
+            ->execute([':user_id' => $userId, ':post_id' => $claimedId, ':created_at' => '2026-05-01 12:30:00']);
+
+        $response = $this->getJson(['action' => 'listUserPosts', 'user_id' => (string)$userId]);
+
+        $this->assertSame(200, $response['status']);
+        $this->assertTrue($response['json']['success']);
+        $this->assertSame('Owner', $response['json']['user']['display_name']);
+        $this->assertEqualsCanonicalizing([$ownedId, $claimedId], array_column($response['json']['posts'], 'id'));
+        $this->assertNotContains($this->latestPost()['id'], array_column($response['json']['posts'], 'id'));
+    }
+
+    public function testClaimUserPostRegistersDisplayNoAsOwnWork(): void
+    {
+        $userId = $this->insertUser('claimant', 'Claimant');
+        $postId = $this->insertPost('Other', 'Claim target', 'Body', '2026-05-01 10:00:00');
+        $token = createUserSession(getConnection(), $userId);
+
+        $response = $this->postForm([
+            'action' => 'claimUserPost',
+            'auth_token' => $token,
+            'id' => '1',
+        ]);
+
+        $this->assertSame(200, $response['status'], (string)$response['body']);
+        $this->assertIsArray($response['json'], (string)$response['body']);
+        $this->assertTrue($response['json']['success']);
+        $this->assertSame(
+            1,
+            (int)getConnection()
+                ->query('SELECT COUNT(*) FROM user_post_claims WHERE user_id = ' . $userId . ' AND post_id = ' . $postId)
+                ->fetchColumn()
+        );
+    }
+
+    public function testClaimUserPostUsesDisplayedThreadNumberNotInternalId(): void
+    {
+        $userId = $this->insertUser('claimant', 'Claimant');
+        $firstId = $this->insertPost('First', 'First', 'Body', '2026-05-01 10:00:00');
+        $replyId = $this->insertReply($firstId, 'Reply body', '2026-05-01 10:30:00');
+        $secondId = $this->insertPost('Second', 'Second', 'Body', '2026-05-01 11:00:00');
+        $token = createUserSession(getConnection(), $userId);
+
+        $response = $this->postForm([
+            'action' => 'claimUserPost',
+            'auth_token' => $token,
+            'id' => '2',
+        ]);
+
+        $this->assertSame(200, $response['status'], (string)$response['body']);
+        $this->assertTrue($response['json']['success']);
+        $this->assertSame(
+            1,
+            (int)getConnection()
+                ->query('SELECT COUNT(*) FROM user_post_claims WHERE user_id = ' . $userId . ' AND post_id = ' . $secondId)
+                ->fetchColumn()
+        );
+        $this->assertSame(
+            0,
+            (int)getConnection()
+                ->query('SELECT COUNT(*) FROM user_post_claims WHERE user_id = ' . $userId . ' AND post_id = ' . $replyId)
+                ->fetchColumn()
+        );
+    }
+
+    public function testUnclaimUserPostRemovesOwnWorkRegistration(): void
+    {
+        $userId = $this->insertUser('claimant', 'Claimant');
+        $postId = $this->insertPost('Other', 'Claim target', 'Body', '2026-05-01 10:00:00');
+        getConnection()->prepare('INSERT INTO user_post_claims (user_id, post_id, created_at) VALUES (:user_id, :post_id, :created_at)')
+            ->execute([':user_id' => $userId, ':post_id' => $postId, ':created_at' => '2026-05-01 11:00:00']);
+        $token = createUserSession(getConnection(), $userId);
+
+        $response = $this->postForm([
+            'action' => 'unclaimUserPost',
+            'auth_token' => $token,
+            'id' => '1',
+        ]);
+
+        $this->assertSame(200, $response['status'], (string)$response['body']);
+        $this->assertTrue($response['json']['success']);
+        $this->assertSame(
+            0,
+            (int)getConnection()
+                ->query('SELECT COUNT(*) FROM user_post_claims WHERE user_id = ' . $userId . ' AND post_id = ' . $postId)
+                ->fetchColumn()
+        );
+    }
+
     private function startServer(): void
     {
         $port = $this->findFreePort();
@@ -354,12 +633,31 @@ final class ApiHttpIntegrationTest extends TestCase
         return (int)getConnection()->query('SELECT COUNT(*) FROM posts')->fetchColumn();
     }
 
-    private function insertPost(string $name, string $title, string $message, string $createdAt): void
+    private function insertUser(string $loginId, string $displayName): int
     {
         $pdo = getConnection();
         $stmt = $pdo->prepare(
-            'INSERT INTO posts (thread_id, parent_id, name, title, message, image_path, password_hash, created_at)
-             VALUES (0, 0, :name, :title, :message, null, :password_hash, :created_at)'
+            'INSERT INTO users (login_id, password_hash, display_name, post_password, home_url, created_at, updated_at)
+             VALUES (:login_id, :password_hash, :display_name, :post_password, null, :created_at, :updated_at)'
+        );
+        $stmt->execute([
+            ':login_id' => $loginId,
+            ':password_hash' => password_hash('secret', PASSWORD_DEFAULT),
+            ':display_name' => $displayName,
+            ':post_password' => 'secret',
+            ':created_at' => '2026-05-01 09:00:00',
+            ':updated_at' => '2026-05-01 09:00:00',
+        ]);
+
+        return (int)$pdo->lastInsertId();
+    }
+
+    private function insertPost(string $name, string $title, string $message, string $createdAt, ?int $userId = null): int
+    {
+        $pdo = getConnection();
+        $stmt = $pdo->prepare(
+            'INSERT INTO posts (thread_id, parent_id, name, title, message, image_path, password_hash, created_at, user_id)
+             VALUES (0, 0, :name, :title, :message, null, :password_hash, :created_at, :user_id)'
         );
         $stmt->execute([
             ':name' => $name,
@@ -367,9 +665,41 @@ final class ApiHttpIntegrationTest extends TestCase
             ':message' => $message,
             ':password_hash' => password_hash('secret', PASSWORD_DEFAULT),
             ':created_at' => $createdAt,
+            ':user_id' => $userId,
         ]);
         $id = (int)$pdo->lastInsertId();
         $pdo->prepare('UPDATE posts SET thread_id = :id WHERE id = :id')->execute([':id' => $id]);
+        return $id;
+    }
+
+    private function insertReply(int $threadId, string $message, string $createdAt, ?int $userId = null): int
+    {
+        $pdo = getConnection();
+        $stmt = $pdo->prepare(
+            'INSERT INTO posts (thread_id, parent_id, name, title, message, image_path, password_hash, created_at, user_id)
+             VALUES (:thread_id, :parent_id, :name, :title, :message, null, :password_hash, :created_at, :user_id)'
+        );
+        $stmt->execute([
+            ':thread_id' => $threadId,
+            ':parent_id' => $threadId,
+            ':name' => 'Reply',
+            ':title' => 'Re: Title',
+            ':message' => $message,
+            ':password_hash' => password_hash('secret', PASSWORD_DEFAULT),
+            ':created_at' => $createdAt,
+            ':user_id' => $userId,
+        ]);
+        return (int)$pdo->lastInsertId();
+    }
+
+    private function setAdminPassword(string $password): void
+    {
+        getConnection()
+            ->prepare('REPLACE INTO settings (key, value) VALUES (:key, :value)')
+            ->execute([
+                ':key' => 'security',
+                ':value' => json_encode(['adminPasswordHash' => password_hash($password, PASSWORD_DEFAULT)], JSON_UNESCAPED_UNICODE),
+            ]);
     }
 
     private function temporaryImage(string $prefix, string $contents): string

@@ -4,6 +4,7 @@ import { api, DEFAULT_PUBLIC_SETTINGS, PublicSettings } from '../api';
 import { NewPostData } from '../types';
 import { createSocialPostPreviews } from '../tweet';
 import { useAuth } from '../auth';
+import { clampUserNameSuffix, composeUserName, userNameSuffixLimit } from '../name';
 
 const PostFormPage = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const PostFormPage = () => {
   const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
   const [password, setPassword] = useState('');
   const [file, setFile] = useState<File | undefined>(undefined);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -34,6 +36,16 @@ const PostFormPage = () => {
     setPassword(user.post_password);
   }, [user]);
 
+  useEffect(() => {
+    if (!file) {
+      setFilePreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setFilePreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
+
   const enabledSocialPlatforms = {
     x: settings.config.tweetEnabled,
     bluesky: settings.config.blueskyEnabled,
@@ -42,6 +54,7 @@ const PostFormPage = () => {
   };
   const socialEnabled = Object.values(enabledSocialPlatforms).some(Boolean);
   const boardSourceUrl = `${window.location.origin}/#post-000000`;
+  const nameSuffixLimit = user ? userNameSuffixLimit(user.display_name) : 0;
   const displayName = user ? composeUserName(user.display_name, nameSuffix) : name;
   const socialPreviews = socialTransferOff ? [] : createSocialPostPreviews(enabledSocialPlatforms, displayName, title, message, boardSourceUrl, settings.config.socialHashtags);
   const hasInput = [name, nameSuffix, url, title, message, password].some((value) => value.trim() !== '') || gdgd || socialTransferOff || file !== undefined;
@@ -101,14 +114,19 @@ const PostFormPage = () => {
         <div className="post-form-top-row">
           {user ? (
             <label>
-              <span className="post-form-label-title">サジェスト（任意）</span>
-              <input value={nameSuffix} onChange={(event) => setNameSuffix(event.target.value)} placeholder="NAMEに @付きで表示" />
-              <span className="post-form-field-help">NAME: {displayName}</span>
+              <span className="post-form-label-title">ひとこと（任意 / {nameSuffixLimit}文字まで）</span>
+              <input
+                value={nameSuffix}
+                maxLength={nameSuffixLimit}
+                onChange={(event) => setNameSuffix(clampUserNameSuffix(user.display_name, event.target.value))}
+                placeholder="NAMEに @付きで表示"
+              />
+              <span className="post-form-field-help">NAME: {displayName}（名前+@+ひとことで30文字まで）</span>
             </label>
           ) : (
             <label>
               <span className="post-form-label-title">名前（/30文字）<span className="required">*</span></span>
-              <input value={name} onChange={(event) => setName(event.target.value)} required />
+              <input value={name} maxLength={30} onChange={(event) => setName(event.target.value)} required />
             </label>
           )}
           {settings.config.gdgdEnabled && (
@@ -135,11 +153,18 @@ const PostFormPage = () => {
           <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="http://" />
         </label>
 
-        <label>
+        <div className="edit-image-replace-block">
           <span className="post-form-label-title">画像アップロード<span className="required">*</span></span>
-          <input type="file" accept="image/png,image/gif" onChange={(event) => setFile(event.target.files?.[0])} />
+          {filePreviewUrl && (
+            <section className="edit-image-preview post-image-preview" aria-label="投稿画像のプレビュー">
+              <img src={filePreviewUrl} alt={title || '投稿画像'} />
+            </section>
+          )}
+          <label>
+            <input type="file" accept="image/png,image/gif" onChange={(event) => setFile(event.target.files?.[0])} />
+          </label>
           <span className="post-form-field-help">※PNG・GIF が使用できます。最大データサイズは 5100 KB までです。</span>
-        </label>
+        </div>
 
         <label>
           <span className="post-form-label-title">メッセージ（/100000文字）<span className="required">*</span></span>
@@ -175,10 +200,5 @@ const PostFormPage = () => {
     </div>
   );
 };
-
-function composeUserName(displayName: string, suffix: string): string {
-  const trimmed = suffix.trim();
-  return trimmed === '' ? displayName : `${displayName}@${trimmed}`;
-}
 
 export default PostFormPage;

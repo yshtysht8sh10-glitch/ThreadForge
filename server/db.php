@@ -108,6 +108,14 @@ function initializeDatabase(PDO $pdo): void
     );
 
     $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS post_revisions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            revised_at TEXT NOT NULL
+        )'
+    );
+
+    $pdo->exec(
         'CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
@@ -183,7 +191,10 @@ function buildPost(array $row): array
         'tweet_url' => $row['tweet_url'] ?? null,
         'user_id' => isset($row['user_id']) ? (int)$row['user_id'] : null,
         'user_icon_path' => publicStoragePath($row['user_icon_path'] ?? null),
+        'user_display_name' => $row['user_display_name'] ?? null,
         'view_count' => (int)($row['view_count'] ?? 0),
+        'revision_count' => (int)($row['revision_count'] ?? 0),
+        'revision_dates' => revisionDatesFromRow($row),
         'board_reactions' => buildBoardReactions($row),
         'social_links' => buildSocialLinks($row),
         'social_reactions' => buildSocialReactions($row),
@@ -198,6 +209,15 @@ function buildPost(array $row): array
         $post['reply_count'] = (int)$row['reply_count'];
     }
     return $post;
+}
+
+function revisionDatesFromRow(array $row): array
+{
+    $dates = (string)($row['revision_dates'] ?? '');
+    if ($dates === '') {
+        return [];
+    }
+    return array_values(array_filter(explode("\n", $dates), fn (string $date): bool => $date !== ''));
 }
 
 function publicStoragePath(?string $path): ?string
@@ -563,6 +583,14 @@ function normalizeString(string $value): string
 {
     $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $value) ?? $value;
     return trim($value);
+}
+
+function utf8Length(string $value): int
+{
+    if (function_exists('mb_strlen')) {
+        return mb_strlen($value, 'UTF-8');
+    }
+    return preg_match_all('/./us', $value) ?: strlen($value);
 }
 
 function normalizeLoginId(string $value): string

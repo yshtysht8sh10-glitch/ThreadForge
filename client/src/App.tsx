@@ -14,6 +14,7 @@ import ManualPage from './pages/ManualPage';
 import LoginPage from './pages/LoginPage';
 import BoardAnalyticsPage from './pages/BoardAnalyticsPage';
 import RankingPage from './pages/RankingPage';
+import UserPostsPage from './pages/UserPostsPage';
 import { APP_NAME, APP_VERSION } from './version';
 
 const AppShell = () => {
@@ -77,6 +78,7 @@ const AppShell = () => {
           <Route path="/edit/:id" element={<EditPostPage />} />
           <Route path="/manual" element={<ManualPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/user/:id" element={<UserPostsPage />} />
           <Route path="/analytics" element={<BoardAnalyticsPage />} />
           <Route path="/ranking" element={<RankingPage />} />
           <Route path="/admin" element={<AdminPage />} />

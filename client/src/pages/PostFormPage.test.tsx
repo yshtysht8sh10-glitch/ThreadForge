@@ -16,7 +16,7 @@ vi.mock('../api', () => ({
       mastodonEnabled: false,
       misskeyEnabled: false,
       gdgdEnabled: true,
-      gdgdLabel: 'gdgd投稿',
+      gdgdLabel: '特殊投稿',
     },
   },
   api: {
@@ -36,13 +36,15 @@ const defaultSettings = {
     mastodonEnabled: false,
     misskeyEnabled: false,
     gdgdEnabled: true,
-    gdgdLabel: 'gdgd投稿',
+    gdgdLabel: '特殊投稿',
   },
 };
 
 describe('PostFormPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    URL.createObjectURL = vi.fn(() => 'blob:post-preview-image');
+    URL.revokeObjectURL = vi.fn();
     vi.mocked(api.publicSettings).mockResolvedValue({ success: true, settings: defaultSettings });
     vi.mocked(api.createPost).mockResolvedValue({ success: true, message: 'ok' });
   });
@@ -114,7 +116,7 @@ describe('PostFormPage', () => {
     expect(screen.queryByText('Misskey')).not.toBeInTheDocument();
   });
 
-  it('switches the title band to gdgd styling when gdgd is checked', async () => {
+  it('switches the title band to special styling when special posting is checked', async () => {
     render(
       <MemoryRouter>
         <PostFormPage />
@@ -124,9 +126,24 @@ describe('PostFormPage', () => {
     const formShell = (await screen.findByText('通常投稿')).closest('.post-form-page');
     expect(formShell).not.toHaveClass('post-form-gdgd');
 
-    fireEvent.click(screen.getByLabelText('gdgd投稿'));
+    fireEvent.click(screen.getByLabelText('特殊投稿'));
 
     expect(formShell).toHaveClass('post-form-gdgd');
+  });
+
+  it('shows an image preview after selecting an upload file', async () => {
+    render(
+      <MemoryRouter>
+        <PostFormPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('通常投稿');
+    fireEvent.change(screen.getByLabelText(/タイトル/), { target: { value: 'Preview title' } });
+    const file = new File(['image'], 'preview.png', { type: 'image/png' });
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [file] } });
+
+    expect(await screen.findByRole('img', { name: 'Preview title' })).toHaveAttribute('src', 'blob:post-preview-image');
   });
 
   it('does not change frame styling when SNS transfer is off', async () => {

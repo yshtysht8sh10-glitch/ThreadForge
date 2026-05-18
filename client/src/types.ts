@@ -10,6 +10,8 @@ export type Post = {
   message: string;
   image_path?: string | null;
   created_at: string;
+  revision_count?: number;
+  revision_dates?: string[];
   deleted_at?: string | null;
   gdgd?: boolean;
   tweet_off?: boolean;
@@ -17,6 +19,7 @@ export type Post = {
   tweet_url?: string | null;
   user_id?: number | null;
   user_icon_path?: string | null;
+  user_display_name?: string | null;
   can_manage?: boolean;
   claimed_by_user?: boolean;
   view_count?: number;

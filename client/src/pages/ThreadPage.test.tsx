@@ -64,6 +64,40 @@ describe('ThreadPage', () => {
     expect(screen.queryByRole('link', { name: 'Tweet先' })).not.toBeInTheDocument();
   });
 
+  it('shows a subtle revision badge with edit timestamps', async () => {
+    vi.mocked(api.getThread).mockResolvedValue({
+      thread: {
+        ...thread,
+        revision_count: 2,
+        revision_dates: ['2026-05-04 11:00:00', '2026-05-04 12:00:00'],
+      },
+      replies: [],
+    });
+
+    renderThreadPage();
+
+    const badge = await screen.findByText('rev02');
+    expect(badge).toHaveAttribute('title', 'rev01: 2026/05/04 11:00\nrev02: 2026/05/04 12:00');
+  });
+
+  it('links user icons to the user post list and shows a hover prompt', async () => {
+    vi.mocked(api.getThread).mockResolvedValue({
+      thread: {
+        ...thread,
+        user_id: 7,
+        user_icon_path: '/storage/data/user_7.png',
+        user_display_name: 'Alice',
+      },
+      replies: [],
+    });
+
+    renderThreadPage();
+
+    const link = await screen.findByRole('link', { name: 'Alice の作品を見る' });
+    expect(link).toHaveAttribute('href', '/user/7');
+    expect(within(link).getByText('このユーザーの作品を見ますか？')).toBeInTheDocument();
+  });
+
   it('does not show tweet or image controls in the reply form', async () => {
     renderThreadPage();
 
@@ -161,7 +195,7 @@ describe('ThreadPage', () => {
       name: 'Carol',
       title: 'Re: Thread title',
       message: 'いい仕事してますねぇ',
-      password: 'eejanaika',
+      password: '__preset_reaction_admin_password__',
     })));
     await screen.findByText('/thread/1');
     expect(screen.queryByText('/#post-1')).not.toBeInTheDocument();

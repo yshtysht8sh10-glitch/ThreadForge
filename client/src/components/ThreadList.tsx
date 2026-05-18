@@ -4,10 +4,14 @@ import { api, mediaUrl, type PublicSettings } from '../api';
 import { BoardReactions, NewPostData, Post } from '../types';
 import LinkedText from './LinkedText';
 import { useAuth } from '../auth';
+import UserIconLink from './UserIconLink';
+import { clampUserNameSuffix, composeUserName, userNameSuffixLimit } from '../name';
 
 type ThreadListProps = {
   threads: Post[];
   action?: (post: Post) => React.ReactNode;
+  showReplies?: boolean;
+  userIconLinks?: boolean;
 };
 
 type InlineMode = 'comment' | 'eejanaika';
@@ -19,6 +23,7 @@ const EEJAIKA_OPTIONS = [
 ];
 
 const DEFAULT_REPLY_NAME = 'Blank';
+export const PRESET_REACTION_PASSWORD = '__preset_reaction_admin_password__';
 const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   config: {
     bbsTitle: 'ThreadForge',
@@ -30,7 +35,7 @@ const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     mastodonEnabled: false,
     misskeyEnabled: false,
     gdgdEnabled: true,
-    gdgdLabel: 'gdgd投稿',
+    gdgdLabel: '特殊投稿',
     eejanaikaOmigotoText: 'お美事にございまする',
     eejanaikaOmigotoColor: '#ff72ff',
     eejanaikaGoodjobText: 'いい仕事してますねぇ',
@@ -41,7 +46,7 @@ const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   },
 };
 
-const ThreadList = ({ threads, action }: ThreadListProps) => {
+const ThreadList = ({ threads, action, showReplies = true, userIconLinks = true }: ThreadListProps) => {
   const { token, user } = useAuth();
   const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
   const viewedPostIds = useRef<Set<number>>(new Set());
@@ -57,6 +62,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
   const [inlineStatus, setInlineStatus] = useState<Record<number, string>>({});
   const [boardReactionOverrides, setBoardReactionOverrides] = useState<Record<number, BoardReactions>>({});
   const eejanaikaOptions = eejanaikaOptionsFromSettings(settings.config);
+  const nameSuffixLimit = user ? userNameSuffixLimit(user.display_name) : 0;
 
   useEffect(() => {
     api.publicSettings()
@@ -217,7 +223,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
       name: eejanaikaName,
       title: `Re: ${thread.title || '返信'}`,
       message: eejanaikaMessage,
-      password: user?.post_password || 'eejanaika',
+      password: user?.post_password || PRESET_REACTION_PASSWORD,
       auth_token: token,
     });
   };
@@ -231,7 +237,7 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
       url: user.home_url ?? '',
       title: `Re: ${thread.title || '返信'}`,
       message,
-      password: user.post_password || 'eejanaika',
+      password: user.post_password || PRESET_REACTION_PASSWORD,
       auth_token: token,
     });
   };
@@ -247,8 +253,8 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
       {threads.length === 0 && <div className="board-message">投稿はまだありません。</div>}
       {threads.map((thread) => {
         const previewReplies = thread.replies ?? [];
-        const replies = expandedReplies[thread.id] ?? previewReplies.slice(0, 10);
-        const hiddenReplyCount = Math.max(0, Number(thread.reply_count ?? 0) - replies.length);
+        const replies = showReplies ? (expandedReplies[thread.id] ?? previewReplies.slice(0, 10)) : [];
+        const hiddenReplyCount = showReplies ? Math.max(0, Number(thread.reply_count ?? 0) - replies.length) : 0;
         const omittedStart = 1;
         const omittedEnd = hiddenReplyCount;
         const panelMode = activePanel?.threadId === thread.id ? activePanel.mode : null;
@@ -264,14 +270,15 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
 
             <div className="board-thread-body">
               <p className="board-meta">
-                {thread.user_icon_path && <img className="user-icon" src={mediaUrl(thread.user_icon_path) ?? undefined} alt="" />}
+                <UserIconLink post={thread} enabled={userIconLinks} />
                 NAME：<strong>{thread.name}</strong>
                 {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                 {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
+                <RevisionBadge post={thread} />
               </p>
               {user && thread.user_id === user.id && (
                 <p className="owner-post-links">
-                  <Link to={`/edit/${thread.id}`}>編集</Link>
+                  {!isPresetComment(thread, settings.config) && <Link to={`/edit/${thread.id}`}>編集</Link>}
                   <button type="button" onClick={() => deleteOwnedPost(thread)}>削除</button>
                 </p>
               )}
@@ -289,15 +296,16 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
               {replies.map((reply) => (
                 <section key={reply.id} className="board-reply">
                   <p className="board-meta">
-                    {reply.user_icon_path && <img className="user-icon" src={mediaUrl(reply.user_icon_path) ?? undefined} alt="" />}
+                    <UserIconLink post={reply} enabled={userIconLinks} />
                     NAME：<strong>{reply.name}</strong>
                     {reply.url && <> <a href={reply.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                     {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>
+                    <RevisionBadge post={reply} />
                     {reply.reply_no && <> <span className="board-meta-sub">/ 返信No.{thread.display_no ?? thread.id}-{reply.reply_no}</span></>}
                   </p>
                   {user && reply.user_id === user.id && (
                     <p className="owner-post-links">
-                      <Link to={`/edit/${reply.id}`}>編集</Link>
+                      {!isPresetComment(reply, settings.config) && <Link to={`/edit/${reply.id}`}>編集</Link>}
                       <button type="button" onClick={() => deleteOwnedPost(reply)}>削除</button>
                     </p>
                   )}
@@ -326,9 +334,15 @@ const ThreadList = ({ threads, action }: ThreadListProps) => {
                   </div>
                   {user ? (
                     <label>
-                      <span>サジェスト（任意）</span>
-                      <input aria-label="サジェスト" value={replyNameSuffix} maxLength={20} onChange={(event) => setReplyNameSuffix(event.target.value)} placeholder="NAMEに @付きで表示" />
-                      <span className="inline-form-field-help">NAME: {composeUserName(user.display_name, replyNameSuffix)}</span>
+                      <span>ひとこと（任意 / {nameSuffixLimit}文字まで）</span>
+                      <input
+                        aria-label="ひとこと"
+                        value={replyNameSuffix}
+                        maxLength={nameSuffixLimit}
+                        onChange={(event) => setReplyNameSuffix(clampUserNameSuffix(user.display_name, event.target.value))}
+                        placeholder="NAMEに @付きで表示"
+                      />
+                      <span className="inline-form-field-help">NAME: {composeUserName(user.display_name, replyNameSuffix)}（名前+@+ひとことで30文字まで）</span>
                     </label>
                   ) : (
                     <label>
@@ -430,9 +444,23 @@ function shortReactionLabel(value: string): string {
   return chars.length > 4 ? `${chars.slice(0, 4).join('')}..` : value;
 }
 
-function composeUserName(displayName: string, suffix: string): string {
-  const trimmed = suffix.trim();
-  return trimmed === '' ? displayName : `${displayName}@${trimmed}`;
+function RevisionBadge({ post }: { post: Post }) {
+  const count = post.revision_count ?? 0;
+  if (count <= 0) return null;
+  const dates = post.revision_dates ?? [];
+  const title = dates.length > 0
+    ? dates.map((date, index) => `rev${String(index + 1).padStart(2, '0')}: ${formatDate(date)}`).join('\n')
+    : `rev${String(count).padStart(2, '0')}`;
+  return (
+    <span className="post-revision-badge" title={title}>
+      rev{String(count).padStart(2, '0')}
+    </span>
+  );
+}
+
+function isPresetComment(post: Post, config: PublicSettings['config']): boolean {
+  if (post.parent_id === 0) return false;
+  return eejanaikaOptionsFromSettings(config).some((option) => option.text === post.message);
 }
 
 function threadClassName(thread: Post): string {

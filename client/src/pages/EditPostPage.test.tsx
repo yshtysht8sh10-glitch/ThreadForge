@@ -3,10 +3,11 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import EditPostPage from './EditPostPage';
 import { api } from '../api';
+import { useAuth } from '../auth';
 
 vi.mock('../api', () => ({
   DEFAULT_PUBLIC_SETTINGS: {
-    config: { tweetEnabled: true, blueskyEnabled: true, mastodonEnabled: false, misskeyEnabled: false, gdgdEnabled: true, gdgdLabel: 'gdgd投稿' },
+    config: { tweetEnabled: true, blueskyEnabled: true, mastodonEnabled: false, misskeyEnabled: false, gdgdEnabled: true, gdgdLabel: '特殊投稿' },
   },
   api: {
     getPost: vi.fn(),
@@ -14,6 +15,11 @@ vi.mock('../api', () => ({
     deletePost: vi.fn(),
     publicSettings: vi.fn(),
   },
+  mediaUrl: (path?: string | null) => path,
+}));
+
+vi.mock('../auth', () => ({
+  useAuth: vi.fn(),
 }));
 
 const replyPost = {
@@ -51,11 +57,22 @@ const threadPost = {
 describe('EditPostPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    URL.createObjectURL = vi.fn(() => 'blob:preview-image');
+    URL.revokeObjectURL = vi.fn();
+    vi.mocked(useAuth).mockReturnValue({
+      token: '',
+      user: null,
+      loading: false,
+      login: vi.fn(),
+      register: vi.fn(),
+      updateProfile: vi.fn(),
+      logout: vi.fn(),
+    });
     vi.mocked(api.getPost).mockResolvedValue(replyPost);
     vi.mocked(api.updatePost).mockResolvedValue({ success: true, message: 'ok' });
     vi.mocked(api.publicSettings).mockResolvedValue({
       success: true,
-      settings: { config: { tweetEnabled: true, blueskyEnabled: true, mastodonEnabled: false, misskeyEnabled: false, gdgdEnabled: true, gdgdLabel: 'gdgd投稿' } },
+      settings: { config: { tweetEnabled: true, blueskyEnabled: true, mastodonEnabled: false, misskeyEnabled: false, gdgdEnabled: true, gdgdLabel: '特殊投稿' } },
     } as any);
   });
 
@@ -90,22 +107,68 @@ describe('EditPostPage', () => {
     expect(formData.has('file')).toBe(false);
   });
 
-  it('shows social previews and sends the transfer switch when editing a thread', async () => {
+  it('hides social transfer controls and warns that SNS posts are not edited', async () => {
     vi.mocked(api.getPost).mockResolvedValue(threadPost);
     renderEditPostPage('1');
 
-    expect(await screen.findByLabelText('SNS投稿のプレビュー')).toBeInTheDocument();
-    expect(screen.getByText('SNS投稿のプレビュー')).toBeInTheDocument();
-    expect(screen.getByText('※この項目は編集できません。')).toBeInTheDocument();
-    expect(screen.getByText('X')).toBeInTheDocument();
-    expect(screen.getByText('Bluesky')).toBeInTheDocument();
+    await screen.findByDisplayValue('Thread body');
+    expect(screen.queryByLabelText('SNS転記OFF')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('SNS投稿のプレビュー')).not.toBeInTheDocument();
+    expect(screen.getByText(/投稿内容を編集してもSNS側に転記された内容/)).toBeInTheDocument();
+    expect(screen.getByText(/もしどうしても反映させたい場合/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '更新する' }));
 
     await waitFor(() => expect(api.updatePost).toHaveBeenCalled());
     const formData = vi.mocked(api.updatePost).mock.calls[0][0] as FormData;
-    expect(formData.get('tweet_off')).toBe('0');
+    expect(formData.has('tweet_off')).toBe(false);
     expect(formData.get('gdgd')).toBe('1');
+  });
+
+  it('shows the current image and swaps the preview after selecting a file', async () => {
+    vi.mocked(api.getPost).mockResolvedValue({ ...threadPost, image_path: '/storage/data/1.png' });
+    renderEditPostPage('1');
+
+    expect(await screen.findByRole('img', { name: 'Thread title' })).toHaveAttribute('src', '/storage/data/1.png');
+
+    const file = new File(['new-image'], 'new.png', { type: 'image/png' });
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [file] } });
+
+    await waitFor(() => expect(screen.getByRole('img', { name: 'Thread title' })).toHaveAttribute('src', 'blob:preview-image'));
+  });
+
+  it('uses a short note field instead of the full name while logged in', async () => {
+    vi.mocked(api.getPost).mockResolvedValue({ ...threadPost, name: 'Yes@作業中' });
+    vi.mocked(useAuth).mockReturnValue({
+      token: 'token',
+      user: {
+        id: 1,
+        login_id: 'yes',
+        display_name: 'Yes',
+        post_password: 'secret',
+        home_url: 'https://example.com',
+        icon_path: null,
+      },
+      loading: false,
+      login: vi.fn(),
+      register: vi.fn(),
+      updateProfile: vi.fn(),
+      logout: vi.fn(),
+    });
+    renderEditPostPage('1');
+
+    expect(await screen.findByLabelText(/ひとこと/)).toHaveValue('作業中');
+    expect(screen.getByText('ひとこと（任意 / 26文字まで）')).toBeInTheDocument();
+    expect(screen.queryByLabelText('名前')).not.toBeInTheDocument();
+    expect(screen.getByText(/NAME: Yes@作業中/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/ひとこと/), { target: { value: '修正後' } });
+    fireEvent.click(screen.getByRole('button', { name: '更新する' }));
+
+    await waitFor(() => expect(api.updatePost).toHaveBeenCalled());
+    const formData = vi.mocked(api.updatePost).mock.calls[0][0] as FormData;
+    expect(formData.get('name')).toBe('Yes@修正後');
+    expect(formData.get('auth_token')).toBe('token');
   });
 });
 

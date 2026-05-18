@@ -102,6 +102,18 @@ CREATE TABLE IF NOT EXISTS user_post_claims (
 
 This table links a user to a post they marked as their own. It intentionally does not make `post_id` unique, so overlapping claims are allowed.
 
+## post_revisions Table
+
+```sql
+CREATE TABLE IF NOT EXISTS post_revisions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id INTEGER NOT NULL,
+  revised_at TEXT NOT NULL
+);
+```
+
+Each successful edit inserts one row. The API exposes the count as `revision_count` and the edit timestamps as `revision_dates`; the UI displays this as `rev01`, `rev02`, etc.
+
 ## access_counts Table
 
 ```sql

@@ -34,15 +34,15 @@ const AdminPage = () => {
   const [status, setStatus] = useState<string | null>('管理データを読み込み中...');
   const [error, setError] = useState<string | null>(null);
 
-  const loadAll = async () => {
+  const loadAll = async (password = adminPassword) => {
     setStatus('管理データを読み込み中...');
     setError(null);
     try {
       const [loadedThreads, deleted, analytics, settingResponse] = await Promise.all([
         api.listThreads(),
-        api.listDeletedPosts(adminPassword),
-        api.listAnalyticsPosts(adminPassword),
-        api.getSettings(adminPassword),
+        api.listDeletedPosts(password),
+        api.listAnalyticsPosts(password),
+        api.getSettings(password),
       ]);
       setThreads(loadedThreads);
       setDeletedPosts(deleted);
@@ -52,8 +52,15 @@ const AdminPage = () => {
       setCronApiUrl(settingResponse.system?.cronApiUrl ?? '');
       setCronApiKey(settingResponse.system?.cronApiKey ?? '');
       setSelectedIds([]);
+      window.localStorage.setItem('threadforgeAdminPassword', password);
       setStatus('管理データを読み込みました。');
     } catch (err) {
+      if (password !== DEFAULT_HIDDEN_ADMIN_PASSWORD) {
+        window.localStorage.removeItem('threadforgeAdminPassword');
+        setAdminPassword(DEFAULT_HIDDEN_ADMIN_PASSWORD);
+        await loadAll(DEFAULT_HIDDEN_ADMIN_PASSWORD);
+        return;
+      }
       setError((err as Error).message);
       setStatus(null);
     }
@@ -68,6 +75,10 @@ const AdminPage = () => {
     setError(null);
     await callback();
   };
+
+  const submitAdminPassword = guarded(async () => {
+    await loadAll(adminPassword);
+  });
 
   const reloadThreads = async () => {
     setThreads(await api.listThreads());
@@ -166,7 +177,18 @@ const AdminPage = () => {
     <div className="admin-page">
       <section className="card admin-system-card">
         <h1>管理</h1>
-        <div className="admin-system-message" aria-live="polite">
+        <form className="admin-auth-form" onSubmit={submitAdminPassword}>
+          <label>
+            管理者パスワード
+            <input
+              type="password"
+              value={adminPassword}
+              onChange={(event) => setAdminPassword(event.target.value)}
+              autoComplete="current-password"
+            />
+          </label>
+          <button type="submit">管理画面に入る</button>
+        </form>        <div className="admin-system-message" aria-live="polite">
           {status && <p className="status">{status}</p>}
           {error && <p className="error">エラー: {error}</p>}
         </div>
@@ -628,14 +650,14 @@ const settingLabels: Record<string, string> = {
   eejanaikaEejanaikaText: 'ええじゃの文字列',
   eejanaikaEejanaikaColor: 'ええじゃの文字色',
   socialHashtags: 'SNS投稿ハッシュタグ',
-  gdgdEnabled: 'gdgd投稿機能',
-  gdgdLabel: 'gdgd投稿の表示名',
+  gdgdEnabled: '特殊投稿機能',
+  gdgdLabel: '特殊投稿の表示名',
   logView: '一覧表示件数',
   maxUploadBytes: '最大アップロードサイズ(byte)',
   maxImageWidth: '最大画像幅(px)',
   maxImageHeight: '最大画像高さ(px)',
   normalFrameColor: '通常投稿の枠色',
-  gdgdFrameColor: 'gdgd投稿の枠色',
+  gdgdFrameColor: '特殊投稿の枠色',
   backgroundColor: '背景色',
 };
 

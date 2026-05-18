@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { mediaUrl } from '../api';
 import { Post } from '../types';
 import LinkedText from './LinkedText';
@@ -9,9 +8,11 @@ type SelectableThreadListProps = {
   selectedIds: string[];
   onToggle: (id: string) => void;
   multiple?: boolean;
+  isDisabled?: (post: Post) => boolean;
+  disabledLabel?: string;
 };
 
-const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false }: SelectableThreadListProps) => {
+const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false, isDisabled, disabledLabel = '選択不可' }: SelectableThreadListProps) => {
   const inputType = multiple ? 'checkbox' : 'radio';
   return (
     <div className="thread-list">
@@ -23,13 +24,15 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
               type={inputType}
               name={multiple ? undefined : 'selected-post'}
               checked={selectedIds.includes(String(thread.id))}
+              disabled={isDisabled?.(thread) ?? false}
               onChange={() => onToggle(String(thread.id))}
             />
             No.{thread.display_no ?? thread.id} を選択
+            {isDisabled?.(thread) && <span className="mode-select-disabled-note">{disabledLabel}</span>}
           </label>
 
           <header className="board-thread-title">
-            <Link to={`/thread/${thread.id}`}>[No・{thread.display_no ?? thread.id}] {thread.title || '無題'}</Link>
+            [No・{thread.display_no ?? thread.id}] {thread.title || '無題'}
           </header>
 
           <div className="board-thread-body">
@@ -41,9 +44,9 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
             </p>
 
             {mediaUrl(thread.image_path) && (
-              <Link to={`/thread/${thread.id}`} className="board-image-link">
+              <div className="board-image-link">
                 <img className="board-post-image" src={mediaUrl(thread.image_path) ?? undefined} alt={thread.title || '投稿画像'} />
-              </Link>
+              </div>
             )}
 
             <div className="board-message-text">
@@ -57,9 +60,11 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
                     type={inputType}
                     name={multiple ? undefined : 'selected-post'}
                     checked={selectedIds.includes(String(reply.id))}
+                    disabled={isDisabled?.(reply) ?? false}
                     onChange={() => onToggle(String(reply.id))}
                   />
                   返信No.{thread.display_no ?? thread.id}-{reply.reply_no ?? reply.id} を選択
+                  {isDisabled?.(reply) && <span className="mode-select-disabled-note">{disabledLabel}</span>}
                 </label>
                 <p className="board-meta">
                   {reply.user_icon_path && <img className="user-icon" src={mediaUrl(reply.user_icon_path) ?? undefined} alt="" />}

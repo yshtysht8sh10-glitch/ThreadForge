@@ -3,8 +3,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, mediaUrl, type PublicSettings } from '../api';
 import { NewPostData, Post, ThreadResponse } from '../types';
 import LinkedText from '../components/LinkedText';
-import { eejanaikaOptionsFromSettings, replyTextClassName, replyTextStyle } from '../components/ThreadList';
+import UserIconLink from '../components/UserIconLink';
+import { eejanaikaOptionsFromSettings, PRESET_REACTION_PASSWORD, replyTextClassName, replyTextStyle } from '../components/ThreadList';
 import { useAuth } from '../auth';
+import { clampUserNameSuffix, composeUserName, userNameSuffixLimit } from '../name';
 
 const EEJAIKA_OPTIONS = [
   'お美事にございまする',
@@ -23,7 +25,7 @@ const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     mastodonEnabled: false,
     misskeyEnabled: false,
     gdgdEnabled: true,
-    gdgdLabel: 'gdgd投稿',
+    gdgdLabel: '特殊投稿',
     eejanaikaOmigotoText: 'お美事にございまする',
     eejanaikaOmigotoColor: '#ff72ff',
     eejanaikaGoodjobText: 'いい仕事してますねぇ',
@@ -53,6 +55,7 @@ const ThreadPage = () => {
   const [eejanaikaMessage, setEejanaikaMessage] = useState(DEFAULT_PUBLIC_SETTINGS.config.eejanaikaEejanaikaText);
   const [replyStatus, setReplyStatus] = useState<string | null>(null);
   const eejanaikaOptions = eejanaikaOptionsFromSettings(settings.config);
+  const nameSuffixLimit = user ? userNameSuffixLimit(user.display_name) : 0;
 
   const loadThread = async () => {
     if (!id) return;
@@ -160,7 +163,7 @@ const ThreadPage = () => {
       name: user ? user.display_name : eejanaikaName,
       title: `Re: ${threadData?.thread?.title || '返信'}`,
       message: eejanaikaMessage,
-      password: user?.post_password || 'eejanaika',
+      password: user?.post_password || PRESET_REACTION_PASSWORD,
       auth_token: token,
     });
   };
@@ -189,14 +192,15 @@ const ThreadPage = () => {
 
               <div className="board-thread-body">
                 <p className="board-meta">
-                  {thread.user_icon_path && <img className="user-icon" src={mediaUrl(thread.user_icon_path) ?? undefined} alt="" />}
+                  <UserIconLink post={thread} />
                   NAME：<strong>{thread.name}</strong>
                   {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                   {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
+                  <RevisionBadge post={thread} />
                 </p>
                 {user && thread.user_id === user.id && (
                   <p className="owner-post-links">
-                    <button type="button" onClick={() => navigate(`/edit/${thread.id}`)}>編集</button>
+                    {!isPresetComment(thread, settings.config) && <button type="button" onClick={() => navigate(`/edit/${thread.id}`)}>編集</button>}
                     <button type="button" onClick={() => deleteOwnedPost(thread)}>削除</button>
                   </p>
                 )}
@@ -220,15 +224,16 @@ const ThreadPage = () => {
                 {replies.map((reply: Post) => (
                   <section key={reply.id} className="board-reply">
                     <p className="board-meta">
-                      {reply.user_icon_path && <img className="user-icon" src={mediaUrl(reply.user_icon_path) ?? undefined} alt="" />}
+                      <UserIconLink post={reply} />
                       NAME：<strong>{reply.name}</strong>
                       {reply.url && <> <a href={reply.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                       {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>
+                      <RevisionBadge post={reply} />
                       {reply.reply_no && <> <span className="board-meta-sub">/ 返信No.{thread.display_no ?? thread.id}-{reply.reply_no}</span></>}
                     </p>
                     {user && reply.user_id === user.id && (
                       <p className="owner-post-links">
-                        <button type="button" onClick={() => navigate(`/edit/${reply.id}`)}>編集</button>
+                        {!isPresetComment(reply, settings.config) && <button type="button" onClick={() => navigate(`/edit/${reply.id}`)}>編集</button>}
                         <button type="button" onClick={() => deleteOwnedPost(reply)}>削除</button>
                       </p>
                     )}
@@ -251,9 +256,15 @@ const ThreadPage = () => {
                 <h3>コメント</h3>
                 {user ? (
                   <label>
-                    <span>サジェスト（任意）</span>
-                    <input aria-label="サジェスト" value={replyNameSuffix} maxLength={20} onChange={(e) => setReplyNameSuffix(e.target.value)} placeholder="NAMEに @付きで表示" />
-                    <span className="inline-form-field-help">NAME: {composeUserName(user.display_name, replyNameSuffix)}</span>
+                    <span>ひとこと（任意 / {nameSuffixLimit}文字まで）</span>
+                    <input
+                      aria-label="ひとこと"
+                      value={replyNameSuffix}
+                      maxLength={nameSuffixLimit}
+                      onChange={(e) => setReplyNameSuffix(clampUserNameSuffix(user.display_name, e.target.value))}
+                      placeholder="NAMEに @付きで表示"
+                    />
+                    <span className="inline-form-field-help">NAME: {composeUserName(user.display_name, replyNameSuffix)}（名前+@+ひとことで30文字まで）</span>
                   </label>
                 ) : (
                   <label>
@@ -335,9 +346,23 @@ function formatDate(value: string): string {
   });
 }
 
-function composeUserName(displayName: string, suffix: string): string {
-  const trimmed = suffix.trim();
-  return trimmed === '' ? displayName : `${displayName}@${trimmed}`;
+function RevisionBadge({ post }: { post: Post }) {
+  const count = post.revision_count ?? 0;
+  if (count <= 0) return null;
+  const dates = post.revision_dates ?? [];
+  const title = dates.length > 0
+    ? dates.map((date, index) => `rev${String(index + 1).padStart(2, '0')}: ${formatDate(date)}`).join('\n')
+    : `rev${String(count).padStart(2, '0')}`;
+  return (
+    <span className="post-revision-badge" title={title}>
+      rev{String(count).padStart(2, '0')}
+    </span>
+  );
+}
+
+function isPresetComment(post: Post, config: PublicSettings['config']): boolean {
+  if (post.parent_id === 0) return false;
+  return eejanaikaOptionsFromSettings(config).some((option) => option.text === post.message);
 }
 
 export default ThreadPage;

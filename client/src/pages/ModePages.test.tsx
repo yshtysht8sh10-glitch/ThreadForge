@@ -6,6 +6,13 @@ import EditModePage from './EditModePage';
 import { api } from '../api';
 
 vi.mock('../api', () => ({
+  DEFAULT_PUBLIC_SETTINGS: {
+    config: {
+      eejanaikaOmigotoText: 'お美事にございまする',
+      eejanaikaGoodjobText: 'いい仕事してますねぇ',
+      eejanaikaEejanaikaText: 'ええじゃないか',
+    },
+  },
   api: {
     listThreads: vi.fn(),
     deletePost: vi.fn(),
@@ -53,6 +60,16 @@ describe('mode pages', () => {
     vi.clearAllMocks();
     vi.mocked(api.listThreads).mockResolvedValue(threads as any);
     vi.mocked(api.deletePost).mockResolvedValue({ success: true, message: 'ok' });
+    vi.mocked(api.publicSettings).mockResolvedValue({
+      success: true,
+      settings: {
+        config: {
+          eejanaikaOmigotoText: 'お美事にございまする',
+          eejanaikaGoodjobText: 'いい仕事してますねぇ',
+          eejanaikaEejanaikaText: 'ええじゃないか',
+        },
+      },
+    } as any);
   });
 
   it('shows posts and replies with checkboxes on the delete mode page', async () => {
@@ -62,7 +79,7 @@ describe('mode pages', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole('link', { name: /\[No・7\]/ })).toBeInTheDocument();
+    expect(await screen.findByText(/\[No・7\]/)).toBeInTheDocument();
     expect(screen.getByText('投稿本文')).toBeInTheDocument();
     expect(screen.getByText('ええじゃないか').closest('.board-reply-text')).toHaveClass('eejanaika-reply-eejanaika');
     expect(screen.getByLabelText('No.7 を選択')).toBeInTheDocument();
@@ -77,7 +94,7 @@ describe('mode pages', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByRole('link', { name: /\[No・7\]/ });
+    await screen.findByText(/\[No・7\]/);
     fireEvent.click(screen.getByLabelText('返信No.7-1 を選択'));
     fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を削除する' }));
@@ -89,22 +106,24 @@ describe('mode pages', () => {
   it('shows posts and replies with checkboxes on the edit mode page', async () => {
     renderEditMode();
 
-    expect(await screen.findByRole('link', { name: /\[No・7\]/ })).toBeInTheDocument();
+    expect(await screen.findByText(/\[No・7\]/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /\[No・7\]/ })).not.toBeInTheDocument();
     expect(screen.getByText('ええじゃないか').closest('.board-reply-text')).toHaveClass('eejanaika-reply-eejanaika');
     expect(screen.getByLabelText('No.7 を選択')).toBeInTheDocument();
-    expect(screen.getByLabelText('返信No.7-1 を選択')).toBeInTheDocument();
+    expect(screen.getByText('定型コメントは編集不可')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /返信No\.7-1 を選択/ })).toBeDisabled();
     expect(screen.queryByRole('button', { name: /^編集$/ })).not.toBeInTheDocument();
   });
 
-  it('opens the checked reply edit page with the shared password', async () => {
+  it('opens the checked post edit page with the shared password', async () => {
     renderEditMode();
 
-    await screen.findByRole('link', { name: /\[No・7\]/ });
-    fireEvent.click(screen.getByLabelText('返信No.7-1 を選択'));
+    await screen.findByText(/\[No・7\]/);
+    fireEvent.click(screen.getByLabelText('No.7 を選択'));
     fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を編集する' }));
 
-    await screen.findByText('/edit/8');
+    await screen.findByText('/edit/7');
   });
 });
 

@@ -1,9 +1,10 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../api';
+import { api, DEFAULT_PUBLIC_SETTINGS, PublicSettings } from '../api';
 import { Post } from '../types';
 import SelectableThreadList from '../components/SelectableThreadList';
 import { useAuth } from '../auth';
+import { eejanaikaOptionsFromSettings } from '../components/ThreadList';
 
 const EditModePage = () => {
   const navigate = useNavigate();
@@ -11,12 +12,16 @@ const EditModePage = () => {
   const [password, setPassword] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [threads, setThreads] = useState<Post[]>([]);
+  const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.listThreads()
-      .then((items) => setThreads(items))
+    Promise.all([api.listThreads(), api.publicSettings()])
+      .then(([items, settingResponse]) => {
+        setThreads(items);
+        if (settingResponse.success) setSettings(settingResponse.settings);
+      })
       .catch((err) => setError((err as Error).message))
       .finally(() => setLoading(false));
   }, []);
@@ -69,10 +74,21 @@ const EditModePage = () => {
       {loading ? (
         <div className="board-message">読み込み中...</div>
       ) : (
-        <SelectableThreadList threads={threads} selectedIds={selectedIds} onToggle={toggleSelected} />
+        <SelectableThreadList
+          threads={threads}
+          selectedIds={selectedIds}
+          onToggle={toggleSelected}
+          isDisabled={(post) => isPresetComment(post, settings)}
+          disabledLabel="定型コメントは編集不可"
+        />
       )}
     </>
   );
 };
+
+function isPresetComment(post: Post, settings: PublicSettings): boolean {
+  if (post.parent_id === 0) return false;
+  return eejanaikaOptionsFromSettings(settings.config).some((option) => option.text === post.message);
+}
 
 export default EditModePage;

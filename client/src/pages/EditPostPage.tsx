@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { api, DEFAULT_PUBLIC_SETTINGS, PublicSettings } from '../api';
+import { api, DEFAULT_PUBLIC_SETTINGS, mediaUrl, PublicSettings } from '../api';
 import { Post } from '../types';
-import { createSocialPostPreviews } from '../tweet';
 import { useAuth } from '../auth';
+import { clampUserNameSuffix, composeUserName, userNameSuffixLimit } from '../name';
 
 const EditPostPage = () => {
   const { id } = useParams();
@@ -12,17 +12,18 @@ const EditPostPage = () => {
   const { token, user } = useAuth();
   const [post, setPost] = useState<Post | null>(null);
   const [name, setName] = useState('');
+  const [nameSuffix, setNameSuffix] = useState('');
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [gdgd, setGdgd] = useState(false);
-  const [socialTransferOff, setSocialTransferOff] = useState(true);
   const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
   const [password, setPassword] = useState(() => {
     const state = location.state as { password?: string } | null;
     return state?.password ?? '';
   });
   const [file, setFile] = useState<File | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isReply = post ? post.parent_id !== 0 : false;
@@ -37,7 +38,6 @@ const EditPostPage = () => {
         setTitle(data.title);
         setMessage(data.message);
         setGdgd(Boolean(data.gdgd));
-        setSocialTransferOff(Boolean(data.tweet_off));
       })
       .catch((err) => setError(err.message));
   }, [id]);
@@ -50,21 +50,39 @@ const EditPostPage = () => {
 
   useEffect(() => {
     if (!user) return;
-    setName(user.display_name);
     setUrl(user.home_url ?? '');
     setPassword((current) => current || user.post_password);
   }, [user]);
 
-  const enabledSocialPlatforms = {
-    x: Boolean(settings.config.tweetEnabled),
-    bluesky: Boolean(settings.config.blueskyEnabled),
-    mastodon: Boolean(settings.config.mastodonEnabled),
-    misskey: Boolean(settings.config.misskeyEnabled),
-  };
-  const socialEnabled = Object.values(enabledSocialPlatforms).some(Boolean);
-  const socialPreviews = !isReply && socialEnabled && !socialTransferOff
-    ? createSocialPostPreviews(enabledSocialPlatforms, name, title, message, '', settings.config.socialHashtags)
-    : [];
+  useEffect(() => {
+    if (!user || !post) return;
+    const prefix = `${user.display_name}@`;
+    if (post.name === user.display_name) {
+      setNameSuffix('');
+    } else if (post.name.startsWith(prefix)) {
+      setNameSuffix(clampUserNameSuffix(user.display_name, post.name.slice(prefix.length)));
+    }
+  }, [post, user]);
+
+  const nameSuffixLimit = user ? userNameSuffixLimit(user.display_name) : 0;
+  const displayName = user ? composeUserName(user.display_name, nameSuffix) : name;
+  const imagePreviewUrl = filePreviewUrl ?? mediaUrl(post?.image_path);
+  const cardClassName = [
+    'card',
+    'edit-post-card',
+    isReply ? 'edit-post-card-reply' : '',
+    !isReply && gdgd && settings.config.gdgdEnabled ? 'edit-post-card-gdgd' : '',
+  ].filter(Boolean).join(' ');
+
+  useEffect(() => {
+    if (!file) {
+      setFilePreviewUrl(null);
+      return;
+    }
+    const objectUrl = URL.createObjectURL(file);
+    setFilePreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [file]);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -76,7 +94,7 @@ const EditPostPage = () => {
 
     const formData = new FormData();
     formData.append('id', id);
-    formData.append('name', name);
+    formData.append('name', displayName);
     formData.append('url', url);
     formData.append('title', title);
     formData.append('message', message);
@@ -86,9 +104,6 @@ const EditPostPage = () => {
     }
     if (!isReply && settings.config.gdgdEnabled) {
       formData.append('gdgd', gdgd ? '1' : '0');
-    }
-    if (!isReply && socialEnabled) {
-      formData.append('tweet_off', socialTransferOff ? '1' : '0');
     }
     if (!isReply && file) {
       formData.append('file', file);
@@ -113,7 +128,7 @@ const EditPostPage = () => {
 
   return (
     <div>
-      <div className="card">
+      <div className={cardClassName}>
         <h1>投稿編集</h1>
         {error && <div className="error">エラー: {error}</div>}
         {status && <div className="status">{status}</div>}
@@ -121,60 +136,64 @@ const EditPostPage = () => {
         {!post && !error && <p>投稿を読み込み中...</p>}
         {post && (
           <form onSubmit={onSubmit} className="form-card">
-            <label>
-              名前
-              <input value={name} onChange={(e) => setName(e.target.value)} />
-            </label>
+            {user ? (
+              <label>
+                ひとこと（任意 / {nameSuffixLimit}文字まで）
+                <input
+                  value={nameSuffix}
+                  maxLength={nameSuffixLimit}
+                  onChange={(e) => setNameSuffix(clampUserNameSuffix(user.display_name, e.target.value))}
+                  placeholder="NAMEに @付きで表示"
+                />
+                <span className="post-form-field-help">NAME: {displayName}（名前+@+ひとことで30文字まで）</span>
+              </label>
+            ) : (
+              <label>
+                <span className="post-form-label-title">名前<span className="required">*</span></span>
+                <input value={name} maxLength={30} onChange={(e) => setName(e.target.value)} required />
+              </label>
+            )}
             <label>
               URL / HOME
               <input value={url} onChange={(e) => setUrl(e.target.value)} />
             </label>
             <label>
-              タイトル
-              <input value={title} onChange={(e) => setTitle(e.target.value)} />
+              <span className="post-form-label-title">タイトル<span className="required">*</span></span>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} required />
             </label>
+            {!isReply && (
+              <div className="edit-image-replace-block">
+                <span className="post-form-label-title">画像置換 (任意)</span>
+                {imagePreviewUrl && (
+                  <section className="edit-image-preview" aria-label="投稿画像のプレビュー">
+                    <img src={imagePreviewUrl} alt={title || '投稿画像'} />
+                  </section>
+                )}
+                <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              </div>
+            )}
             <label>
-              本文
-              <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={6} />
+              <span className="post-form-label-title">本文<span className="required">*</span></span>
+              <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={6} required />
             </label>
             {!isReply && settings.config.gdgdEnabled && (
-              <>
-                <label className="checkbox-field">
-                  <input type="checkbox" checked={gdgd} onChange={(e) => setGdgd(e.target.checked)} />
-                  {settings.config.gdgdLabel}
-                </label>
-              </>
-            )}
-            {!isReply && socialEnabled && (
               <label className="checkbox-field">
-                <input type="checkbox" checked={socialTransferOff} onChange={(e) => setSocialTransferOff(e.target.checked)} />
-                SNS転記OFF
+                <input type="checkbox" checked={gdgd} onChange={(e) => setGdgd(e.target.checked)} />
+                {settings.config.gdgdLabel}
               </label>
             )}
             {!isReply && (
-              <label>
-                画像置換 (任意)
-                <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-              </label>
+              <p className="post-form-field-help edit-social-note">
+                <span>※</span>
+                <span>
+                  投稿内容を編集してもSNS側に転記された内容に対しては変更は反映されません。<br />
+                  もしどうしても反映させたい場合は、投稿を削除し(SNS側も削除されます)、もう一度投稿してください。
+                </span>
+              </p>
             )}
-            <div className="button-row">
+            <div className="button-row align-right">
               <button type="submit">更新する</button>
             </div>
-            {socialPreviews.length > 0 && (
-              <section className="social-transfer-preview" aria-label="SNS投稿のプレビュー">
-                <h2>SNS投稿のプレビュー</h2>
-                {socialPreviews.map((preview) => (
-                  <article className="social-transfer-preview-item" key={preview.platform}>
-                    <h3>
-                      {preview.label}
-                      <span>{preview.limit ? `${preview.length}/${preview.limit}文字` : `${preview.length}文字`}</span>
-                    </h3>
-                    <pre className="social-post-preview-text">{preview.text}</pre>
-                  </article>
-                ))}
-                <p className="social-transfer-help">※この項目は編集できません。</p>
-              </section>
-            )}
           </form>
         )}
       </div>
