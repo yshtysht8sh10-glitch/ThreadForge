@@ -427,9 +427,13 @@ const AdminPage = () => {
           )}
 
           {activeTab === 'settings' && (
+            <>
             <section className="card">
               <h2>掲示板設定</h2>
-              <p>HOMEリンク先、取説、投稿機能、SNS連携、cron設定をここで設定できます。</p>
+              <div className="admin-settings-intro">
+                <p>HOMEリンク先、取説、投稿機能、SNS連携、cron設定をここで設定できます。</p>
+                <button type="button" onClick={saveSettings}>設定を保存</button>
+              </div>
               <div className="form-card">
                 <h3>cron設定</h3>
                 <p>SNSリアクションはcronまたは外部サービスから自動更新できます。</p>
@@ -451,35 +455,39 @@ const AdminPage = () => {
                 groups={configSettingGroups}
                 onChange={(key, value) => updateSetting('config', key, value)}
               />
-              <div className="button-row align-right">
-                <button type="button" onClick={saveSettings}>設定を保存</button>
-              </div>
+            </section>
+            <section className="card admin-json-tools-card">
               <SettingsJsonTools
                 label="掲示板設定"
                 onExport={() => exportSettingsJson('config')}
                 onImport={(file) => importSettingsJson('config', file)}
               />
             </section>
+            </>
           )}
 
           {activeTab === 'design' && (
+            <>
             <section className="card">
               <h2>掲示板デザイン</h2>
-              <p>投稿枠や背景など、見た目に関する設定をここで調整できます。</p>
+              <div className="admin-settings-intro">
+                <p>投稿枠や背景など、見た目に関する設定をここで調整できます。</p>
+                <button type="button" onClick={saveSettings}>設定を保存</button>
+              </div>
               <SettingsForm
                 values={{ ...settings.skin, ...settings.config }}
                 groups={designSettingGroups}
                 onChange={(key, value) => updateSetting(key in settings.skin ? 'skin' : 'config', key, value)}
               />
-              <div className="button-row align-right">
-                <button type="button" onClick={saveSettings}>設定を保存</button>
-              </div>
+            </section>
+            <section className="card admin-json-tools-card">
               <SettingsJsonTools
                 label="掲示板デザイン"
                 onExport={() => exportSettingsJson('skin')}
                 onImport={(file) => importSettingsJson('skin', file)}
               />
             </section>
+            </>
           )}
           {activeTab === 'deleted' && (
             <section className="card">
@@ -517,7 +525,7 @@ function SettingsForm({
           return null;
         }
         return (
-          <div className="admin-settings-grid" key={group.title}>
+          <div className={settingsGroupClassName(group)} key={group.title}>
             {group.title && <h3 className="admin-settings-heading">{group.title}</h3>}
             {keys.map((key) => {
               const value = values[key];
@@ -624,6 +632,13 @@ function isDisabledPlatformSetting(values: Record<string, SettingValue>, key: st
 type SettingGroup = { title: string; keys: string[] };
 
 const allowedImageTypeOptions = ['gif', 'png', 'jpeg', 'jpg', 'bmp'];
+
+function settingsGroupClassName(group: SettingGroup): string {
+  return [
+    'admin-settings-grid',
+    group.title === '色設定' ? 'admin-settings-grid-stacked' : '',
+  ].filter(Boolean).join(' ');
+}
 
 const reactionRows = [
   { textKey: 'eejanaikaOmigotoText', colorKey: 'eejanaikaOmigotoColor' },

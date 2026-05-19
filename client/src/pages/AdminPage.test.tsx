@@ -166,12 +166,12 @@ describe('AdminPage', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: '掲示板デザイン' }));
-    const designPanel = screen.getByRole('heading', { name: '掲示板デザイン' }).closest('section')!;
+    const designPanel = screen.getByRole('heading', { name: '掲示板デザイン インポート/エクスポート' }).closest('section')!;
     const file = new File([JSON.stringify({ normalFrameColor: '#112233' })], 'threadforge-design.json', { type: 'application/json' });
     fireEvent.change(within(designPanel).getByLabelText('掲示板デザインJSONファイル'), { target: { files: [file] } });
 
     expect(await screen.findByText('掲示板デザインJSONを読み込みました。保存すると反映されます。')).toBeInTheDocument();
-    fireEvent.click(within(designPanel).getByRole('button', { name: '設定を保存' }));
+    fireEvent.click(screen.getByRole('button', { name: '設定を保存' }));
 
     await waitFor(() => expect(api.updateSettings).toHaveBeenCalledWith(
       expect.objectContaining({
