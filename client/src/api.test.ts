@@ -268,7 +268,7 @@ describe('API Module', () => {
       expect(result.settings.config.manualTitle).toBe('ThreadForge');
       expect(result.settings.config.manualBody).toContain('この取説は、このサイトを利用する方向けの案内です。');
       expect(result.settings.config.manualBody).toContain('# 【HOME】');
-      expect(result.settings.config.manualBody).toContain('# 【ユーザーページ】');
+      expect(result.settings.config.manualBody).toContain('# 【ユーザー設定】');
     });
   });
 });

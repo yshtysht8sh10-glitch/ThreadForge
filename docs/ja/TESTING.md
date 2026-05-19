@@ -16,6 +16,11 @@
 - `client/src/pages/HomePage.test.tsx`
 - `client/src/pages/PostFormPage.test.tsx`
 - `client/src/pages/ThreadPage.test.tsx`
+- `client/src/pages/LoginPage.test.tsx`
+- `client/src/pages/UserPostsPage.test.tsx`
+- `client/src/pages/BoardAnalyticsPage.test.tsx`
+- `client/src/pages/SearchPage.test.tsx`
+- `client/src/pages/RankingPage.test.tsx`
 - `client/src/pages/AdminPage.test.tsx`
 - `client/src/tweet.test.ts`
 
@@ -35,6 +40,7 @@ npm test
 主なテスト:
 
 - `server/tests/StorageLayerTest.php`
+- `server/tests/ApiHttpIntegrationTest.php`
 
 検証対象:
 
@@ -53,6 +59,16 @@ npm test
 - ローカルアーカイブログ取り込みの非破壊・重複スキップ動作
 - 重複投稿判定
 - URL正規化
+- `server/api.php` のHTTP統合テスト
+- 投稿作成、編集、削除の統合テスト
+- 削除APIが物理削除ではなく `deleted_at` を設定すること
+- 実アップロードによる画像保存成功パス
+- 画像差し替え時の履歴保持
+- 検索APIの空文字、ページング、検索対象、ワイルドカード文字
+- パスワード不一致、存在しない投稿などのエラー
+- 管理者パスワード初期設定と認証
+- 定型コメントの編集不可、管理者パスワードによる削除
+- ユーザーID重複、ユーザー名30文字制限、自分の作品として登録/解除
 
 実行:
 
@@ -61,13 +77,8 @@ cd server
 vendor\bin\phpunit
 ```
 
-## 未実装または薄いテスト
+## カバレッジ確認メモ
 
-- `server/api.php` のHTTP統合テスト
-- 投稿作成、編集、削除の統合テスト
-- 削除APIが物理削除ではなく `deleted_at` を設定することの統合テスト
-- 実アップロードによる画像保存成功パス
-- 画像差し替え時の履歴保持をHTTP経由で確認する統合テスト
-- 検索APIの境界値テスト
-- パスワード不一致、存在しない投稿などのエラー系テスト
-- Laravel側のテスト
+- 2026-05-20時点で、主要なHTTP API、ストレージ、SNS文言、投稿/返信UI、検索、順位、管理画面、ログイン/ユーザー設定、個人/管理アナリティクスを自動テストで確認します。
+- レイアウトの見た目、ブラウザのファイル保存ダイアログ、実SNS API連携、レンタルサーバー上の権限/パスは人の手で確認します。
+- `server/laravel/` は移行用スケルトンです。現在の標準APIではないため、本番仕様の自動テスト対象外です。

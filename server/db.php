@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 if (!defined('DB_FILE')) {
-    define('DB_FILE', getenv('DOTEITA_DB_FILE') ?: __DIR__ . '/database.sqlite');
+    define('DB_FILE', getenv('THREADFORGE_DB_FILE') ?: __DIR__ . '/database.sqlite');
 }
 
 if (!defined('STORAGE_DIR')) {
-    define('STORAGE_DIR', getenv('DOTEITA_STORAGE_DIR') ?: __DIR__ . '/storage/data');
+    define('STORAGE_DIR', getenv('THREADFORGE_STORAGE_DIR') ?: __DIR__ . '/storage/data');
 }
 
 function getConnection(): PDO

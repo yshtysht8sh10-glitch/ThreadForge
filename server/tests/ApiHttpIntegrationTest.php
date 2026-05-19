@@ -449,7 +449,7 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->assertSame('特殊投稿', $response['json']['settings']['config']['gdgdLabel']);
         $this->assertStringContainsString('この取説は、このサイトを利用する方向けの案内です。', $response['json']['settings']['config']['manualBody']);
         $this->assertStringContainsString('# 【HOME】', $response['json']['settings']['config']['manualBody']);
-        $this->assertStringContainsString('# 【ユーザーページ】', $response['json']['settings']['config']['manualBody']);
+        $this->assertStringContainsString('# 【ユーザー設定】', $response['json']['settings']['config']['manualBody']);
     }
 
     public function testListUserPostsReturnsOwnedAndClaimedParentPostsOnly(): void

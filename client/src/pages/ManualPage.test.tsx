@@ -39,7 +39,7 @@ describe('ManualPage', () => {
     expect(screen.getByText('この取説は、このサイトを利用する方向けの案内です。')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '【HOME】' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '【ログイン】' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '【ユーザーページ】' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '【ユーザー設定】' })).toBeInTheDocument();
     expect(screen.getByText('自分の作品として紐づけた投稿は作品一覧や統計に含まれます。')).toBeInTheDocument();
     expect(screen.queryByText('同じ数の投稿は同じ順位になります。')).not.toBeInTheDocument();
   });

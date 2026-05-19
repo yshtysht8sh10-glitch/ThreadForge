@@ -216,7 +216,8 @@ const LoginPage = () => {
               </select>
             </label>
             <button type="submit" className="secondary">検索</button>
-          </form>          <div className="account-claim-results">
+          </form>
+          <div className="account-claim-results">
             {claimLoading && <p>検索中...</p>}
             {!claimLoading && claimQuery.trim() !== '' && claimResults.length === 0 && <p>候補はありません。</p>}
             {claimResults.map((post) => {
@@ -243,26 +244,26 @@ const LoginPage = () => {
           <h2>自分の投稿/返信</h2>
           {dashboardPosts.length === 0 && <p>表示できる投稿/返信はまだありません。</p>}
           <div className="account-post-list">
-          {dashboardPosts.map((post) => (
-            <article className="account-post-row" key={post.id}>
-              <div>
-                <strong>No.{displayPostNo(post)} {post.title || '無題'}</strong>
-                <p>{post.claimed_by_user && !post.can_manage ? '自分の作品として紐づけ済み' : '自分のIDで投稿'}</p>
-              </div>
-              <div className="account-post-actions">
-                <Link to={listTargetHref(post)}>表示</Link>
-                {post.can_manage && (
-                  <>
-                    <Link to={`/edit/${post.id}`}>編集</Link>
-                    <button type="button" onClick={() => deleteOwnPost(post)}>削除</button>
-                  </>
-                )}
-                {post.claimed_by_user && !post.can_manage && (
-                  <button type="button" className="secondary" onClick={() => unclaimPostByNo(displayPostNo(post))}>解除</button>
-                )}
-              </div>
-            </article>
-          ))}
+            {dashboardPosts.map((post) => (
+              <article className="account-post-row" key={post.id}>
+                <div>
+                  <strong>No.{displayPostNo(post)} {post.title || '無題'}</strong>
+                  <p>{post.claimed_by_user && !post.can_manage ? '自分の作品として紐づけ済み' : '自分のIDで投稿'}</p>
+                </div>
+                <div className="account-post-actions">
+                  <Link to={listTargetHref(post)}>表示</Link>
+                  {post.can_manage && (
+                    <>
+                      <Link to={`/edit/${post.id}`}>編集</Link>
+                      <button type="button" onClick={() => deleteOwnPost(post)}>削除</button>
+                    </>
+                  )}
+                  {post.claimed_by_user && !post.can_manage && (
+                    <button type="button" className="secondary" onClick={() => unclaimPostByNo(displayPostNo(post))}>解除</button>
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
         </section>
 
