@@ -539,6 +539,7 @@ function SettingsForm({
                     <legend>{label}</legend>
                     {allowedImageTypeOptions.map((extension) => (
                       <label key={extension}>
+                        <span>{extension}</span>
                         <input
                           type="checkbox"
                           checked={selected.includes(extension)}
@@ -549,7 +550,6 @@ function SettingsForm({
                             onChange(key, next);
                           }}
                         />
-                        <span>{extension}</span>
                       </label>
                     ))}
                   </fieldset>
