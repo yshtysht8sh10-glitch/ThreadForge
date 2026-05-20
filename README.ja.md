@@ -9,8 +9,9 @@ ThreadForge は、投稿、画像、返信、モデレーション、コミュ�
 - `client/`: React、TypeScript、Vite のフロントエンド
 - `server/`: PHP API、SQLite ストレージ、PHPUnit テスト
 - `docs/`: アーキテクチャ、API、DB、移行、テスト関連ドキュメント
-- `ThreadForge_Spec.md`: 現在の製品仕様
-- `ThreadForge_Spec.ja.md`: 日本語版の製品仕様
+- `docs/SPEC.md`: 現在の製品仕様
+- `docs/ja/SPEC.md`: 日本語版の製品仕様
+- `tools/`: 配布と運用のスクリプト
 
 ローカルアーカイブファイルや過去ログ画像は、標準では Git 管理外です。必要な場合だけローカルで取り込めますが、アプリの通常動作には不要です。
 
@@ -79,6 +80,25 @@ vendor/bin/phpunit
 
 これらは Git 管理外です。環境間でデータを移す場合は、保守画面の投稿データインポート/エクスポート機能を使います。
 
+## レンタルサーバーへの設置
+
+配布Zipを展開し、`threadforge-<version>` ディレクトリの中身をレンタルサーバーの公開ディレクトリへアップロードします。
+
+```text
+threadforge-<version>/
+  index.html
+  assets/
+  api.php
+  db.php
+  cron.php
+  storage/data/
+  docs/
+```
+
+フロントエンドは同じサイト上の `./api.php` を呼び出します。実行時DBとアップロード画像はZipに含めません。初回アクセス時、PHPから配置先へ書き込める状態であればSQLite DBが自動作成されます。
+
+`storage/data/` は画像アップロード先です。必要に応じて、レンタルサーバー側で書き込み権限を設定してください。
+
 ## SNS転記の運用
 
 X、Bluesky、Mastodon、Misskey 連携はデフォルト OFF です。この状態では外部 API を呼ばず、投稿は掲示板内だけに保存されます。各 SNS は管理画面で個別の設定グループを持ち、OFF の間は認証情報の入力欄も無効化されます。
@@ -89,8 +109,8 @@ SNS転記が有効な場合、新規の親投稿作成時に ON の SNS へ転�
 
 ## ドキュメント
 
-- `ThreadForge_Spec.md`: 英語版の現在仕様
-- `ThreadForge_Spec.ja.md`: 日本語版の現在仕様
+- `docs/SPEC.md`: 英語版の現在仕様
+- `docs/ja/SPEC.md`: 日本語版の現在仕様
 - `CHANGELOG.md`: 英語版 変更履歴
 - `CHANGELOG.ja.md`: 日本語版 変更履歴
 - `docs/README.md`: 英語版ドキュメント索引

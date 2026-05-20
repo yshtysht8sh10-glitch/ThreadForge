@@ -9,8 +9,9 @@ ThreadForge is a lightweight, customizable thread board engine for posts, media,
 - `client/`: React, TypeScript, Vite frontend
 - `server/`: PHP API, SQLite storage, PHPUnit tests
 - `docs/`: architecture, API, DB, migration, and testing notes
-- `ThreadForge_Spec.md`: current product specification
-- `ThreadForge_Spec.ja.md`: Japanese product specification
+- `docs/SPEC.md`: current product specification
+- `docs/ja/SPEC.md`: Japanese product specification
+- `tools/`: release and operator scripts
 
 Local archive files and historical image/log data are kept out of this Git repository by default. They are useful as migration/reference material, but they are not required to run the current app.
 
@@ -78,6 +79,25 @@ The backend creates runtime files locally:
 
 These files are intentionally ignored by Git. Use the admin backup/export feature to move live data between environments.
 
+## Rental Server Deployment
+
+Extract the release ZIP and upload the contents of the `threadforge-<version>` directory to your rental server's public web directory.
+
+```text
+threadforge-<version>/
+  index.html
+  assets/
+  api.php
+  db.php
+  cron.php
+  storage/data/
+  docs/
+```
+
+The frontend calls `./api.php` on the same site. Runtime DB files and uploaded images are intentionally excluded from the ZIP. On first access, the SQLite DB is created automatically if PHP can write to the deployed directory.
+
+`storage/data/` stores uploaded images. Set write permission for it on the rental server when necessary.
+
 ## Social Posting Operation
 
 X, Bluesky, Mastodon, and Misskey integrations are disabled by default. In this operating mode, posts are saved locally without calling external APIs. Each platform has its own admin settings group, and credential fields stay disabled while that platform switch is OFF.
@@ -88,7 +108,7 @@ Post edits update the board only and do not edit or repost to SNS. Cached reacti
 
 ## Documentation Map
 
-- `ThreadForge_Spec.md`: current product specification and implementation status
+- `docs/SPEC.md`: current product specification and implementation status
 - `CHANGELOG.md`: release history
 - `CHANGELOG.ja.md`: Japanese release history
 - `docs/README.md`: documentation index
@@ -98,5 +118,5 @@ Post edits update the board only and do not edit or repost to SNS. Cached reacti
 - `docs/ARCHITECTURE.md`: architecture notes
 - `docs/TESTING.md`: test strategy
 - `README.ja.md`: Japanese README
-- `ThreadForge_Spec.ja.md`: Japanese product specification
+- `docs/ja/SPEC.md`: Japanese product specification
 - `docs/ja/`: Japanese documentation

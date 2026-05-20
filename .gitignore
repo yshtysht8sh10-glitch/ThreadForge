@@ -4,6 +4,7 @@ server/vendor/
 
 # Build output
 client/dist/
+release/
 
 # Local environment
 client/.env

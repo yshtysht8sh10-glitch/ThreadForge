@@ -6,7 +6,7 @@
 
 ## 主要ドキュメント
 
-- `../../ThreadForge_Spec.ja.md`: 現在の製品仕様と実装状況
+- `SPEC.md`: 現在の製品仕様と実装状況
 - `../../CHANGELOG.md`: 英語版 変更履歴
 - `../../CHANGELOG.ja.md`: 日本語版 変更履歴
 - `API.md`: PHP API のアクションとリクエスト/レスポンス
@@ -15,7 +15,27 @@
 - `ARCHITECTURE.md`: フロントエンド/バックエンド構成
 - `TESTING.md`: テストコマンドとカバレッジメモ
 
-英語版は `docs/` 直下、ルートの `README.md`、`ThreadForge_Spec.md` にあります。
+英語版は `docs/` 直下とルートの `README.md` にあります。
+
+## 配布と運用ツール
+
+配布Zipの作成やローカルアーカイブログの取り込みに使うスクリプトは `tools/` にあります。これらは配布物を作成・保守する側のツールであり、通常の利用者向けREADMEには詳しい手順を書きません。
+
+配布Zipを作成します。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
+```
+
+配布Zipは `release/threadforge-<version>.zip` に出力されます。Zip内は、展開して公開ディレクトリへアップロードしやすい構成になります。
+
+ローカルアーカイブログを取り込みます。
+
+```powershell
+tools\import_local_archive.bat legacy\data
+```
+
+ローカルアーカイブインポートは `LOG_*.cgi` と参照画像を読み込みます。既存の投稿、画像、設定を削除しない非破壊インポートです。
 
 ## 現在の主な機能
 

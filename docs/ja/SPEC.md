@@ -1,6 +1,6 @@
 # ThreadForge 現在仕様
 
-[English specification](ThreadForge_Spec.md)
+[English specification](../SPEC.md)
 
 ThreadForge は、投稿、画像、返信、モデレーション、コミュニティアーカイブを扱う軽量でカスタマイズ可能なスレッド掲示板エンジンです。
 
@@ -56,6 +56,7 @@ ThreadForge は、作品投稿、メディア投稿、制作ログ、小規模�
 - 投稿データ、画像、設定を含む管理画面バックアップのエクスポート/インポート
 - 掲示板設定JSONと掲示板デザインJSONのインポート/エクスポート
 - ローカル運用バッチまたはPHPコマンドによるローカルアーカイブ `LOG_*.cgi` の非破壊インポート
+- `tools/build_release.ps1` による配布用Zip作成
 - `config.cgi` と `skincfg.cgi` 相当の管理設定保存
 - 管理画面からの HOME リンク、掲示板/取説タイトル、取説本文、SNS設定、アップロード制限、配色設定
 - キーワードと対象範囲を指定できる検索。検索結果は一覧の該当投稿位置へリンク
@@ -155,6 +156,8 @@ ThreadForge は、作品投稿、メディア投稿、制作ログ、小規模�
 - バックアップは管理画面のエクスポート機能から行います。
 - 投稿画像を差し替える場合、古い画像はすぐ削除せず履歴名へ退避します。
 - ローカルアーカイブログインポートは画像をストレージへコピーし、名前・本文・時刻が一致する既存投稿/返信をスキップします。Web管理画面ではなくローカルで実行します。
+- ローカルアーカイブログインポートは `tools/import_local_archive.bat` から実行します。例: `tools\import_local_archive.bat legacy\data`
+- 配布用Zipは `tools/build_release.ps1` で作成します。Zip内は `index.html`、`assets/`、`api.php`、`db.php`、`cron.php`、`storage/data/` を公開ディレクトリへそのまま置ける構成です。`database.sqlite`、`storage/data/` の実画像、運用スクリプトは含めません。
 - クリーン初期化はサーバー停止後、`server/database.sqlite` と `server/storage/data/` 配下のファイルを削除して行います。詳細は `docs/ja/DB.md` を参照してください。
 
 ## 削除ルール
@@ -190,5 +193,4 @@ PHP API は `?action=version` で現在バージョンを返します。
 ## 未実装 / 次回TODO
 
 - CSRF対策
-- 本番配布パッケージ
 - Laravel版バックエンドへの完全移行

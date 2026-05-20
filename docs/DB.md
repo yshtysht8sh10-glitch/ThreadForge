@@ -154,7 +154,11 @@ Importing this backup JSON is a full restore. It replaces posts and images, then
 
 ## Local Archive Import
 
-Local Archive log import is operated from a local operator batch or PHP command instead of the web admin screen. Deployment-local batch files are not part of the committed application unless explicitly added later.
+Local Archive log import is operated from a local operator batch or PHP command instead of the web admin screen.
+
+```powershell
+tools\import_local_archive.bat legacy\data
+```
 
 The importer reads `LOG_*.cgi` files from a local directory, defaulting to root `data/`, and copies referenced image files into `server/storage/data/`.
 
@@ -166,6 +170,28 @@ This import is intentionally non-destructive:
 - Re-running it skips posts and replies already imported by matching name, content, and timestamp.
 
 Imported posts use generated unknown password hashes. They should be managed from the admin screen unless a password migration is implemented.
+
+## Release ZIP
+
+Create a distribution archive with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
+```
+
+The script creates `release/threadforge-<version>.zip` from a whitelist of application files. The archive is arranged so the extracted contents can be uploaded directly to a rental server public directory:
+
+- `index.html`
+- `assets/`
+- `api.php`
+- `db.php`
+- `cron.php`
+- `storage/data/.gitkeep`
+- documentation
+
+Runtime DB files, uploaded images, local PHP binaries, logs, dependency directories, operator scripts, and legacy import source data are intentionally not included. A deployed site should be updated by backing up runtime data first, then replacing application files while preserving `database.sqlite` and `storage/data/`.
+
+On a clean deployment, the next API request creates `database.sqlite` and the storage directory automatically when PHP has write permission.
 
 ## Intentional Clean Initialization
 

@@ -6,7 +6,7 @@ This directory is the English documentation index. Keep the root `README.md` as 
 
 ## Canonical Documents
 
-- `../ThreadForge_Spec.md`: current product specification and implementation status
+- `SPEC.md`: current product specification and implementation status
 - `../CHANGELOG.md`: release history
 - `../CHANGELOG.ja.md`: Japanese release history
 - `API.md`: PHP API actions and request/response notes
@@ -15,7 +15,27 @@ This directory is the English documentation index. Keep the root `README.md` as 
 - `ARCHITECTURE.md`: frontend/backend structure
 - `TESTING.md`: test commands and coverage notes
 
-Japanese versions live in `docs/ja/`, with `../README.ja.md` and `../ThreadForge_Spec.ja.md` at the repository root.
+Japanese versions live in `docs/ja/`, with `../README.ja.md` at the repository root.
+
+## Release And Operator Tools
+
+Release packaging and local archive import scripts live in `tools/`. These are maintainer/operator tools, so the root README keeps only deployment-oriented instructions.
+
+Create a release ZIP:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
+```
+
+The release ZIP is written to `release/threadforge-<version>.zip`. Its contents are arranged for upload to a public web directory.
+
+Import local archive logs:
+
+```powershell
+tools\import_local_archive.bat legacy\data
+```
+
+The local archive importer reads `LOG_*.cgi` files and referenced images from the specified directory. It is non-destructive and is not exposed from the web admin screen.
 
 ## Current Runtime Features
 
