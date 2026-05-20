@@ -283,6 +283,7 @@ describe('AdminPage', () => {
       .find((element) => (element as HTMLSelectElement).value === 'false');
 
     expect(tweetEnabledSelect).toBeDefined();
+    expect(screen.getByText('X連携は未デバッグです。現時点では動作を保証しません。')).toBeInTheDocument();
     expect(tweetEnabledSelect).not.toBeDisabled();
     expect(within(settingsPanel).getByDisplayValue('https://twitter.com/example/status/')).toBeDisabled();
     expect(within(settingsPanel).getByDisplayValue('key')).toBeDisabled();

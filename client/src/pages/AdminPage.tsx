@@ -527,6 +527,9 @@ function SettingsForm({
         return (
           <div className={settingsGroupClassName(group)} key={group.title}>
             {group.title && <h3 className="admin-settings-heading">{group.title}</h3>}
+            {group.title === 'X' && (
+              <p className="admin-setting-note">X連携は未デバッグです。現時点では動作を保証しません。</p>
+            )}
             {keys.map((key) => {
               const value = values[key];
               const label = settingLabels[key] ?? key;
@@ -575,6 +578,7 @@ function SettingsForm({
               }
               const labelClassName = [
                 key === 'manualBody' ? 'admin-setting-wide' : '',
+                key === 'socialHashtags' ? 'admin-setting-wide' : '',
                 key.endsWith('Color') ? 'admin-color-row' : '',
               ].filter(Boolean).join(' ') || undefined;
               return (
