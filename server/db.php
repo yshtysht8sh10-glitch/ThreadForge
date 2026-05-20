@@ -744,7 +744,7 @@ function buildTweetText(string $name, string $title, string $message, ?string $s
 function buildSocialPostText(string $platform, string $name, string $title, string $message, ?string $sourceUrl = null, ?string $hashtags = null): string
 {
     $tweetMessage = preg_split('/_TWEND_/', $message, 2)[0] ?? '';
-    $tagLine = trim((string)($hashtags ?? '#ドット絵 #pixelart'));
+    $tagLine = trim((string)($hashtags ?? '#art'));
     $text = '[DT000000：' . $title . ']' . "\n"
         . '作者：' . $name . "\n\n"
         . trim($tweetMessage) . "\n\n";

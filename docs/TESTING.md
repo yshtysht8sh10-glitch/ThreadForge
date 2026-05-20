@@ -50,7 +50,7 @@ Covered behavior:
 - `saveUploadedImage()` returning `null` for normal files
 - SNS text generation, "latest is here" URL, post ID placeholder replacement, X character counting, per-SNS shortening, `_TWEND_`
 - SNS image posting for X, Bluesky, Mastodon, and Misskey
-- SNS reaction refresh through manual admin action, local Cron, API-key-protected external scheduler, and 7-day target limit
+- SNS reaction refresh through manual admin action, local Cron, and API-key-protected external scheduler
 - Non-destructive and duplicate-skipping local archive log import
 - Duplicate post detection
 - URL normalization

@@ -33,6 +33,6 @@ The local batch used for an individual deployment should not be committed unless
 
 ## Full Backup Restore
 
-The backup JSON import is different from local archive import. It is a full restore and replaces posts/images with the backup contents.
+The full backup ZIP import is different from local archive import. It is a full restore and replaces posts/images with the backup contents. Legacy JSON backups from earlier versions remain import-compatible.
 
 Use backup restore when moving a ThreadForge instance. Use local archive import when adding historical logs to an existing board.

@@ -24,7 +24,7 @@ const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     blueskyEnabled: false,
     mastodonEnabled: false,
     misskeyEnabled: false,
-    gdgdEnabled: true,
+    gdgdEnabled: false,
     gdgdLabel: '特殊投稿',
     eejanaikaOmigotoText: 'お美事にございまする',
     eejanaikaOmigotoColor: '#ff72ff',
@@ -32,7 +32,8 @@ const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     eejanaikaGoodjobColor: '#27a8ff',
     eejanaikaEejanaikaText: 'ええじゃないか',
     eejanaikaEejanaikaColor: '#fff200',
-    socialHashtags: '#ドット絵 #pixelart',
+    socialHashtags: '#art',
+    logView: 20,
     allowedImageTypes: ['gif', 'png', 'jpeg', 'jpg', 'bmp'],
   },
 };

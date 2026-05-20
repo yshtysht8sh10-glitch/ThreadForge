@@ -106,6 +106,9 @@ describe('AdminPage', () => {
           tweetEnabled: true,
           gdgdEnabled: true,
           gdgdLabel: '特殊投稿',
+          socialHashtags: '#art',
+          logView: 20,
+          maxUploadBytes: 5100000,
         },
         skin: { normalFrameColor: '#a23dff' },
       },
@@ -243,6 +246,32 @@ describe('AdminPage', () => {
     ));
   });
 
+  it('shows max upload size in KB while saving bytes', async () => {
+    vi.mocked(api.updateSettings).mockResolvedValue({ success: true, message: '設定を保存しました。' });
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '掲示板設定' }));
+
+    const settingsPanel = screen.getByRole('heading', { name: '掲示板設定' }).closest('section')!;
+    const uploadSize = within(settingsPanel).getByLabelText('最大アップロードサイズ(KB)');
+    expect(uploadSize).toHaveValue('5100');
+    fireEvent.change(uploadSize, { target: { value: '2048' } });
+    fireEvent.click(within(settingsPanel).getByRole('button', { name: '設定を保存' }));
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          maxUploadBytes: 2048000,
+        }),
+      }),
+      'admin-secret',
+    ));
+  });
+
   it('disables tweet settings while the tweet feature is off', async () => {
     vi.mocked(api.getSettings).mockResolvedValue({
       success: true,
@@ -305,7 +334,8 @@ describe('AdminPage', () => {
     expect(screen.getByText('運用中のデータ保全、復元、外部SNS情報の更新、管理者パスワード変更を行います。')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '管理者パスワード変更' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'SNSリアクション更新' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '投稿データ インポート/エクスポート' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'フルバックアップ インポート/エクスポート' })).toBeInTheDocument();
+    expect(screen.getByText('投稿、返信、画像、ユーザー、作品登録、アクセス履歴、設定をフルバックアップZIPとして保存、またはフルバックアップZIPから復元します。ログインセッションは含めません。')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'エクスポート' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'インポート' })).toBeInTheDocument();
     expect(screen.queryByText('ローカルアーカイブログ追加インポート')).not.toBeInTheDocument();

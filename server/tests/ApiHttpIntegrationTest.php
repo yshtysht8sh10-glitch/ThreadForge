@@ -124,6 +124,52 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->assertFalse($second['json']['success']);
     }
 
+    public function testFreshDatabaseDefaultsAndConfiguredPagination(): void
+    {
+        $public = $this->getJson(['action' => 'publicSettings']);
+        $this->assertSame(200, $public['status']);
+        $this->assertFalse($public['json']['settings']['config']['gdgdEnabled']);
+        $this->assertSame('#art', $public['json']['settings']['config']['socialHashtags']);
+        $this->assertSame(20, $public['json']['settings']['config']['logView']);
+
+        $this->setAdminPassword('admin-secret');
+        $settings = $this->getJson(['action' => 'getSettings', 'admin_password' => 'admin-secret']);
+        $this->assertSame(200, $settings['status']);
+        $config = $settings['json']['settings']['config'];
+        $this->assertSame(20, $config['logView']);
+        $this->assertSame('', $config['tweetBaseUrl']);
+        $this->assertSame('', $config['tweetConsumerKey']);
+        $this->assertSame('', $config['tweetConsumerSecret']);
+        $this->assertSame('', $config['tweetAccessToken']);
+        $this->assertSame('', $config['tweetAccessTokenSecret']);
+        $this->assertSame('', $config['blueskyServiceUrl']);
+        $this->assertSame('', $config['blueskyPublicApiUrl']);
+        $this->assertSame('', $config['blueskyHandle']);
+        $this->assertSame('', $config['blueskyAppPassword']);
+        $this->assertSame('', $config['mastodonInstanceUrl']);
+        $this->assertSame('', $config['mastodonAccessToken']);
+        $this->assertSame('', $config['mastodonVisibility']);
+        $this->assertSame('', $config['misskeyInstanceUrl']);
+        $this->assertSame('', $config['misskeyAccessToken']);
+
+        for ($i = 1; $i <= 21; $i++) {
+            $this->insertPost('User', 'Title ' . $i, 'Body ' . $i, sprintf('2026-05-%02d 12:00:00', $i));
+        }
+        $firstPage = $this->getJson(['action' => 'listThreads']);
+        $this->assertSame(200, $firstPage['status']);
+        $this->assertCount(20, $firstPage['json']);
+
+        getConnection()
+            ->prepare('REPLACE INTO settings (key, value) VALUES (:key, :value)')
+            ->execute([
+                ':key' => 'config',
+                ':value' => json_encode(['logView' => ''], JSON_UNESCAPED_UNICODE),
+            ]);
+        $allPosts = $this->getJson(['action' => 'listThreads']);
+        $this->assertSame(200, $allPosts['status']);
+        $this->assertCount(21, $allPosts['json']);
+    }
+
     public function testDeletingThreadSoftDeletesRepliesWithoutPhysicalDeletion(): void
     {
         $this->postForm([
@@ -216,6 +262,101 @@ final class ApiHttpIntegrationTest extends TestCase
 
         $row = $this->postById($id);
         $this->assertSame(STORAGE_DIR . '/' . $id . '.png', $row['image_path']);
+    }
+
+    public function testBackupExportAndImportPreserveReferencedImageData(): void
+    {
+        $this->setAdminPassword('admin-secret');
+        $externalImage = $this->temporaryImage('backup-image-', 'backup-image-body');
+        $externalIcon = $this->temporaryImage('backup-icon-', 'backup-icon-body');
+        $pdo = getConnection();
+        $userStmt = $pdo->prepare(
+            'INSERT INTO users (login_id, password_hash, display_name, post_password, home_url, icon_path, created_at, updated_at)
+             VALUES (:login_id, :password_hash, :display_name, :post_password, :home_url, :icon_path, :created_at, :updated_at)'
+        );
+        $userStmt->execute([
+            ':login_id' => 'backup-user',
+            ':password_hash' => password_hash('login-secret', PASSWORD_DEFAULT),
+            ':display_name' => 'Backup User',
+            ':post_password' => 'post-secret',
+            ':home_url' => 'https://example.com',
+            ':icon_path' => $externalIcon,
+            ':created_at' => '2026-05-10 11:00:00',
+            ':updated_at' => '2026-05-10 11:30:00',
+        ]);
+        $userId = (int)$pdo->lastInsertId();
+        $stmt = $pdo->prepare(
+            'INSERT INTO posts (thread_id, parent_id, name, title, message, image_path, password_hash, created_at, view_count, user_id)
+             VALUES (0, 0, :name, :title, :message, :image_path, :password_hash, :created_at, :view_count, :user_id)'
+        );
+        $stmt->execute([
+            ':name' => 'Backup user',
+            ':title' => 'Backup image',
+            ':message' => 'Backup body',
+            ':image_path' => $externalImage,
+            ':password_hash' => password_hash('secret', PASSWORD_DEFAULT),
+            ':created_at' => '2026-05-10 12:00:00',
+            ':view_count' => 123,
+            ':user_id' => $userId,
+        ]);
+        $postId = (int)$pdo->lastInsertId();
+        $pdo->prepare('UPDATE posts SET thread_id = :id WHERE id = :id')->execute([':id' => $postId]);
+        $pdo->prepare('INSERT INTO user_post_claims (user_id, post_id, created_at) VALUES (:user_id, :post_id, :created_at)')
+            ->execute([':user_id' => $userId, ':post_id' => $postId, ':created_at' => '2026-05-10 12:30:00']);
+        $pdo->prepare('INSERT INTO access_counts (access_date, count) VALUES (:access_date, :count)')
+            ->execute([':access_date' => '2026-05-10', ':count' => 77]);
+
+        $exported = $this->getJson(['action' => 'exportBackup', 'admin_password' => 'admin-secret']);
+        $this->assertSame(200, $exported['status']);
+        $this->assertNull($exported['json']);
+        $imageName = basename($externalImage);
+        $iconName = basename($externalIcon);
+        $backupFile = $this->temporaryImage('backup-zip-', (string)$exported['body']);
+        $zip = new ZipArchive();
+        $this->assertTrue($zip->open($backupFile) === true);
+        $backupJson = $zip->getFromName('backup.json');
+        $this->assertIsString($backupJson);
+        $payload = json_decode($backupJson, true);
+        $this->assertIsArray($payload);
+        $this->assertSame(2, $payload['backup_version']);
+        $this->assertContains($imageName, $payload['images']);
+        $this->assertContains($iconName, $payload['images']);
+        $this->assertSame('backup-image-body', $zip->getFromName('images/' . $imageName));
+        $this->assertSame('backup-icon-body', $zip->getFromName('images/' . $iconName));
+        $this->assertCount(1, $payload['users']);
+        $this->assertCount(1, $payload['user_post_claims']);
+        $this->assertCount(1, $payload['access_counts']);
+        $zip->close();
+
+        @unlink($externalImage);
+        @unlink($externalIcon);
+        $pdo->exec('DELETE FROM posts');
+        $pdo->exec('DELETE FROM users');
+        $pdo->exec('DELETE FROM user_post_claims');
+        $pdo->exec('DELETE FROM access_counts');
+
+        $imported = $this->postForm([
+            'action' => 'importBackup',
+            'admin_password' => 'admin-secret',
+            'backup' => curl_file_create($backupFile, 'application/zip', 'backup.zip'),
+        ]);
+
+        $this->assertSame(200, $imported['status']);
+        $this->assertTrue($imported['json']['success']);
+        $row = $this->postById($postId);
+        $this->assertIsArray($row);
+        $this->assertSame(STORAGE_DIR . '/' . $imageName, $row['image_path']);
+        $this->assertSame(123, (int)$row['view_count']);
+        $this->assertSame($userId, (int)$row['user_id']);
+        $this->assertFileExists(STORAGE_DIR . '/' . $imageName);
+        $this->assertSame('backup-image-body', file_get_contents(STORAGE_DIR . '/' . $imageName));
+        $user = $pdo->query('SELECT * FROM users WHERE id = ' . $userId)->fetch(PDO::FETCH_ASSOC);
+        $this->assertIsArray($user);
+        $this->assertSame(STORAGE_DIR . '/' . $iconName, $user['icon_path']);
+        $this->assertFileExists(STORAGE_DIR . '/' . $iconName);
+        $this->assertSame('backup-icon-body', file_get_contents(STORAGE_DIR . '/' . $iconName));
+        $this->assertSame(1, (int)$pdo->query('SELECT COUNT(*) FROM user_post_claims WHERE user_id = ' . $userId . ' AND post_id = ' . $postId)->fetchColumn());
+        $this->assertSame(77, (int)$pdo->query("SELECT count FROM access_counts WHERE access_date = '2026-05-10'")->fetchColumn());
     }
 
     public function testSearchApiHonorsEmptyQueryLimitPageScopeAndEscapedWildcards(): void

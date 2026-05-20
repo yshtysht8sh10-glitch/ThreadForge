@@ -48,7 +48,7 @@ ThreadForge is presented as a new self-hosted board engine that can be adapted f
 - Admin restore for soft-deleted posts
 - Admin bulk delete without per-post passwords
 - Admin DB integrity check
-- Admin backup export/import for DB, images, and settings
+- Admin full backup export/import for posts, replies, edit revisions, users, claimed works, access history, images, and settings
 - Local, non-destructive import for local archive `LOG_*.cgi` data through an operator batch or PHP command
 - Admin settings storage for `config.cgi` and `skincfg.cgi` equivalents
 - Admin-configurable HOME link target
@@ -66,8 +66,8 @@ Implemented:
 - Bulk delete selected posts or replies without individual post passwords
 - Restore deleted posts
 - Check DB consistency
-- Export backup JSON containing DB rows, images, and settings
-- Import backup JSON and restore DB/images/settings
+- Export full backup ZIP containing posts, replies, edit revisions, users, claimed works, access history, images, and settings
+- Import full backup ZIP and restore DB rows/images/settings. Legacy JSON backups remain import-compatible. Login sessions are intentionally not included.
 - Import local archive logs from a local directory without resetting existing DB rows, images, or settings
 - Edit and save current app settings
 - Configure the top navigation HOME link target
@@ -78,6 +78,9 @@ Implemented:
 - Change the admin password
 - Refresh cached SNS reaction counts
 - Show local cron path and API-key-protected scheduler URL for automated SNS reaction refresh
+- Fresh DB defaults: gdgd posting OFF, list page size 20, SNS hashtag `#art`, all SNS integrations OFF, and SNS credential fields empty
+- Empty or non-positive list page size means all posts are shown on one page
+- The admin UI displays maximum upload size in KB while storing it internally as bytes
 
 Notes:
 

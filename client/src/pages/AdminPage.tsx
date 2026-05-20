@@ -154,13 +154,13 @@ const AdminPage = () => {
     if (!response.ok) {
       throw new Error(`${response.status} ${response.statusText}`);
     }
-    await saveBlobWithPicker(await response.blob(), 'threadforge-backup.json');
-    setStatus('投稿データをエクスポートしました。');
+    await saveBlobWithPicker(await response.blob(), 'threadforge-full-backup.zip');
+    setStatus('フルバックアップZIPをエクスポートしました。');
   });
 
   const importBackupFile = async (file: File | null) => {
     if (!file) {
-      setError('インポートするバックアップJSONを選択してください。');
+      setError('インポートするフルバックアップZIPを選択してください。');
       return;
     }
     setStatus('インポート中...');
@@ -379,17 +379,17 @@ const AdminPage = () => {
               </section>
 
               <section className="admin-maintenance-section">
-                <h3>投稿データ インポート/エクスポート</h3>
+                <h3>フルバックアップ インポート/エクスポート</h3>
                 <div className="admin-maintenance-section-body">
-                  <p>投稿データと画像をバックアップJSONとして保存、またはバックアップJSONから復元します。</p>
+                  <p>投稿、返信、画像、ユーザー、作品登録、アクセス履歴、設定をフルバックアップZIPとして保存、またはフルバックアップZIPから復元します。ログインセッションは含めません。</p>
                   <div className="admin-import-export-actions">
                     <button type="button" className="secondary" onClick={exportBackup}>エクスポート</button>
                     <button type="button" className="secondary" onClick={() => backupImportInputRef.current?.click()}>インポート</button>
                     <input
                       ref={backupImportInputRef}
                       type="file"
-                      aria-label="投稿データJSONファイル"
-                      accept="application/json,.json"
+                      aria-label="フルバックアップZIPファイル"
+                      accept="application/zip,.zip,application/json,.json"
                       className="visually-hidden-file"
                       onChange={(event) => {
                         void guarded(() => importBackupFile(event.currentTarget.files?.[0] ?? null))();
@@ -533,7 +533,7 @@ function SettingsForm({
             {keys.map((key) => {
               const value = values[key];
               const label = settingLabels[key] ?? key;
-              const stringValue = String(value);
+              const stringValue = settingDisplayValue(key, value);
               const disabled = isDisabledPlatformSetting(values, key);
               if (key === 'allowedImageTypes') {
                 const selected = Array.isArray(value) ? value.map(String) : String(value).split(',').map((item) => item.trim()).filter(Boolean);
@@ -561,7 +561,7 @@ function SettingsForm({
               if (isReactionTextKey(key)) {
                 const colorKey = reactionColorKeyForTextKey(key);
                 return (
-                  <label key={key} className="admin-setting-inline-row admin-setting-wide">
+                  <label key={key} className={['admin-setting-inline-row admin-setting-wide', disabled ? 'admin-setting-disabled' : ''].filter(Boolean).join(' ')}>
                     <span>{label}</span>
                     <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
                     {colorKey && (
@@ -580,6 +580,7 @@ function SettingsForm({
                 key === 'manualBody' ? 'admin-setting-wide' : '',
                 key === 'socialHashtags' ? 'admin-setting-wide' : '',
                 key.endsWith('Color') ? 'admin-color-row' : '',
+                disabled ? 'admin-setting-disabled' : '',
               ].filter(Boolean).join(' ') || undefined;
               return (
                 <label key={key} className={labelClassName}>
@@ -599,7 +600,7 @@ function SettingsForm({
                       <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
                     </>
                   ) : (
-                    <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
+                    <input value={stringValue} onChange={(event) => onChange(key, settingStoredValue(key, event.target.value))} disabled={disabled} />
                   )}
                 </label>
               );
@@ -664,6 +665,22 @@ function reactionColorKeyForTextKey(key: string): string | undefined {
 
 function toColorInputValue(value: string): string {
   return /^#[0-9a-fA-F]{6}$/.test(value) ? value : '#ffffff';
+}
+
+function settingDisplayValue(key: string, value: SettingValue): string {
+  if (key === 'maxUploadBytes') {
+    const bytes = Number(value);
+    return Number.isFinite(bytes) && bytes > 0 ? String(Math.round(bytes / 1000)) : '';
+  }
+  return String(value);
+}
+
+function settingStoredValue(key: string, value: string): SettingValue {
+  if (key === 'maxUploadBytes') {
+    const kb = Number(value);
+    return Number.isFinite(kb) && kb > 0 ? Math.round(kb * 1000) : '';
+  }
+  return value;
 }
 
 const configSettingGroups: SettingGroup[] = [
@@ -980,7 +997,7 @@ const settingLabels: Record<string, string> = {
   gdgdEnabled: '特殊投稿機能',
   gdgdLabel: '特殊投稿の表示名',
   logView: '一覧表示件数',
-  maxUploadBytes: '最大アップロードサイズ(byte)',
+  maxUploadBytes: '最大アップロードサイズ(KB)',
   maxImageWidth: '最大画像幅(px)',
   maxImageHeight: '最大画像高さ(px)',
   allowedImageTypes: 'アップロード可能な画像形式',

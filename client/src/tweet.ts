@@ -12,7 +12,7 @@ export type SocialPostPreview = {
   length: number;
 };
 
-const DEFAULT_SOCIAL_HASHTAGS = '#ドット絵 #pixelart';
+const DEFAULT_SOCIAL_HASHTAGS = '#art';
 
 export function createTweetText(name: string, title: string, message: string, sourceUrl = '', hashtags = DEFAULT_SOCIAL_HASHTAGS): string {
   const tweetMessage = message.split('_TWEND_')[0].trim();

@@ -21,6 +21,7 @@ export type PublicSettings = {
     eejanaikaEejanaikaColor: string;
     socialHashtags: string;
     allowedImageTypes: string[];
+    logView?: number | string;
   };
 };
 
@@ -33,7 +34,7 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     blueskyEnabled: false,
     mastodonEnabled: false,
     misskeyEnabled: false,
-    gdgdEnabled: true,
+    gdgdEnabled: false,
     gdgdLabel: '特殊投稿',
     eejanaikaOmigotoText: 'お美事にございまする',
     eejanaikaOmigotoColor: '#ff72ff',
@@ -41,8 +42,9 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     eejanaikaGoodjobColor: '#27a8ff',
     eejanaikaEejanaikaText: 'ええじゃないか',
     eejanaikaEejanaikaColor: '#fff200',
-    socialHashtags: '#ドット絵 #pixelart',
+    socialHashtags: '#art',
     allowedImageTypes: ['gif', 'png', 'jpeg', 'jpg', 'bmp'],
+    logView: 20,
     manualBody: [
       'この取説は、このサイトを利用する方向けの案内です。',
       '',
@@ -120,24 +122,24 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
 export const DEFAULT_ADMIN_SETTINGS = {
   config: {
     ...DEFAULT_PUBLIC_SETTINGS.config,
-    tweetBaseUrl: 'https://twitter.com/MUGEN87112020/status/',
+    tweetBaseUrl: '',
     tweetConsumerKey: '',
     tweetConsumerSecret: '',
     tweetAccessToken: '',
     tweetAccessTokenSecret: '',
     blueskyEnabled: false,
-    blueskyServiceUrl: 'https://bsky.social',
-    blueskyPublicApiUrl: 'https://public.api.bsky.app',
+    blueskyServiceUrl: '',
+    blueskyPublicApiUrl: '',
     blueskyHandle: '',
     blueskyAppPassword: '',
     mastodonEnabled: false,
     mastodonInstanceUrl: '',
     mastodonAccessToken: '',
-    mastodonVisibility: 'public',
+    mastodonVisibility: '',
     misskeyEnabled: false,
     misskeyInstanceUrl: '',
     misskeyAccessToken: '',
-    logView: '',
+    logView: 20,
     maxUploadBytes: 5100000,
     maxImageWidth: 1280,
     maxImageHeight: 960,
@@ -231,7 +233,7 @@ const mockPosts: Post[] = [
     created_at: '2024-01-01 12:00:00',
     gdgd: true,
     tweet_off: false,
-    tweet_text: '[DT000000：テストスレッド]\n作者：テストユーザー\n\nこれはテストの投稿です。\n\n#ドット絵 #pixelart',
+    tweet_text: '[DT000000：テストスレッド]\n作者：テストユーザー\n\nこれはテストの投稿です。\n\n#art',
     tweet_url: 'https://x.com/threadforge/status/1',
     view_count: 12,
     board_reactions: { views: 12, eejanaika: 4, omigoto: 2, goodjob: 1 },
@@ -416,9 +418,10 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
 }
 
 export const api = {
-  listThreads: async (targetId?: number | string | null): Promise<Post[]> => {
+  listThreads: async (targetId?: number | string | null, page?: number | string | null): Promise<Post[]> => {
     const target = targetId ? `&target_id=${encodeURIComponent(String(targetId))}` : '';
-    return fetchJson<Post[]>(`${apiBase()}?action=listThreads${target}`);
+    const pageParam = page ? `&page=${encodeURIComponent(String(page))}` : '';
+    return fetchJson<Post[]>(`${apiBase()}?action=listThreads${target}${pageParam}`);
   },
   rss: async (): Promise<string> => {
     const response = await fetch(`${apiBase()}?action=rss`);

@@ -77,7 +77,7 @@ The backend creates runtime files locally:
 - `server/database.sqlite`
 - `server/storage/data/*`
 
-These files are intentionally ignored by Git. Use the admin backup/export feature to move live data between environments.
+These files are intentionally ignored by Git. Use the admin full backup ZIP import/export feature to move live data between environments.
 
 ## Rental Server Deployment
 
@@ -97,6 +97,8 @@ threadforge-<version>/
 The frontend calls `./api.php` on the same site. Runtime DB files and uploaded images are intentionally excluded from the ZIP. On first access, the SQLite DB is created automatically if PHP can write to the deployed directory.
 
 `storage/data/` stores uploaded images. Set write permission for it on the rental server when necessary.
+
+Fresh installations start with the standard dark board design, gdgd/special posting OFF, list page size 20, SNS hashtag `#art`, all SNS integrations OFF, and SNS credential fields empty. Leaving the list page size empty shows all posts on one page.
 
 ## Social Posting Operation
 

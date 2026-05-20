@@ -693,7 +693,7 @@ function createPost(PDO $pdo): void
     $mastodonEnabled = toBoolFlag($config['mastodonEnabled'] ?? false);
     $misskeyEnabled = toBoolFlag($config['misskeyEnabled'] ?? false);
     $socialEnabled = $tweetEnabled || $blueskyEnabled || $mastodonEnabled || $misskeyEnabled;
-    $gdgdEnabled = toBoolFlag($config['gdgdEnabled'] ?? true);
+    $gdgdEnabled = toBoolFlag($config['gdgdEnabled'] ?? false);
     $name = normalizeString($_POST['name'] ?? '');
     $url = normalizeUrl($_POST['url'] ?? null);
     $title = normalizeString($_POST['title'] ?? '');
@@ -705,7 +705,7 @@ function createPost(PDO $pdo): void
     $gdgd = $isReply || !$gdgdEnabled ? false : toBoolFlag($_POST['gdgd'] ?? $_POST['gdgd_post'] ?? false);
     $tweetOff = $isReply || !$socialEnabled ? true : toBoolFlag($_POST['tweet_off'] ?? $_POST['TweetOFF'] ?? false);
     $tweetUrl = null;
-    $socialHashtags = (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart');
+    $socialHashtags = (string)($config['socialHashtags'] ?? '#art');
 
     $user = optionalUser($pdo);
     $userId = $user ? (int)$user['id'] : null;
@@ -1068,15 +1068,15 @@ function publishFederatedPostsFromSettings(array $settings, string $name, string
     $results = [];
 
     if (toBoolFlag($config['blueskyEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#繝峨ャ繝育ｵｵ #pixelart')), $postId);
+        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#art')), $postId);
         $results['bluesky'] = publishBlueskyPost($config, $text, $imagePath);
     }
     if (toBoolFlag($config['mastodonEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#繝峨ャ繝育ｵｵ #pixelart')), $postId);
+        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#art')), $postId);
         $results['mastodon'] = publishMastodonPost($config, $text, $imagePath);
     }
     if (toBoolFlag($config['misskeyEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#繝峨ャ繝育ｵｵ #pixelart')), $postId);
+        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#art')), $postId);
         $results['misskey'] = publishMisskeyPost($config, $text, $imagePath);
     }
 
@@ -1089,15 +1089,15 @@ function updateFederatedPostsFromSettings(array $settings, array $post, string $
     $results = [];
 
     if (toBoolFlag($config['blueskyEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#繝峨ャ繝育ｵｵ #pixelart')), $postId);
+        $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#art')), $postId);
         $results['bluesky'] = updateBlueskyPost($config, $text, (string)($post['bluesky_uri'] ?? ''), $imagePath);
     }
     if (toBoolFlag($config['mastodonEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#繝峨ャ繝育ｵｵ #pixelart')), $postId);
+        $text = fillTweetPostId(buildSocialPostText('mastodon', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#art')), $postId);
         $results['mastodon'] = updateMastodonPost($config, $text, (string)($post['mastodon_id'] ?? ''), $imagePath);
     }
     if (toBoolFlag($config['misskeyEnabled'] ?? false)) {
-        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#繝峨ャ繝育ｵｵ #pixelart')), $postId);
+        $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#art')), $postId);
         $results['misskey'] = publishMisskeyPost($config, $text, $imagePath);
     }
 
@@ -1685,7 +1685,7 @@ function updatePost(PDO $pdo): void
 
     $settings = loadSettings($pdo);
     $config = $settings['config'] ?? [];
-    $gdgdEnabled = toBoolFlag($config['gdgdEnabled'] ?? true);
+    $gdgdEnabled = toBoolFlag($config['gdgdEnabled'] ?? false);
     $tweetEnabled = toBoolFlag($config['tweetEnabled'] ?? false);
     $blueskyEnabled = toBoolFlag($config['blueskyEnabled'] ?? false);
     $mastodonEnabled = toBoolFlag($config['mastodonEnabled'] ?? false);
@@ -2233,27 +2233,46 @@ function exportBackup(PDO $pdo): void
     requireAdmin();
     $posts = $pdo->query('SELECT * FROM posts ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
     $revisions = $pdo->query('SELECT * FROM post_revisions ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
-    $images = [];
-    if (is_dir(STORAGE_DIR)) {
-        foreach (glob(STORAGE_DIR . '/*') ?: [] as $path) {
-            if (is_file($path)) {
-                $images[basename($path)] = base64_encode((string)file_get_contents($path));
-            }
-        }
-    }
+    $users = $pdo->query('SELECT * FROM users ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
+    $claims = $pdo->query('SELECT * FROM user_post_claims ORDER BY user_id ASC, post_id ASC')->fetchAll(PDO::FETCH_ASSOC);
+    $accessCounts = $pdo->query('SELECT * FROM access_counts ORDER BY access_date ASC')->fetchAll(PDO::FETCH_ASSOC);
+    $images = collectBackupImageFiles($posts, $users);
 
     $payload = [
-        'backup_version' => 1,
+        'backup_version' => 2,
+        'backup_format' => 'zip',
         'exported_at' => currentTimestamp(),
         'posts' => $posts,
         'post_revisions' => $revisions,
-        'images' => $images,
+        'users' => $users,
+        'user_post_claims' => $claims,
+        'access_counts' => $accessCounts,
+        'images' => array_keys($images),
         'settings' => loadSettings($pdo),
     ];
 
-    header('Content-Type: application/json; charset=utf-8');
-    header('Content-Disposition: attachment; filename="threadforge-backup-' . date('Ymd-His') . '.json"');
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+    $zipPath = tempnam(sys_get_temp_dir(), 'threadforge-backup-');
+    if ($zipPath === false) {
+        jsonResponse(['success' => false, 'message' => 'バックアップZIPを作成できませんでした。'], 500);
+    }
+    @unlink($zipPath);
+    $zipPath .= '.zip';
+
+    $zip = new ZipArchive();
+    if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        jsonResponse(['success' => false, 'message' => 'バックアップZIPを作成できませんでした。'], 500);
+    }
+    $zip->addFromString('backup.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+    foreach ($images as $filename => $path) {
+        $zip->addFile($path, 'images/' . $filename);
+    }
+    $zip->close();
+
+    header('Content-Type: application/zip');
+    header('Content-Disposition: attachment; filename="threadforge-full-backup-' . date('Ymd-His') . '.zip"');
+    header('Content-Length: ' . filesize($zipPath));
+    readfile($zipPath);
+    @unlink($zipPath);
     exit;
 }
 
@@ -2264,57 +2283,10 @@ function importBackup(PDO $pdo): void
         jsonResponse(['success' => false, 'message' => 'バックアップファイルを選択してください。'], 400);
     }
 
-    $payload = json_decode((string)file_get_contents($_FILES['backup']['tmp_name']), true);
-    if (!is_array($payload) || ($payload['backup_version'] ?? null) !== 1 || !isset($payload['posts']) || !is_array($payload['posts'])) {
+    [$payload, $backupImageContents] = readBackupUpload((string)$_FILES['backup']['tmp_name']);
+    if (!is_array($payload) || !in_array(($payload['backup_version'] ?? null), [1, 2], true) || !isset($payload['posts']) || !is_array($payload['posts'])) {
         jsonResponse(['success' => false, 'message' => 'バックアップ形式が正しくありません。'], 400);
     }
-
-    $pdo->beginTransaction();
-    $pdo->exec('DELETE FROM post_revisions');
-    $pdo->exec('DELETE FROM posts');
-    $stmt = $pdo->prepare(
-        'INSERT INTO posts (
-            id, thread_id, parent_id, name, url, title, message, image_path, password_hash, created_at, deleted_at, gdgd,
-            tweet_off, tweet_text, tweet_url, tweet_like_count, tweet_retweet_count, tweet_comment_count, tweet_impression_count
-        ) VALUES (
-            :id, :thread_id, :parent_id, :name, :url, :title, :message, :image_path, :password_hash, :created_at, :deleted_at, :gdgd,
-            :tweet_off, :tweet_text, :tweet_url, :tweet_like_count, :tweet_retweet_count, :tweet_comment_count, :tweet_impression_count
-        )'
-    );
-    foreach ($payload['posts'] as $row) {
-        $stmt->execute([
-            ':id' => (int)($row['id'] ?? 0),
-            ':thread_id' => (int)($row['thread_id'] ?? 0),
-            ':parent_id' => (int)($row['parent_id'] ?? 0),
-            ':name' => (string)($row['name'] ?? ''),
-            ':url' => $row['url'] ?? null,
-            ':title' => (string)($row['title'] ?? ''),
-            ':message' => (string)($row['message'] ?? ''),
-            ':image_path' => $row['image_path'] ?? null,
-            ':password_hash' => $row['password_hash'] ?? null,
-            ':created_at' => (string)($row['created_at'] ?? currentTimestamp()),
-            ':deleted_at' => $row['deleted_at'] ?? null,
-            ':gdgd' => (int)($row['gdgd'] ?? 0),
-            ':tweet_off' => (int)($row['tweet_off'] ?? 0),
-            ':tweet_text' => $row['tweet_text'] ?? null,
-            ':tweet_url' => $row['tweet_url'] ?? null,
-            ':tweet_like_count' => (int)($row['tweet_like_count'] ?? 0),
-            ':tweet_retweet_count' => (int)($row['tweet_retweet_count'] ?? 0),
-            ':tweet_comment_count' => (int)($row['tweet_comment_count'] ?? 0),
-            ':tweet_impression_count' => (int)($row['tweet_impression_count'] ?? 0),
-        ]);
-    }
-    $revisionStmt = $pdo->prepare(
-        'INSERT INTO post_revisions (id, post_id, revised_at) VALUES (:id, :post_id, :revised_at)'
-    );
-    foreach (($payload['post_revisions'] ?? []) as $row) {
-        $revisionStmt->execute([
-            ':id' => (int)($row['id'] ?? 0),
-            ':post_id' => (int)($row['post_id'] ?? 0),
-            ':revised_at' => (string)($row['revised_at'] ?? currentTimestamp()),
-        ]);
-    }
-    $pdo->commit();
 
     if (!is_dir(STORAGE_DIR)) {
         mkdir(STORAGE_DIR, 0775, true);
@@ -2324,14 +2296,201 @@ function importBackup(PDO $pdo): void
             @unlink($path);
         }
     }
-    foreach (($payload['images'] ?? []) as $filename => $encoded) {
-        file_put_contents(STORAGE_DIR . '/' . basename((string)$filename), base64_decode((string)$encoded));
+    $backupImages = [];
+    foreach ($backupImageContents as $filename => $contents) {
+        $basename = backupImageBasename((string)$filename);
+        if ($basename === '') {
+            continue;
+        }
+        $backupImages[$basename] = true;
+        file_put_contents(STORAGE_DIR . '/' . $basename, $contents);
     }
+
+    $pdo->beginTransaction();
+    $pdo->exec('DELETE FROM post_revisions');
+    $pdo->exec('DELETE FROM user_post_claims');
+    $pdo->exec('DELETE FROM user_sessions');
+    $pdo->exec('DELETE FROM posts');
+    $pdo->exec('DELETE FROM users');
+    $pdo->exec('DELETE FROM access_counts');
+
+    $userColumns = tableColumnNames($pdo, 'users');
+    foreach (($payload['users'] ?? []) as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $row['icon_path'] = importedBackupImagePath($row['icon_path'] ?? null, $backupImages);
+        insertBackupRow($pdo, 'users', $userColumns, $row);
+    }
+
+    $accessColumns = tableColumnNames($pdo, 'access_counts');
+    foreach (($payload['access_counts'] ?? []) as $row) {
+        if (is_array($row)) {
+            insertBackupRow($pdo, 'access_counts', $accessColumns, $row);
+        }
+    }
+
+    $postColumns = tableColumnNames($pdo, 'posts');
+    foreach ($payload['posts'] as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $row['image_path'] = importedBackupImagePath($row['image_path'] ?? null, $backupImages);
+        insertBackupRow($pdo, 'posts', $postColumns, $row);
+    }
+    $revisionColumns = tableColumnNames($pdo, 'post_revisions');
+    foreach (($payload['post_revisions'] ?? []) as $row) {
+        if (is_array($row)) {
+            insertBackupRow($pdo, 'post_revisions', $revisionColumns, $row);
+        }
+    }
+    $claimColumns = tableColumnNames($pdo, 'user_post_claims');
+    foreach (($payload['user_post_claims'] ?? []) as $row) {
+        if (is_array($row)) {
+            insertBackupRow($pdo, 'user_post_claims', $claimColumns, $row);
+        }
+    }
+    $pdo->commit();
+
     if (isset($payload['settings']) && is_array($payload['settings'])) {
         saveSettings($pdo, $payload['settings']);
     }
 
     jsonResponse(['success' => true, 'message' => 'バックアップをインポートしました。']);
+}
+
+function readBackupUpload(string $path): array
+{
+    $zip = new ZipArchive();
+    if ($zip->open($path) === true) {
+        $payloadJson = $zip->getFromName('backup.json');
+        $payload = is_string($payloadJson) ? json_decode($payloadJson, true) : null;
+        $images = [];
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $stat = $zip->statIndex($i);
+            $name = is_array($stat) ? (string)($stat['name'] ?? '') : '';
+            if ($name === '' || str_ends_with($name, '/') || !str_starts_with($name, 'images/')) {
+                continue;
+            }
+            $basename = backupImageBasename($name);
+            if ($basename === '') {
+                continue;
+            }
+            $contents = $zip->getFromIndex($i);
+            if (is_string($contents)) {
+                $images[$basename] = $contents;
+            }
+        }
+        $zip->close();
+        return [is_array($payload) ? $payload : null, $images];
+    }
+
+    $payload = json_decode((string)file_get_contents($path), true);
+    $images = [];
+    if (is_array($payload) && is_array($payload['images'] ?? null)) {
+        foreach ($payload['images'] as $filename => $encoded) {
+            $decoded = base64_decode((string)$encoded, true);
+            if ($decoded === false) {
+                continue;
+            }
+            $basename = backupImageBasename((string)$filename);
+            if ($basename !== '') {
+                $images[$basename] = $decoded;
+            }
+        }
+    }
+
+    return [is_array($payload) ? $payload : null, $images];
+}
+
+function collectBackupImageFiles(array $posts, array $users): array
+{
+    $images = [];
+    if (is_dir(STORAGE_DIR)) {
+        foreach (glob(STORAGE_DIR . '/*') ?: [] as $path) {
+            addBackupImageFile($images, (string)$path);
+        }
+    }
+    foreach ($posts as $post) {
+        addBackupImageFile($images, resolveBackupImagePath($post['image_path'] ?? null));
+    }
+    foreach ($users as $user) {
+        addBackupImageFile($images, resolveBackupImagePath($user['icon_path'] ?? null));
+    }
+    return $images;
+}
+
+function addBackupImageFile(array &$images, ?string $path): void
+{
+    if ($path === null || !is_file($path)) {
+        return;
+    }
+    $basename = backupImageBasename($path);
+    if ($basename === '') {
+        return;
+    }
+    $images[$basename] = $path;
+}
+
+function resolveBackupImagePath(mixed $imagePath): ?string
+{
+    $path = trim((string)$imagePath);
+    if ($path === '') {
+        return null;
+    }
+    if (is_file($path)) {
+        return $path;
+    }
+
+    $basename = backupImageBasename($path);
+    if ($basename === '') {
+        return null;
+    }
+    $storagePath = STORAGE_DIR . '/' . $basename;
+    return is_file($storagePath) ? $storagePath : null;
+}
+
+function importedBackupImagePath(mixed $imagePath, array $images): ?string
+{
+    $path = trim((string)$imagePath);
+    if ($path === '') {
+        return null;
+    }
+    $basename = backupImageBasename($path);
+    if ($basename === '') {
+        return null;
+    }
+    return array_key_exists($basename, $images) ? STORAGE_DIR . '/' . $basename : null;
+}
+
+function backupImageBasename(string $path): string
+{
+    $basename = basename(str_replace('\\', '/', $path));
+    return in_array($basename, ['', '.', '..'], true) ? '' : $basename;
+}
+
+function tableColumnNames(PDO $pdo, string $table): array
+{
+    $stmt = $pdo->query('PRAGMA table_info(' . $table . ')');
+    return array_map(static fn(array $row): string => (string)$row['name'], $stmt->fetchAll(PDO::FETCH_ASSOC));
+}
+
+function insertBackupRow(PDO $pdo, string $table, array $tableColumns, array $row): void
+{
+    $columns = array_values(array_filter($tableColumns, static fn(string $column): bool => array_key_exists($column, $row)));
+    if ($columns === []) {
+        return;
+    }
+
+    $quotedTable = '"' . str_replace('"', '""', $table) . '"';
+    $quotedColumns = array_map(static fn(string $column): string => '"' . str_replace('"', '""', $column) . '"', $columns);
+    $placeholders = array_map(static fn(string $column): string => ':' . $column, $columns);
+    $stmt = $pdo->prepare('INSERT INTO ' . $quotedTable . ' (' . implode(', ', $quotedColumns) . ') VALUES (' . implode(', ', $placeholders) . ')');
+    $params = [];
+    foreach ($columns as $column) {
+        $params[':' . $column] = $row[$column];
+    }
+    $stmt->execute($params);
 }
 
 function getSettings(PDO $pdo): void
@@ -2421,7 +2580,7 @@ function publicSettings(PDO $pdo): void
                 'blueskyEnabled' => toBoolFlag($config['blueskyEnabled'] ?? false),
                 'mastodonEnabled' => toBoolFlag($config['mastodonEnabled'] ?? false),
                 'misskeyEnabled' => toBoolFlag($config['misskeyEnabled'] ?? false),
-                'gdgdEnabled' => toBoolFlag($config['gdgdEnabled'] ?? true),
+                'gdgdEnabled' => toBoolFlag($config['gdgdEnabled'] ?? false),
                 'gdgdLabel' => (string)($config['gdgdLabel'] ?? '特殊投稿'),
                 'eejanaikaOmigotoText' => (string)($config['eejanaikaOmigotoText'] ?? 'お美事にございまする'),
                 'eejanaikaOmigotoColor' => (string)($config['eejanaikaOmigotoColor'] ?? '#ff72ff'),
@@ -2429,8 +2588,9 @@ function publicSettings(PDO $pdo): void
                 'eejanaikaGoodjobColor' => (string)($config['eejanaikaGoodjobColor'] ?? '#27a8ff'),
                 'eejanaikaEejanaikaText' => (string)($config['eejanaikaEejanaikaText'] ?? 'ええじゃないか'),
                 'eejanaikaEejanaikaColor' => (string)($config['eejanaikaEejanaikaColor'] ?? '#fff200'),
-                'socialHashtags' => (string)($config['socialHashtags'] ?? '#ドット絵 #pixelart'),
+                'socialHashtags' => (string)($config['socialHashtags'] ?? '#art'),
                 'allowedImageTypes' => allowedImageExtensionsFromConfig($config),
+                'logView' => $config['logView'] ?? 20,
             ],
         ],
     ]);
@@ -2504,24 +2664,24 @@ function defaultSettings(): array
             'manualTitle' => 'ThreadForge',
             'manualBody' => defaultManualBody(),
             'tweetEnabled' => false,
-            'tweetBaseUrl' => 'https://twitter.com/MUGEN87112020/status/',
+            'tweetBaseUrl' => '',
             'tweetConsumerKey' => '',
             'tweetConsumerSecret' => '',
             'tweetAccessToken' => '',
             'tweetAccessTokenSecret' => '',
             'blueskyEnabled' => false,
-            'blueskyServiceUrl' => 'https://bsky.social',
-            'blueskyPublicApiUrl' => 'https://public.api.bsky.app',
+            'blueskyServiceUrl' => '',
+            'blueskyPublicApiUrl' => '',
             'blueskyHandle' => '',
             'blueskyAppPassword' => '',
             'mastodonEnabled' => false,
             'mastodonInstanceUrl' => '',
             'mastodonAccessToken' => '',
-            'mastodonVisibility' => 'public',
+            'mastodonVisibility' => '',
             'misskeyEnabled' => false,
             'misskeyInstanceUrl' => '',
             'misskeyAccessToken' => '',
-            'gdgdEnabled' => true,
+            'gdgdEnabled' => false,
             'gdgdLabel' => '特殊投稿',
             'eejanaikaOmigotoText' => 'お美事にございまする',
             'eejanaikaOmigotoColor' => '#ff72ff',
@@ -2529,8 +2689,8 @@ function defaultSettings(): array
             'eejanaikaGoodjobColor' => '#27a8ff',
             'eejanaikaEejanaikaText' => 'ええじゃないか',
             'eejanaikaEejanaikaColor' => '#fff200',
-            'socialHashtags' => '#ドット絵 #pixelart',
-            'logView' => '',
+            'socialHashtags' => '#art',
+            'logView' => 20,
             'maxUploadBytes' => 5100000,
             'maxImageWidth' => 1280,
             'maxImageHeight' => 960,

@@ -257,7 +257,7 @@ final class StorageLayerTest extends TestCase
 
         $this->assertLessThanOrEqual(300, mb_strlen($bluesky, 'UTF-8'));
         $this->assertStringContainsString('..', $bluesky);
-        $this->assertStringContainsString('#ドット絵 #pixelart', $bluesky);
+        $this->assertStringContainsString('#art', $bluesky);
         $this->assertLessThanOrEqual(500, mb_strlen($mastodon, 'UTF-8'));
         $this->assertStringContainsString('..', $mastodon);
     }

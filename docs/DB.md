@@ -142,15 +142,23 @@ Settings are stored as JSON sections:
 
 The `security` section stores `adminPasswordHash` and `cronApiKey`. `cronApiKey` is generated automatically when missing and is used by the protected `cronRefreshSocialReactions` API for external schedulers such as GitHub Actions.
 
+When the DB is fresh and the settings table has no rows, ThreadForge uses application defaults: gdgd/special posting OFF, list page size 20, SNS hashtag `#art`, all SNS integrations OFF, and SNS credential fields empty. An empty or non-positive list page size shows all posts on one page.
+
 ## Backups
 
-Use the admin screen export button to download one JSON file containing:
+Use the admin maintenance screen full backup export button to download one ZIP file containing:
 
-- DB rows
-- images as base64 payloads
-- admin settings
+- posts and replies
+- edit revisions
+- users
+- claimed works
+- access-count history
+- settings
+- post images and user icons under `images/`
 
-Importing this backup JSON is a full restore. It replaces posts and images, then restores settings from the backup.
+Login sessions are intentionally not included; users sign in again after restore.
+
+Importing this full backup ZIP is a full restore. It replaces backed-up DB rows and images, then restores settings from the backup. Legacy JSON backups from earlier versions remain import-compatible.
 
 ## Local Archive Import
 

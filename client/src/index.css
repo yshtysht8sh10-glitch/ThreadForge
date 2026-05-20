@@ -359,6 +359,21 @@ img.thumbnail {
   gap: 1.65rem;
 }
 
+.board-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+  color: var(--panel-label);
+  font-weight: 700;
+}
+
+.board-pager button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .board-message {
   border: 1px solid #777;
   padding: 1rem;
@@ -1166,6 +1181,36 @@ button.post-reset-button:hover {
 .admin-settings-grid label {
   display: grid;
   gap: 0.25rem;
+}
+
+.admin-settings-grid label.admin-setting-disabled {
+  color: #6f7a86;
+}
+
+.admin-settings-grid label.admin-setting-disabled > span {
+  color: #8a96a6;
+}
+
+.admin-settings-grid input:disabled,
+.admin-settings-grid textarea:disabled,
+.admin-settings-grid select:disabled {
+  cursor: not-allowed;
+  color: #778392;
+  border-color: #3f4854;
+  background-color: #151b23;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.035) 0,
+    rgba(255, 255, 255, 0.035) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  opacity: 1;
+}
+
+.admin-settings-grid input:disabled::placeholder,
+.admin-settings-grid textarea:disabled::placeholder {
+  color: #647080;
 }
 
 .admin-settings-grid-compact {
