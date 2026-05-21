@@ -341,6 +341,33 @@ describe('AdminPage', () => {
     expect(screen.queryByText('ローカルアーカイブログ追加インポート')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('ローカルアーカイブログディレクトリ')).not.toBeInTheDocument();
   });
+
+  it('requires confirmation when changing the admin password', async () => {
+    vi.mocked(api.changeAdminPassword).mockResolvedValue({ success: true, message: '管理者パスワードを変更しました。' });
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '保守' }));
+    const maintenancePanel = screen.getByRole('heading', { name: '保守' }).closest('section')!;
+    const changePasswordSection = within(maintenancePanel).getByRole('heading', { name: '管理者パスワード変更' }).closest('section')!;
+
+    fireEvent.change(within(changePasswordSection).getByLabelText('新しい管理者パスワード'), { target: { value: 'next-secret' } });
+    fireEvent.change(within(changePasswordSection).getByLabelText('確認'), { target: { value: 'wrong-secret' } });
+    fireEvent.click(within(changePasswordSection).getByRole('button', { name: '変更' }));
+
+    expect(await screen.findByText('エラー: 確認用パスワードが一致しません。')).toBeInTheDocument();
+    expect(api.changeAdminPassword).not.toHaveBeenCalled();
+
+    fireEvent.change(within(changePasswordSection).getByLabelText('確認'), { target: { value: 'next-secret' } });
+    fireEvent.click(within(changePasswordSection).getByRole('button', { name: '変更' }));
+
+    await waitFor(() => expect(api.changeAdminPassword).toHaveBeenCalledWith('admin-secret', 'next-secret'));
+    expect(window.localStorage.getItem('threadforgeAdminPassword')).toBe('next-secret');
+  });
+
   it('shows analytics chart and aggregates selected metrics by unit', async () => {
     render(
       <MemoryRouter>

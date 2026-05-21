@@ -29,6 +29,7 @@ const AdminPage = () => {
   const [adminPasswordConfigured, setAdminPasswordConfigured] = useState<boolean | null>(null);
   const backupImportInputRef = useRef<HTMLInputElement | null>(null);
   const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [newAdminPasswordConfirm, setNewAdminPasswordConfirm] = useState('');
   const [initialAdminPassword, setInitialAdminPassword] = useState('');
   const [initialAdminPasswordConfirm, setInitialAdminPasswordConfirm] = useState('');
   const [analyticsMetric, setAnalyticsMetric] = useState<AnalyticsMetric>('postCount');
@@ -237,12 +238,17 @@ const AdminPage = () => {
       setError('新しい管理パスワードを入力してください。');
       return;
     }
+    if (newAdminPassword !== newAdminPasswordConfirm) {
+      setError('確認用パスワードが一致しません。');
+      return;
+    }
     const response = await api.changeAdminPassword(adminPassword, newAdminPassword);
     setStatus(response.message);
     setAdminPassword(newAdminPassword);
     setAdminPasswordConfigured(true);
     window.localStorage.setItem('threadforgeAdminPassword', newAdminPassword);
     setNewAdminPassword('');
+    setNewAdminPasswordConfirm('');
   });
 
   const updateSetting = (section: keyof Settings, key: string, value: SettingValue) => {
@@ -360,6 +366,10 @@ const AdminPage = () => {
                     <label>
                       新しい管理者パスワード
                       <input type="password" value={newAdminPassword} onChange={(event) => setNewAdminPassword(event.target.value)} />
+                    </label>
+                    <label>
+                      確認
+                      <input type="password" value={newAdminPasswordConfirm} onChange={(event) => setNewAdminPasswordConfirm(event.target.value)} />
                     </label>
                     <div className="button-row align-right">
                       <button type="submit">変更</button>
