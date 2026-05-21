@@ -173,7 +173,7 @@ export const DEFAULT_ADMIN_SETTINGS = {
 };
 
 export function apiBase(): string {
-  return import.meta.env.VITE_API_BASE_URL || '/api.php';
+  return import.meta.env.VITE_API_BASE_URL || 'api.php';
 }
 
 export function mediaUrl(path?: string | null): string | null {
@@ -185,8 +185,9 @@ export function mediaUrl(path?: string | null): string | null {
     return path;
   }
 
-  const base = new URL(apiBase(), window.location.origin);
-  return new URL(path, base.origin).toString();
+  const base = new URL(apiBase(), window.location.href);
+  const relativePath = path.startsWith('/') ? path.slice(1) : path;
+  return new URL(relativePath, base).toString();
 }
 
 export function isMockMode(): boolean {

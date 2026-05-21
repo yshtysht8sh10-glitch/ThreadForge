@@ -41,7 +41,7 @@ if (-not $SkipClientBuild) {
     try {
         $previousApiBase = $env:VITE_API_BASE_URL
         $previousUseMock = $env:VITE_USE_MOCK
-        $env:VITE_API_BASE_URL = './api.php'
+        $env:VITE_API_BASE_URL = 'api.php'
         $env:VITE_USE_MOCK = 'false'
         npm run build
     } finally {

@@ -47,7 +47,7 @@ const AppShell = () => {
           <span className="nav-separator">|</span>
           <a href={homeHref(publicSettings.config.homePageUrl)}>HOME</a>
           <span className="nav-separator">|</span>
-          <Link to="/" reloadDocument>一覧</Link>
+          <Link to="/">一覧</Link>
           <span className="nav-separator">|</span>
           <Link to="/post">投稿</Link>
           <span className="nav-separator">|</span>
@@ -100,13 +100,23 @@ const App = () => (
 
 export function homeHref(value?: string): string {
   const raw = (value ?? '').trim();
-  if (raw === '') {
-    return '/';
+  if (raw === '' || raw === '/' || raw === './') {
+    return appHomeHref();
   }
   if (/^https?:\/\//i.test(raw) || raw.startsWith('/')) {
     return raw;
   }
   return `https://${raw}`;
+}
+
+function appHomeHref(): string {
+  const pathname = window.location.pathname;
+  const basePath = pathname.endsWith('/index.html')
+    ? pathname.slice(0, -'index.html'.length)
+    : pathname.endsWith('/')
+      ? pathname
+      : `${pathname.replace(/\/[^/]*$/, '')}/`;
+  return `${basePath}#/`;
 }
 
 export default App;

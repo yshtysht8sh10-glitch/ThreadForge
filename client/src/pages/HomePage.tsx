@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { Post } from '../types';
 import ThreadList from '../components/ThreadList';
@@ -10,6 +10,7 @@ const HomePage = () => {
   const [pageSize, setPageSize] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
   const targetId = searchParams.get('target');
   const page = Math.max(1, Number(searchParams.get('page') || '1') || 1);
 
@@ -27,10 +28,10 @@ const HomePage = () => {
   }, [targetId, page]);
 
   useLayoutEffect(() => {
-    if (loading || error || !window.location.hash) return;
-    const target = document.querySelector(window.location.hash);
+    if (loading || error || !location.hash) return;
+    const target = document.querySelector(location.hash);
     target?.scrollIntoView({ block: 'start' });
-  }, [loading, error, threads]);
+  }, [loading, error, location.hash, threads]);
 
   if (loading) {
     return <div className="board-message">読み込み中...</div>;
