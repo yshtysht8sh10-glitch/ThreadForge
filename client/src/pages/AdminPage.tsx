@@ -362,7 +362,7 @@ const AdminPage = () => {
                 <h3>管理者パスワード変更</h3>
                 <div className="admin-maintenance-section-body">
                   <p>管理画面へ入るためのパスワードを変更します。変更後は新しいパスワードで入り直してください。</p>
-                  <form onSubmit={changeAdminPassword} className="admin-maintenance-form">
+                  <form onSubmit={changeAdminPassword} className="admin-maintenance-form admin-password-change-form">
                     <label>
                       新しい管理者パスワード
                       <input type="password" value={newAdminPassword} onChange={(event) => setNewAdminPassword(event.target.value)} />
