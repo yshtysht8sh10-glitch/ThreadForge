@@ -257,6 +257,21 @@ describe('AdminPage', () => {
     await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['1'], 'admin-secret'));
   });
 
+  it('selects reply comments by display-number range notation', async () => {
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Body');
+    fireEvent.change(screen.getByLabelText('範囲指定'), { target: { value: '1-1' } });
+    fireEvent.click(screen.getByRole('button', { name: '範囲を選択' }));
+    fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を一括削除' }));
+
+    await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['2'], 'admin-secret'));
+  });
+
   it('edits HOME and manual settings from the settings tab', async () => {
     vi.mocked(api.updateSettings).mockResolvedValue({ success: true, message: '設定を保存しました。' });
     render(

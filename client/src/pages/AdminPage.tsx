@@ -1224,33 +1224,53 @@ function adminDisplayNo(post: Post): string {
 }
 
 function idsFromDisplayRange(posts: Post[], rangeText: string): string[] {
-  const wanted = parseDisplayRange(rangeText);
-  if (wanted.size === 0) {
-    return [];
-  }
-  return posts
-    .filter((post) => wanted.has(Number(post.display_no ?? post.id)))
-    .map((post) => String(post.id));
-}
+  const refs = displayRefs(posts);
+  const selected = new Set<string>();
 
-function parseDisplayRange(rangeText: string): Set<number> {
-  const result = new Set<number>();
   rangeText.split(',').map((part) => part.trim()).filter(Boolean).forEach((part) => {
-    const match = part.match(/^(\d+)\s*-\s*(\d+)$/);
-    if (match) {
-      const start = Number(match[1]);
-      const end = Number(match[2]);
-      for (let value = Math.min(start, end); value <= Math.max(start, end); value += 1) {
-        result.add(value);
+    const pair = part.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (pair) {
+      const first = Number(pair[1]);
+      const second = Number(pair[2]);
+      const exactReply = refs.find((ref) => ref.replyNo !== null && ref.displayNo === first && ref.replyNo === second);
+      if (exactReply && first >= second) {
+        selected.add(exactReply.id);
+        return;
+      }
+      const rangeRefs = refs.filter((ref) => ref.replyNo === null && ref.displayNo >= Math.min(first, second) && ref.displayNo <= Math.max(first, second));
+      rangeRefs.forEach((ref) => selected.add(ref.id));
+      if (rangeRefs.length === 0 && exactReply) {
+        selected.add(exactReply.id);
       }
       return;
     }
+
     const single = Number(part);
-    if (Number.isInteger(single) && single > 0) {
-      result.add(single);
+    if (!Number.isInteger(single) || single < 1) {
+      return;
     }
+    const topLevelRefs = refs.filter((ref) => ref.replyNo === null && ref.displayNo === single);
+    const matchingRefs = topLevelRefs.length > 0 ? topLevelRefs : refs.filter((ref) => ref.displayNo === single);
+    matchingRefs.forEach((ref) => selected.add(ref.id));
   });
-  return result;
+
+  return [...selected];
+}
+
+function displayRefs(posts: Post[]): Array<{ id: string; displayNo: number; replyNo: number | null }> {
+  return posts.flatMap((post) => {
+    const displayNo = Number(post.display_no ?? post.id);
+    const refs = [{
+      id: String(post.id),
+      displayNo,
+      replyNo: post.parent_id === 0 ? null : Number(post.reply_no ?? post.id),
+    }];
+    return refs.concat((post.replies ?? []).map((reply) => ({
+      id: String(reply.id),
+      displayNo,
+      replyNo: Number(reply.reply_no ?? reply.id),
+    })));
+  });
 }
 
 export default AdminPage;
