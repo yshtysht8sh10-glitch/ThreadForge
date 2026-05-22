@@ -47,7 +47,7 @@ describe('ThreadPage', () => {
 
     renderThreadPage();
 
-    expect(await screen.findByText('[No・1] Thread title')).toBeInTheDocument();
+    expect(await screen.findByText('[No.1] Thread title')).toBeInTheDocument();
     expect(screen.getByText('Thread body')).toBeInTheDocument();
     expect(screen.getByText('Reply 1')).toBeInTheDocument();
     expect(screen.getByText('Reply 2')).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe('ThreadPage', () => {
   it('does not show tweet controls or tweet text on the thread detail screen', async () => {
     renderThreadPage();
 
-    await screen.findByText('[No・1] Thread title');
+    await screen.findByText('[No.1] Thread title');
 
     expect(screen.queryByText('Tweet文言')).not.toBeInTheDocument();
     expect(screen.queryByText(/\[DT000000/)).not.toBeInTheDocument();
@@ -173,7 +173,7 @@ describe('ThreadPage', () => {
   it('returns to the list from the thread detail form area', async () => {
     renderThreadPage();
 
-    await screen.findByText('[No・1] Thread title');
+    await screen.findByText('[No.1] Thread title');
     fireEvent.click(screen.getByRole('button', { name: '一覧に戻る' }));
 
     await screen.findByText('/');

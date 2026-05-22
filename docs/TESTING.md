@@ -61,6 +61,9 @@ Covered behavior:
 - Image replacement preserving archived history through HTTP
 - Search API empty query, pagination, scope, and escaped wildcard edges
 - Error paths for password mismatch and missing posts
+- Admin bulk-delete range selection
+- Admin restore/purge flows, including data purge, row-level number purge, and top-level display-number compaction
+- Admin user management, including edit, information erase, row-level user delete, and user-number compaction
 
 Run:
 

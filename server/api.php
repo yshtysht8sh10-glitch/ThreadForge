@@ -111,8 +111,23 @@ function handleApiRequest(): void
         case 'restorePost':
             restorePost($pdo);
             break;
+        case 'purgePostData':
+            purgePostData($pdo);
+            break;
+        case 'destroyPostNumber':
+            destroyPostNumber($pdo);
+            break;
         case 'adminDeletePosts':
             adminDeletePosts($pdo);
+            break;
+        case 'listAdminUsers':
+            listAdminUsers($pdo);
+            break;
+        case 'adminUpdateUser':
+            adminUpdateUser($pdo);
+            break;
+        case 'adminDeleteUser':
+            adminDeleteUser($pdo);
             break;
         case 'adminCheckIntegrity':
             adminCheckIntegrity($pdo);
@@ -1914,6 +1929,64 @@ function restorePost(PDO $pdo): void
     jsonResponse(['success' => true, 'message' => '投稿を復元しました。']);
 }
 
+function purgePostData(PDO $pdo): void
+{
+    requireAdmin();
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    if ($id === false || $id === null) {
+        jsonResponse(['success' => false, 'message' => '投稿IDが不正です。'], 400);
+    }
+
+    $post = findPostById($pdo, $id);
+    if (!$post) {
+        jsonResponse(['success' => false, 'message' => '投稿が見つかりません。'], 404);
+    }
+
+    $pdo->beginTransaction();
+    try {
+        if ((int)$post['thread_id'] === $id) {
+            eraseThreadDataKeepingNumber($pdo, $id);
+        } else {
+            eraseReplyDataKeepingNumber($pdo, $id);
+        }
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
+
+    jsonResponse(['success' => true, 'message' => '投稿データを消去しました。表示番号は保持されています。']);
+}
+
+function destroyPostNumber(PDO $pdo): void
+{
+    requireAdmin();
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    if ($id === false || $id === null) {
+        jsonResponse(['success' => false, 'message' => '投稿IDが不正です。'], 400);
+    }
+
+    $post = findPostById($pdo, $id);
+    if (!$post) {
+        jsonResponse(['success' => false, 'message' => '投稿が見つかりません。'], 404);
+    }
+
+    $pdo->beginTransaction();
+    try {
+        if ((int)$post['thread_id'] === $id) {
+            permanentlyDeleteThread($pdo, $id);
+        } else {
+            permanentlyDeletePosts($pdo, [$id]);
+        }
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
+
+    jsonResponse(['success' => true, 'message' => '投稿番号ごと完全削除しました。']);
+}
+
 function requireAdmin(): void
 {
     $pdo = getConnection();
@@ -1968,6 +2041,295 @@ function adminDeletePosts(PDO $pdo): void
     }
 
     jsonResponse(['success' => true, 'message' => $deleted . '件を削除しました。']);
+}
+
+function listAdminUsers(PDO $pdo): void
+{
+    requireAdmin();
+    $stmt = $pdo->query(
+        'SELECT u.*,
+                (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
+                (SELECT COUNT(*) FROM user_post_claims c WHERE c.user_id = u.id) AS claim_count
+         FROM users u
+         ORDER BY u.id ASC'
+    );
+    $users = array_map(static fn(array $row): array => [
+        'id' => (int)$row['id'],
+        'login_id' => (string)$row['login_id'],
+        'display_name' => (string)$row['display_name'],
+        'post_password' => (string)$row['post_password'],
+        'home_url' => $row['home_url'] ?? '',
+        'icon_path' => publicStoragePath($row['icon_path'] ?? null),
+        'created_at' => (string)$row['created_at'],
+        'updated_at' => (string)$row['updated_at'],
+        'post_count' => (int)$row['post_count'],
+        'claim_count' => (int)$row['claim_count'],
+    ], $stmt->fetchAll(PDO::FETCH_ASSOC));
+
+    jsonResponse(['success' => true, 'users' => $users]);
+}
+
+function adminUpdateUser(PDO $pdo): void
+{
+    requireAdmin();
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    if ($id === false || $id === null) {
+        jsonResponse(['success' => false, 'message' => 'ユーザーIDが不正です。'], 400);
+    }
+    $user = findUserById($pdo, $id);
+    if (!$user) {
+        jsonResponse(['success' => false, 'message' => 'ユーザーが見つかりません。'], 404);
+    }
+
+    $loginId = trim((string)($_POST['login_id'] ?? $user['login_id']));
+    $displayName = trim((string)($_POST['display_name'] ?? $user['display_name']));
+    $postPassword = trim((string)($_POST['post_password'] ?? $user['post_password']));
+    $homeUrl = normalizeUrl($_POST['home_url'] ?? ($user['home_url'] ?? null));
+    $newPassword = trim((string)($_POST['login_password'] ?? ''));
+
+    if ($loginId === '' || $displayName === '') {
+        jsonResponse(['success' => false, 'message' => 'IDと名前を入力してください。'], 400);
+    }
+    if (mb_strlen($displayName) > 30) {
+        jsonResponse(['success' => false, 'message' => '名前は30文字以内で入力してください。'], 400);
+    }
+    if (strlen($postPassword) > 8) {
+        $postPassword = substr($postPassword, 0, 8);
+    }
+
+    $duplicate = findUserByLoginId($pdo, $loginId);
+    if ($duplicate && (int)$duplicate['id'] !== $id) {
+        jsonResponse(['success' => false, 'message' => 'このIDは既に使われています。'], 409);
+    }
+
+    $fields = 'login_id = :login_id, display_name = :display_name, post_password = :post_password, home_url = :home_url, updated_at = :updated_at';
+    $params = [
+        ':id' => $id,
+        ':login_id' => $loginId,
+        ':display_name' => $displayName,
+        ':post_password' => $postPassword,
+        ':home_url' => $homeUrl,
+        ':updated_at' => currentTimestamp(),
+    ];
+    if ($newPassword !== '') {
+        $fields .= ', password_hash = :password_hash';
+        $params[':password_hash'] = password_hash($newPassword, PASSWORD_DEFAULT);
+    }
+    $stmt = $pdo->prepare('UPDATE users SET ' . $fields . ' WHERE id = :id');
+    $stmt->execute($params);
+
+    jsonResponse(['success' => true, 'message' => 'ユーザー情報を更新しました。']);
+}
+
+function adminDeleteUser(PDO $pdo): void
+{
+    requireAdmin();
+    $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+    $stage = filter_input(INPUT_POST, 'stage', FILTER_VALIDATE_INT) ?: 1;
+    if ($id === false || $id === null) {
+        jsonResponse(['success' => false, 'message' => 'ユーザーIDが不正です。'], 400);
+    }
+    $user = findUserById($pdo, $id);
+    if (!$user) {
+        jsonResponse(['success' => false, 'message' => 'ユーザーが見つかりません。'], 404);
+    }
+
+    $pdo->beginTransaction();
+    try {
+        if ($stage >= 2) {
+            deleteStorageFile($user['icon_path'] ?? null);
+            $pdo->prepare('UPDATE posts SET user_id = NULL WHERE user_id = :id')->execute([':id' => $id]);
+            $pdo->prepare('DELETE FROM user_sessions WHERE user_id = :id')->execute([':id' => $id]);
+            $pdo->prepare('DELETE FROM user_post_claims WHERE user_id = :id')->execute([':id' => $id]);
+            $pdo->prepare('DELETE FROM users WHERE id = :id')->execute([':id' => $id]);
+            compactUserIds($pdo);
+            $message = 'ユーザー番号ごと完全削除しました。';
+        } else {
+            deleteStorageFile($user['icon_path'] ?? null);
+            $stmt = $pdo->prepare(
+                'UPDATE users
+                 SET login_id = :login_id,
+                     password_hash = :password_hash,
+                     display_name = :display_name,
+                     post_password = "",
+                     home_url = NULL,
+                     icon_path = NULL,
+                     updated_at = :updated_at
+                 WHERE id = :id'
+            );
+            $stmt->execute([
+                ':id' => $id,
+                ':login_id' => 'deleted_user_' . $id,
+                ':password_hash' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
+                ':display_name' => '削除済みユーザー',
+                ':updated_at' => currentTimestamp(),
+            ]);
+            $pdo->prepare('DELETE FROM user_sessions WHERE user_id = :id')->execute([':id' => $id]);
+            $message = 'ユーザー情報を消去しました。ユーザー番号は保持されています。';
+        }
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
+
+    jsonResponse(['success' => true, 'message' => $message]);
+}
+
+function eraseThreadDataKeepingNumber(PDO $pdo, int $threadId): void
+{
+    $stmt = $pdo->prepare('SELECT id, image_path FROM posts WHERE thread_id = :thread_id AND id != :thread_id');
+    $stmt->execute([':thread_id' => $threadId]);
+    $replyRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $replyIds = array_map(static fn(array $row): int => (int)$row['id'], $replyRows);
+    foreach ($replyRows as $row) {
+        deleteStorageFile($row['image_path'] ?? null);
+    }
+    if ($replyIds !== []) {
+        permanentlyDeletePosts($pdo, $replyIds, false);
+    }
+
+    $stmt = $pdo->prepare('SELECT image_path FROM posts WHERE id = :id');
+    $stmt->execute([':id' => $threadId]);
+    deleteStorageFile($stmt->fetchColumn() ?: null);
+    $update = $pdo->prepare(
+        'UPDATE posts
+         SET name = "消去済み",
+             url = NULL,
+             title = "消去済み",
+             message = "この投稿は消去されました。",
+             image_path = NULL,
+             password_hash = :password_hash,
+             gdgd = 0,
+             tweet_off = 1,
+             tweet_text = NULL,
+             tweet_url = NULL,
+             tweet_like_count = 0,
+             tweet_retweet_count = 0,
+             tweet_comment_count = 0,
+             tweet_impression_count = 0,
+             bluesky_uri = NULL,
+             bluesky_cid = NULL,
+             bluesky_url = NULL,
+             bluesky_like_count = 0,
+             bluesky_repost_count = 0,
+             bluesky_quote_count = 0,
+             mastodon_id = NULL,
+             mastodon_url = NULL,
+             mastodon_boost_count = 0,
+             mastodon_fav_count = 0,
+             misskey_id = NULL,
+             misskey_url = NULL,
+             misskey_fire_count = 0,
+             misskey_eyes_count = 0,
+             misskey_cry_count = 0,
+             misskey_thinking_count = 0,
+             misskey_party_count = 0,
+             misskey_other_count = 0,
+             user_id = NULL,
+             view_count = 0,
+             deleted_at = COALESCE(deleted_at, :deleted_at)
+         WHERE id = :id'
+    );
+    $update->execute([
+        ':id' => $threadId,
+        ':password_hash' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
+        ':deleted_at' => currentTimestamp(),
+    ]);
+    $pdo->prepare('DELETE FROM post_revisions WHERE post_id = :id')->execute([':id' => $threadId]);
+    $pdo->prepare('DELETE FROM user_post_claims WHERE post_id = :id')->execute([':id' => $threadId]);
+}
+
+function eraseReplyDataKeepingNumber(PDO $pdo, int $id): void
+{
+    $stmt = $pdo->prepare('SELECT image_path FROM posts WHERE id = :id');
+    $stmt->execute([':id' => $id]);
+    deleteStorageFile($stmt->fetchColumn() ?: null);
+    $update = $pdo->prepare(
+        'UPDATE posts
+         SET name = "消去済み",
+             url = NULL,
+             title = "消去済み",
+             message = "この返信は消去されました。",
+             image_path = NULL,
+             password_hash = :password_hash,
+             user_id = NULL,
+             deleted_at = COALESCE(deleted_at, :deleted_at)
+         WHERE id = :id'
+    );
+    $update->execute([
+        ':id' => $id,
+        ':password_hash' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
+        ':deleted_at' => currentTimestamp(),
+    ]);
+    $pdo->prepare('DELETE FROM post_revisions WHERE post_id = :id')->execute([':id' => $id]);
+    $pdo->prepare('DELETE FROM user_post_claims WHERE post_id = :id')->execute([':id' => $id]);
+}
+
+function permanentlyDeleteThread(PDO $pdo, int $threadId): void
+{
+    $stmt = $pdo->prepare('SELECT id FROM posts WHERE thread_id = :thread_id');
+    $stmt->execute([':thread_id' => $threadId]);
+    $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    permanentlyDeletePosts($pdo, $ids, true);
+}
+
+function permanentlyDeletePosts(PDO $pdo, array $ids, bool $deleteImages = true): void
+{
+    $ids = array_values(array_unique(array_filter($ids, static fn(int $id): bool => $id > 0)));
+    if ($ids === []) {
+        return;
+    }
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    if ($deleteImages) {
+        $stmt = $pdo->prepare('SELECT image_path FROM posts WHERE id IN (' . $placeholders . ')');
+        $stmt->execute($ids);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $path) {
+            deleteStorageFile($path ?: null);
+        }
+    }
+    $pdo->prepare('DELETE FROM post_revisions WHERE post_id IN (' . $placeholders . ')')->execute($ids);
+    $pdo->prepare('DELETE FROM user_post_claims WHERE post_id IN (' . $placeholders . ')')->execute($ids);
+    $pdo->prepare('DELETE FROM posts WHERE id IN (' . $placeholders . ')')->execute($ids);
+}
+
+function deleteStorageFile(mixed $path): void
+{
+    if (!is_string($path) || $path === '') {
+        return;
+    }
+    $basename = basename($path);
+    $storagePath = STORAGE_DIR . '/' . $basename;
+    if (is_file($storagePath)) {
+        @unlink($storagePath);
+    }
+}
+
+function compactUserIds(PDO $pdo): void
+{
+    $users = $pdo->query('SELECT id FROM users ORDER BY id ASC')->fetchAll(PDO::FETCH_COLUMN);
+    $map = [];
+    $next = 1;
+    foreach ($users as $oldId) {
+        $old = (int)$oldId;
+        $map[$old] = $next++;
+    }
+    foreach (array_keys($map) as $oldId) {
+        $temporary = -abs((int)$oldId);
+        $pdo->prepare('UPDATE users SET id = :new WHERE id = :old')->execute([':new' => $temporary, ':old' => $oldId]);
+        $pdo->prepare('UPDATE posts SET user_id = :new WHERE user_id = :old')->execute([':new' => $temporary, ':old' => $oldId]);
+        $pdo->prepare('UPDATE user_sessions SET user_id = :new WHERE user_id = :old')->execute([':new' => $temporary, ':old' => $oldId]);
+        $pdo->prepare('UPDATE user_post_claims SET user_id = :new WHERE user_id = :old')->execute([':new' => $temporary, ':old' => $oldId]);
+    }
+    foreach ($map as $oldId => $newId) {
+        $temporary = -abs((int)$oldId);
+        $pdo->prepare('UPDATE users SET id = :new WHERE id = :old')->execute([':new' => $newId, ':old' => $temporary]);
+        $pdo->prepare('UPDATE posts SET user_id = :new WHERE user_id = :old')->execute([':new' => $newId, ':old' => $temporary]);
+        $pdo->prepare('UPDATE user_sessions SET user_id = :new WHERE user_id = :old')->execute([':new' => $newId, ':old' => $temporary]);
+        $pdo->prepare('UPDATE user_post_claims SET user_id = :new WHERE user_id = :old')->execute([':new' => $newId, ':old' => $temporary]);
+    }
+    $seq = count($map);
+    $pdo->prepare("UPDATE sqlite_sequence SET seq = :seq WHERE name = 'users'")->execute([':seq' => $seq]);
 }
 
 function adminCheckIntegrity(PDO $pdo): void

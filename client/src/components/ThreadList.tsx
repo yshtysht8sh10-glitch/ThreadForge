@@ -267,7 +267,7 @@ const ThreadList = ({ threads, action, showReplies = true, userIconLinks = true 
         return (
           <article key={thread.id} id={`post-${thread.id}`} data-post-id={thread.id} className={threadClassName(thread)}>
             <header className="board-thread-title">
-              <Link to={`/thread/${thread.id}`}>[No・{thread.display_no ?? thread.id}] {thread.title || '無題'}</Link>
+              <Link to={`/thread/${thread.id}`}>[No.{thread.display_no ?? thread.id}] {thread.title || '無題'}</Link>
             </header>
 
             <div className="board-thread-body">

@@ -189,7 +189,7 @@ const ThreadPage = () => {
           {thread ? (
             <article id={`post-${thread.id}`} className={threadClassName(thread)}>
               <header className="board-thread-title">
-                [No・{thread.display_no ?? thread.id}] {thread.title || '無題'}
+                [No.{thread.display_no ?? thread.id}] {thread.title || '無題'}
               </header>
 
               <div className="board-thread-body">

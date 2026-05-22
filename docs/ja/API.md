@@ -175,6 +175,73 @@ APIキーは管理画面に表示される `cronApiKey` を使います。GitHub
 - `id`: 必須
 - `admin_password`: 必須
 
+## POST `?action=purgePostData`
+
+管理者向けに削除済み投稿/返信の実データを消去します。表示番号は保持します。
+
+フィールド:
+
+- `id`: 必須
+- `admin_password`: 必須
+
+動作:
+
+- 親投稿の場合、本文、画像、SNS情報、閲覧数、編集履歴、作品紐づけを消去し、返信も消去します。
+- 返信の場合、その返信の本文、編集履歴、作品紐づけを消去します。
+- 投稿行は残るため、親投稿の表示番号は残ります。
+
+## POST `?action=destroyPostNumber`
+
+管理者向けに投稿/返信の行そのものを完全削除します。
+
+フィールド:
+
+- `id`: 必須
+- `admin_password`: 必須
+
+動作:
+
+- 親投稿の場合、その親投稿と返信を物理削除します。
+- 親投稿を物理削除すると、以後の親投稿の表示番号は前詰めされます。
+
+## GET `?action=listAdminUsers&admin_password={password}`
+
+管理者向けに登録ユーザー一覧を返します。
+
+レスポンス:
+
+- `success`: true
+- `users`: 管理用ユーザー情報配列
+
+## POST `?action=adminUpdateUser`
+
+管理者向けに登録ユーザー情報を更新します。
+
+フィールド:
+
+- `id`: 必須
+- `admin_password`: 必須
+- `login_id`: 必須
+- `display_name`: 必須。30文字以内
+- `post_password`: 任意。8文字を超える場合は8文字に切り詰め
+- `home_url`: 任意
+- `login_password`: 任意。指定時だけログインパスワードを再設定
+
+## POST `?action=adminDeleteUser`
+
+管理者向けに登録ユーザーを消去します。
+
+フィールド:
+
+- `id`: 必須
+- `stage`: `1` または `2`
+- `admin_password`: 必須
+
+動作:
+
+- `stage=1`: ユーザー情報とログインセッションを消去します。ユーザー番号は保持します。
+- `stage=2`: ユーザー行を物理削除し、残ったユーザー番号を前詰めします。
+
 ## Post 型
 
 ```ts

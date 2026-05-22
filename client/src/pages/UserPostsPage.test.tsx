@@ -100,7 +100,7 @@ describe('UserPostsPage', () => {
     const heading = screen.getByText('Alice の作品').closest('h1') as HTMLElement;
     expect(heading.querySelector('img')).toHaveAttribute('src', '/storage/data/user_7.png');
     expect(screen.getByRole('link', { name: '一覧に戻る' })).toHaveAttribute('href', '/');
-    expect(screen.getByText('[No・90] Owned work')).toBeInTheDocument();
+    expect(screen.getByText('[No.90] Owned work')).toBeInTheDocument();
     expect(screen.queryByText('hidden reply')).not.toBeInTheDocument();
     expect(screen.queryByText('このユーザーの作品を見ますか？')).not.toBeInTheDocument();
   });

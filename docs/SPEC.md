@@ -45,8 +45,8 @@ ThreadForge is presented as a new self-hosted board engine that can be adapted f
 - Thread detail keeps users on the same page after submitting comments or "eejanaika"
 - Soft delete with data retained internally
 - Edit and delete using post password
-- Admin restore for soft-deleted posts
-- Admin bulk delete without per-post passwords
+- Admin restore/purge for soft-deleted posts
+- Admin bulk delete without per-post passwords, including display-number range selection
 - Admin DB integrity check
 - Admin full backup export/import for posts, replies, edit revisions, users, claimed works, access history, images, and settings
 - Local, non-destructive import for local archive `LOG_*.cgi` data through an operator batch or PHP command
@@ -63,8 +63,9 @@ The admin page uses the configured administrator password. `THREADFORGE_ADMIN_PA
 Implemented:
 
 - Load active and deleted posts
-- Bulk delete selected posts or replies without individual post passwords
-- Restore deleted posts
+- Bulk delete selected posts or replies without individual post passwords, or select top-level display-number ranges
+- Restore/purge deleted posts. Purge can erase post data while keeping display numbers, or remove rows and compact top-level display numbers
+- Manage registered users: edit user information, erase user information while keeping the user number, or delete the user row and compact user numbers
 - Check DB consistency
 - Export full backup ZIP containing posts, replies, edit revisions, users, claimed works, access history, images, and settings
 - Import full backup ZIP and restore DB rows/images/settings. Legacy JSON backups remain import-compatible. Login sessions are intentionally not included.
@@ -171,12 +172,26 @@ Public UI reads a safe subset of settings through `?action=publicSettings`:
 
 ## Deletion Rules
 
-Deletion is soft delete:
+Normal deletion is soft delete:
 
 - Posts disappear from normal UI.
 - Data remains in DB with `deleted_at`.
-- Admin can restore deleted posts.
+- Admin can restore deleted posts from the restore/purge screen.
 - Deleting a top-level thread also soft-deletes its replies.
+- The restore/purge screen supports two destructive admin operations for deleted posts.
+- Stage 1 purge erases content, image references, replies, SNS metadata, edit revisions, and user claims while preserving the top-level display number.
+- Stage 2 number purge physically deletes the post row. When a top-level post is removed this way, later top-level display numbers close up.
+- Bulk delete and restore/purge support range input such as `1-10, 15` for top-level display numbers.
+
+## User Administration
+
+The maintenance tab can manage registered users.
+
+- Editing a user first shows a confirmation message. If confirmed, admin can edit login ID, display name, post password, URL/HOME, and optionally reset the login password.
+- User edits validate duplicate login IDs and the 30-character display-name limit.
+- User deletion has two stages.
+- Stage 1 erases personal user information and sessions while preserving the user number.
+- Stage 2 physically deletes the user row, clears direct post ownership references for that user, and compacts remaining user numbers.
 
 ## Public Naming
 

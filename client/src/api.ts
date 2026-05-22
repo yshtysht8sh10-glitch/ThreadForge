@@ -1,6 +1,19 @@
 import { NewPostData, Post, ThreadResponse, SearchResult, UserProfile } from './types';
 import { APP_NAME, APP_VERSION } from './version';
 
+export type AdminUser = {
+  id: number;
+  login_id: string;
+  display_name: string;
+  post_password: string;
+  home_url?: string | null;
+  icon_path?: string | null;
+  created_at: string;
+  updated_at: string;
+  post_count: number;
+  claim_count: number;
+};
+
 export type PublicSettings = {
   config: {
     bbsTitle: string;
@@ -393,7 +406,11 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
     case 'claimUserPost':
     case 'unclaimUserPost':
     case 'restorePost':
+    case 'purgePostData':
+    case 'destroyPostNumber':
     case 'adminDeletePosts':
+    case 'adminUpdateUser':
+    case 'adminDeleteUser':
     case 'updateSettings':
     case 'initializeAdminPassword':
     case 'changeAdminPassword':
@@ -405,6 +422,22 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
         message: 'DBを確認しました（モック）',
         orphan_replies: 0,
         missing_image_post_ids: [],
+      } as T;
+    case 'listAdminUsers':
+      return {
+        success: true,
+        users: [{
+          id: 1,
+          login_id: 'blank',
+          display_name: 'Blank',
+          post_password: 'password',
+          home_url: '',
+          icon_path: null,
+          created_at: '2024-01-01 00:00:00',
+          updated_at: '2024-01-01 00:00:00',
+          post_count: 1,
+          claim_count: 0,
+        }],
       } as T;
     case 'refreshSocialReactions':
       return {
@@ -588,10 +621,58 @@ export const api = {
       body: formData,
     });
   },
+  purgePostData: async (id: string, adminPassword: string): Promise<{ success: boolean; message: string }> => {
+    const formData = new FormData();
+    formData.append('action', 'purgePostData');
+    formData.append('id', id);
+    formData.append('admin_password', adminPassword);
+    return fetchJson(`${apiBase()}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
+  destroyPostNumber: async (id: string, adminPassword: string): Promise<{ success: boolean; message: string }> => {
+    const formData = new FormData();
+    formData.append('action', 'destroyPostNumber');
+    formData.append('id', id);
+    formData.append('admin_password', adminPassword);
+    return fetchJson(`${apiBase()}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
   adminDeletePosts: async (ids: string[], adminPassword: string): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();
     formData.append('action', 'adminDeletePosts');
     formData.append('ids', ids.join(','));
+    formData.append('admin_password', adminPassword);
+    return fetchJson(`${apiBase()}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
+  listAdminUsers: async (adminPassword: string): Promise<{ success: boolean; users: AdminUser[] }> => {
+    return fetchJson(`${apiBase()}?action=listAdminUsers&admin_password=${encodeURIComponent(adminPassword)}`);
+  },
+  adminUpdateUser: async (payload: Partial<AdminUser> & { id: number; login_password?: string }, adminPassword: string): Promise<{ success: boolean; message: string }> => {
+    const formData = new FormData();
+    formData.append('action', 'adminUpdateUser');
+    formData.append('admin_password', adminPassword);
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        formData.append(key, String(value));
+      }
+    });
+    return fetchJson(`${apiBase()}`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
+  adminDeleteUser: async (id: number, stage: 1 | 2, adminPassword: string): Promise<{ success: boolean; message: string }> => {
+    const formData = new FormData();
+    formData.append('action', 'adminDeleteUser');
+    formData.append('id', String(id));
+    formData.append('stage', String(stage));
     formData.append('admin_password', adminPassword);
     return fetchJson(`${apiBase()}`, {
       method: 'POST',

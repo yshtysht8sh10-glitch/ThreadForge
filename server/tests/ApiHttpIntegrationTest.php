@@ -690,6 +690,104 @@ final class ApiHttpIntegrationTest extends TestCase
         );
     }
 
+    public function testAdminCanPurgeDeletedPostDataAndThenDestroyDisplayNumber(): void
+    {
+        $this->setAdminPassword('admin-secret');
+        $firstId = $this->insertPost('First', 'First title', 'First body', '2026-05-01 10:00:00');
+        $replyId = $this->insertReply($firstId, 'Reply body', '2026-05-01 10:30:00');
+        $secondId = $this->insertPost('Second', 'Second title', 'Second body', '2026-05-02 10:00:00');
+
+        $softDeleted = $this->postForm([
+            'action' => 'adminDeletePosts',
+            'ids' => (string)$firstId,
+            'admin_password' => 'admin-secret',
+        ]);
+        $this->assertSame(200, $softDeleted['status'], (string)$softDeleted['body']);
+        $this->assertTrue($softDeleted['json']['success']);
+
+        $purged = $this->postForm([
+            'action' => 'purgePostData',
+            'id' => (string)$firstId,
+            'admin_password' => 'admin-secret',
+        ]);
+        $this->assertSame(200, $purged['status'], (string)$purged['body']);
+        $this->assertTrue($purged['json']['success']);
+        $this->assertSame('消去済み', $this->postById($firstId)['title']);
+        $this->assertNull($this->postById($replyId));
+
+        $beforeDestroy = $this->getJson(['action' => 'listThreads']);
+        $this->assertSame(200, $beforeDestroy['status']);
+        $this->assertSame($secondId, $beforeDestroy['json'][0]['id']);
+        $this->assertSame(2, $beforeDestroy['json'][0]['display_no']);
+
+        $destroyed = $this->postForm([
+            'action' => 'destroyPostNumber',
+            'id' => (string)$firstId,
+            'admin_password' => 'admin-secret',
+        ]);
+        $this->assertSame(200, $destroyed['status'], (string)$destroyed['body']);
+        $this->assertTrue($destroyed['json']['success']);
+        $this->assertNull($this->postById($firstId));
+
+        $afterDestroy = $this->getJson(['action' => 'listThreads']);
+        $this->assertSame(200, $afterDestroy['status']);
+        $this->assertSame($secondId, $afterDestroy['json'][0]['id']);
+        $this->assertSame(1, $afterDestroy['json'][0]['display_no']);
+    }
+
+    public function testAdminCanEditEraseAndCompactUsers(): void
+    {
+        $this->setAdminPassword('admin-secret');
+        $firstUserId = $this->insertUser('first', 'First');
+        $secondUserId = $this->insertUser('second', 'Second');
+
+        $updated = $this->postForm([
+            'action' => 'adminUpdateUser',
+            'admin_password' => 'admin-secret',
+            'id' => (string)$firstUserId,
+            'login_id' => 'first2',
+            'display_name' => 'First Updated',
+            'post_password' => 'poster',
+            'home_url' => 'https://example.com/',
+        ]);
+        $this->assertSame(200, $updated['status'], (string)$updated['body']);
+        $this->assertTrue($updated['json']['success']);
+
+        $users = $this->getJson(['action' => 'listAdminUsers', 'admin_password' => 'admin-secret']);
+        $this->assertSame(200, $users['status']);
+        $this->assertSame('first2', $users['json']['users'][0]['login_id']);
+        $this->assertSame('First Updated', $users['json']['users'][0]['display_name']);
+
+        $erased = $this->postForm([
+            'action' => 'adminDeleteUser',
+            'admin_password' => 'admin-secret',
+            'id' => (string)$firstUserId,
+            'stage' => '1',
+        ]);
+        $this->assertSame(200, $erased['status'], (string)$erased['body']);
+        $this->assertTrue($erased['json']['success']);
+
+        $erasedUsers = $this->getJson(['action' => 'listAdminUsers', 'admin_password' => 'admin-secret']);
+        $this->assertSame('deleted_user_' . $firstUserId, $erasedUsers['json']['users'][0]['login_id']);
+        $this->assertSame('削除済みユーザー', $erasedUsers['json']['users'][0]['display_name']);
+        $this->assertSame($firstUserId, $erasedUsers['json']['users'][0]['id']);
+
+        $destroyed = $this->postForm([
+            'action' => 'adminDeleteUser',
+            'admin_password' => 'admin-secret',
+            'id' => (string)$firstUserId,
+            'stage' => '2',
+        ]);
+        $this->assertSame(200, $destroyed['status'], (string)$destroyed['body']);
+        $this->assertTrue($destroyed['json']['success']);
+
+        $compactedUsers = $this->getJson(['action' => 'listAdminUsers', 'admin_password' => 'admin-secret']);
+        $this->assertCount(1, $compactedUsers['json']['users']);
+        $this->assertSame(1, $compactedUsers['json']['users'][0]['id']);
+        $this->assertSame('second', $compactedUsers['json']['users'][0]['login_id']);
+        $this->assertNotSame($secondUserId, $compactedUsers['json']['users'][0]['id']);
+    }
+
     private function startServer(): void
     {
         $port = $this->findFreePort();

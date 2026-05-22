@@ -79,7 +79,7 @@ describe('mode pages', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText(/\[No・7\]/)).toBeInTheDocument();
+    expect(await screen.findByText(/\[No\.7\]/)).toBeInTheDocument();
     expect(screen.getByText('投稿本文')).toBeInTheDocument();
     expect(screen.getByText('ええじゃないか').closest('.board-reply-text')).toHaveClass('eejanaika-reply-eejanaika');
     expect(screen.getByLabelText('No.7 を選択')).toBeInTheDocument();
@@ -94,7 +94,7 @@ describe('mode pages', () => {
       </MemoryRouter>,
     );
 
-    await screen.findByText(/\[No・7\]/);
+    await screen.findByText(/\[No\.7\]/);
     fireEvent.click(screen.getByLabelText('返信No.7-1 を選択'));
     fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を削除する' }));
@@ -106,8 +106,8 @@ describe('mode pages', () => {
   it('shows posts and replies with checkboxes on the edit mode page', async () => {
     renderEditMode();
 
-    expect(await screen.findByText(/\[No・7\]/)).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /\[No・7\]/ })).not.toBeInTheDocument();
+    expect(await screen.findByText(/\[No\.7\]/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /\[No\.7\]/ })).not.toBeInTheDocument();
     expect(screen.getByText('ええじゃないか').closest('.board-reply-text')).toHaveClass('eejanaika-reply-eejanaika');
     expect(screen.getByLabelText('No.7 を選択')).toBeInTheDocument();
     expect(screen.getByText('定型コメントは編集不可')).toBeInTheDocument();
@@ -118,7 +118,7 @@ describe('mode pages', () => {
   it('opens the checked post edit page with the shared password', async () => {
     renderEditMode();
 
-    await screen.findByText(/\[No・7\]/);
+    await screen.findByText(/\[No\.7\]/);
     fireEvent.click(screen.getByLabelText('No.7 を選択'));
     fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'secret' } });
     fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を編集する' }));

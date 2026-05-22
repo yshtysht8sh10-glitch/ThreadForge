@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { api, apiBase } from '../api';
+import { AdminUser, api, apiBase } from '../api';
 import { Post } from '../types';
 import SelectableThreadList from '../components/SelectableThreadList';
 
@@ -21,7 +21,12 @@ const AdminPage = () => {
   const [threads, setThreads] = useState<Post[]>([]);
   const [deletedPosts, setDeletedPosts] = useState<Post[]>([]);
   const [analyticsPosts, setAnalyticsPosts] = useState<Post[]>([]);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkRange, setBulkRange] = useState('');
+  const [deletedRange, setDeletedRange] = useState('');
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [editingUserPassword, setEditingUserPassword] = useState('');
   const [settings, setSettings] = useState<Settings | null>(null);
   const [cronPath, setCronPath] = useState('');
   const [cronApiUrl, setCronApiUrl] = useState('');
@@ -41,21 +46,24 @@ const AdminPage = () => {
     setStatus('管理データを読み込み中...');
     setError(null);
     try {
-      const [loadedThreads, deleted, analytics, settingResponse] = await Promise.all([
+      const [loadedThreads, deleted, analytics, settingResponse, userResponse] = await Promise.all([
         api.listThreads(),
         api.listDeletedPosts(password),
         api.listAnalyticsPosts(password),
         api.getSettings(password),
+        api.listAdminUsers(password),
       ]);
       setThreads(loadedThreads);
       setDeletedPosts(deleted);
       setAnalyticsPosts(analytics);
+      setAdminUsers(userResponse.users);
       setSettings(settingResponse.settings);
       setCronPath(settingResponse.system?.cronPath ?? '');
       setCronApiUrl(settingResponse.system?.cronApiUrl ?? '');
       setCronApiKey(settingResponse.system?.cronApiKey ?? '');
       setAdminPasswordConfigured(settingResponse.system?.adminPasswordConfigured ?? null);
       setSelectedIds([]);
+      setEditingUser(null);
       window.localStorage.setItem('threadforgeAdminPassword', password);
       setStatus('管理データを読み込みました。');
     } catch (err) {
@@ -121,6 +129,11 @@ const AdminPage = () => {
     setDeletedPosts(await api.listDeletedPosts(adminPassword));
   };
 
+  const reloadAdminUsers = async () => {
+    const response = await api.listAdminUsers(adminPassword);
+    setAdminUsers(response.users);
+  };
+
   const toggleSelected = (id: string) => {
     setSelectedIds((current) => (
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
@@ -140,11 +153,72 @@ const AdminPage = () => {
     await reloadDeletedPosts();
   });
 
+  const addBulkRange = () => {
+    const ids = idsFromDisplayRange(threads, bulkRange);
+    if (ids.length === 0) {
+      setError('範囲に一致する投稿がありません。');
+      return;
+    }
+    setSelectedIds((current) => [...new Set([...current, ...ids])]);
+    setStatus(`${ids.length}件を選択しました。`);
+    setError(null);
+  };
+
   const restore = async (id: number) => {
     setError(null);
     setStatus('復元中...');
     const response = await api.restorePost(String(id), adminPassword);
     setStatus(response.message);
+    await reloadThreads();
+    await reloadDeletedPosts();
+  };
+
+  const purgeDeleted = async (id: number) => {
+    if (!window.confirm('画像やコメントなどのデータを消去します。表示番号は残ります。実行しますか？')) {
+      return;
+    }
+    setError(null);
+    setStatus('投稿データを消去中...');
+    const response = await api.purgePostData(String(id), adminPassword);
+    setStatus(response.message);
+    await reloadThreads();
+    await reloadDeletedPosts();
+  };
+
+  const destroyDeleted = async (id: number) => {
+    if (!window.confirm('投稿番号ごと完全削除します。表示番号が前詰めされます。実行しますか？')) {
+      return;
+    }
+    setError(null);
+    setStatus('投稿番号を消去中...');
+    const response = await api.destroyPostNumber(String(id), adminPassword);
+    setStatus(response.message);
+    await reloadThreads();
+    await reloadDeletedPosts();
+  };
+
+  const purgeDeletedRange = async (stage: 1 | 2) => {
+    const ids = idsFromDisplayRange(deletedPosts, deletedRange);
+    if (ids.length === 0) {
+      setError('範囲に一致する削除済み投稿がありません。');
+      return;
+    }
+    const message = stage === 1
+      ? `${ids.length}件のデータを消去します。表示番号は残ります。`
+      : `${ids.length}件を番号ごと完全削除します。表示番号が前詰めされます。`;
+    if (!window.confirm(`${message} 実行しますか？`)) {
+      return;
+    }
+    setError(null);
+    setStatus(stage === 1 ? '投稿データを消去中...' : '投稿番号を消去中...');
+    for (const id of ids) {
+      if (stage === 1) {
+        await api.purgePostData(id, adminPassword);
+      } else {
+        await api.destroyPostNumber(id, adminPassword);
+      }
+    }
+    setStatus(stage === 1 ? `${ids.length}件の投稿データを消去しました。` : `${ids.length}件を番号ごと完全削除しました。`);
     await reloadThreads();
     await reloadDeletedPosts();
   };
@@ -186,6 +260,41 @@ const AdminPage = () => {
     const response = await api.updateSettings(settings, adminPassword);
     setStatus(response.message);
   });
+
+  const startEditUser = (user: AdminUser) => {
+    if (!window.confirm(`ユーザー No.${user.id} ${user.display_name} の情報を表示しますか？`)) {
+      return;
+    }
+    setEditingUser(user);
+    setEditingUserPassword('');
+  };
+
+  const saveAdminUser = guarded(async () => {
+    if (!editingUser) {
+      return;
+    }
+    const response = await api.adminUpdateUser({ ...editingUser, login_password: editingUserPassword }, adminPassword);
+    setStatus(response.message);
+    setEditingUser(null);
+    setEditingUserPassword('');
+    await reloadAdminUsers();
+    await reloadThreads();
+  });
+
+  const deleteAdminUser = async (user: AdminUser, stage: 1 | 2) => {
+    const message = stage === 1
+      ? `ユーザー No.${user.id} の登録情報を消去します。ユーザー番号は残ります。`
+      : `ユーザー No.${user.id} を番号ごと完全削除します。ユーザー番号が前詰めされます。`;
+    if (!window.confirm(`${message} 実行しますか？`)) {
+      return;
+    }
+    setError(null);
+    const response = await api.adminDeleteUser(user.id, stage, adminPassword);
+    setStatus(response.message);
+    setEditingUser(null);
+    await reloadAdminUsers();
+    await reloadThreads();
+  };
 
   const exitAdmin = () => {
     window.localStorage.removeItem('threadforgeAdminPassword');
@@ -344,8 +453,15 @@ const AdminPage = () => {
 
           {activeTab === 'posts' && (
             <section className="card">
-              <h2>投稿管理</h2>
+              <h2>一括削除</h2>
               <p>投稿と返信を複数選択して、管理者権限で一括削除できます。</p>
+              <div className="admin-range-actions">
+                <label>
+                  範囲指定
+                  <input value={bulkRange} onChange={(event) => setBulkRange(event.target.value)} placeholder="例: 1-10, 15" />
+                </label>
+                <button type="button" className="secondary" onClick={addBulkRange}>範囲を選択</button>
+              </div>
               <div className="button-row align-right admin-bulk-actions">
                 <button type="button" className="danger" onClick={bulkDelete}>チェックした項目を一括削除</button>
               </div>
@@ -385,6 +501,58 @@ const AdminPage = () => {
                   <div className="button-row align-right">
                     <button type="button" onClick={refreshSocialReactions}>更新</button>
                   </div>
+                </div>
+              </section>
+
+              <section className="admin-maintenance-section">
+                <h3>ユーザー登録情報</h3>
+                <div className="admin-maintenance-section-body">
+                  <p>登録済みユーザーの情報編集、登録情報の消去、ユーザー番号ごとの完全削除を行います。</p>
+                  <div className="admin-user-list">
+                    {adminUsers.length === 0 && <p>登録ユーザーはありません。</p>}
+                    {adminUsers.map((user) => (
+                      <article className="admin-user-row" key={user.id}>
+                        <div>
+                          <strong>No.{user.id} {user.display_name}</strong>
+                          <span>ID: {user.login_id} / 投稿: {user.post_count} / 自分の作品: {user.claim_count}</span>
+                        </div>
+                        <div className="button-row align-right">
+                          <button type="button" className="secondary" onClick={() => startEditUser(user)}>編集</button>
+                          <button type="button" className="secondary" onClick={() => void deleteAdminUser(user, 1)}>情報消去</button>
+                          <button type="button" className="secondary danger-outline" onClick={() => void deleteAdminUser(user, 2)}>番号ごと消去</button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                  {editingUser && (
+                    <form className="admin-user-edit-form" onSubmit={saveAdminUser}>
+                      <h4>ユーザー No.{editingUser.id} を編集</h4>
+                      <label>
+                        ID
+                        <input value={editingUser.login_id} onChange={(event) => setEditingUser({ ...editingUser, login_id: event.target.value })} />
+                      </label>
+                      <label>
+                        名前
+                        <input value={editingUser.display_name} maxLength={30} onChange={(event) => setEditingUser({ ...editingUser, display_name: event.target.value })} />
+                      </label>
+                      <label>
+                        投稿パスワード
+                        <input value={editingUser.post_password} maxLength={8} onChange={(event) => setEditingUser({ ...editingUser, post_password: event.target.value })} />
+                      </label>
+                      <label>
+                        URL / HOME
+                        <input value={editingUser.home_url ?? ''} onChange={(event) => setEditingUser({ ...editingUser, home_url: event.target.value })} />
+                      </label>
+                      <label>
+                        ログインパスワード再設定（任意）
+                        <input type="password" value={editingUserPassword} onChange={(event) => setEditingUserPassword(event.target.value)} />
+                      </label>
+                      <div className="button-row align-right">
+                        <button type="button" className="secondary" onClick={() => setEditingUser(null)}>閉じる</button>
+                        <button type="submit">保存</button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               </section>
 
@@ -501,13 +669,24 @@ const AdminPage = () => {
           )}
           {activeTab === 'deleted' && (
             <section className="card">
-              <h2>削除済み投稿</h2>
+              <h2>復元/消去</h2>
+              <p>削除済み投稿の復元、データ消去、番号ごとの完全削除を行います。</p>
+              <div className="admin-range-actions">
+                <label>
+                  範囲指定
+                  <input value={deletedRange} onChange={(event) => setDeletedRange(event.target.value)} placeholder="例: 1-10, 15" />
+                </label>
+                <button type="button" className="secondary" onClick={() => void purgeDeletedRange(1)}>範囲を消去</button>
+                <button type="button" className="secondary danger-outline" onClick={() => void purgeDeletedRange(2)}>範囲を番号ごと消去</button>
+              </div>
               {deletedPosts.length === 0 && <p>削除済み投稿はありません。</p>}
               {deletedPosts.map((post) => (
                 <div className="admin-deleted-row" key={post.id}>
                   <strong>No.{adminDisplayNo(post)} {post.title || '無題'}</strong>
                   <span>{post.name} / 削除日時: {post.deleted_at}</span>
                   <button type="button" className="secondary" onClick={() => restore(post.id)}>復元</button>
+                  <button type="button" className="secondary" onClick={() => void purgeDeleted(post.id)}>消去</button>
+                  <button type="button" className="secondary danger-outline" onClick={() => void destroyDeleted(post.id)}>番号ごと消去</button>
                 </div>
               ))}
             </section>
@@ -709,7 +888,7 @@ const designSettingGroups: SettingGroup[] = [
 
 const adminTabs: Array<{ id: AdminTab; label: string }> = [
   { id: 'posts', label: '一括削除' },
-  { id: 'deleted', label: '投稿復元' },
+  { id: 'deleted', label: '復元/消去' },
   { id: 'maintenance', label: '保守' },
   { id: 'analytics', label: 'アナリティクス' },
   { id: 'settings', label: '掲示板設定' },
@@ -1042,6 +1221,36 @@ function adminDisplayNo(post: Post): string {
     return String(post.display_no ?? post.id);
   }
   return `${post.display_no ?? post.thread_id}-${post.reply_no ?? post.id}`;
+}
+
+function idsFromDisplayRange(posts: Post[], rangeText: string): string[] {
+  const wanted = parseDisplayRange(rangeText);
+  if (wanted.size === 0) {
+    return [];
+  }
+  return posts
+    .filter((post) => wanted.has(Number(post.display_no ?? post.id)))
+    .map((post) => String(post.id));
+}
+
+function parseDisplayRange(rangeText: string): Set<number> {
+  const result = new Set<number>();
+  rangeText.split(',').map((part) => part.trim()).filter(Boolean).forEach((part) => {
+    const match = part.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (match) {
+      const start = Number(match[1]);
+      const end = Number(match[2]);
+      for (let value = Math.min(start, end); value <= Math.max(start, end); value += 1) {
+        result.add(value);
+      }
+      return;
+    }
+    const single = Number(part);
+    if (Number.isInteger(single) && single > 0) {
+      result.add(single);
+    }
+  });
+  return result;
 }
 
 export default AdminPage;

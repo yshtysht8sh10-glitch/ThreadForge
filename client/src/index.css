@@ -1162,6 +1162,75 @@ button.post-reset-button:hover {
   align-self: end;
 }
 
+.admin-range-actions {
+  display: grid;
+  grid-template-columns: minmax(12rem, 20rem) auto auto;
+  align-items: end;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.admin-range-actions label {
+  margin: 0;
+  color: var(--panel-label);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.danger-outline {
+  border-color: #ff7c7c;
+  color: #ff7c7c;
+}
+
+.admin-user-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.admin-user-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #334155;
+}
+
+.admin-user-row div:first-child {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.admin-user-row span {
+  color: var(--panel-label);
+  font-size: 0.86rem;
+}
+
+.admin-user-edit-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+}
+
+.admin-user-edit-form h4,
+.admin-user-edit-form .button-row {
+  grid-column: 1 / -1;
+}
+
+.admin-user-edit-form h4 {
+  margin: 0;
+}
+
+.admin-user-edit-form label {
+  margin: 0;
+  color: var(--panel-label);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
 .admin-settings-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1397,6 +1466,9 @@ button.post-reset-button:hover {
 
 @media (max-width: 720px) {
   .admin-password-change-form,
+  .admin-range-actions,
+  .admin-user-row,
+  .admin-user-edit-form,
   .admin-setting-inline-row,
   .admin-setting-wide.admin-setting-inline-row,
   .admin-color-row {

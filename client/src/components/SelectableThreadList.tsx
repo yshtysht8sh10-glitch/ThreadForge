@@ -32,7 +32,7 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
           </label>
 
           <header className="board-thread-title">
-            [No・{thread.display_no ?? thread.id}] {thread.title || '無題'}
+            [No.{thread.display_no ?? thread.id}] {thread.title || '無題'}
           </header>
 
           <div className="board-thread-body">

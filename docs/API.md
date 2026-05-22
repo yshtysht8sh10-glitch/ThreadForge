@@ -175,6 +175,73 @@ Fields:
 - `id`: required
 - `admin_password`: required
 
+## POST `?action=purgePostData`
+
+Admin-only action that erases the content of a deleted post/reply while preserving the display number.
+
+Fields:
+
+- `id`: required
+- `admin_password`: required
+
+Behavior:
+
+- For a top-level post, erases content, image reference, SNS metadata, view count, edit revisions, user claims, and replies.
+- For a reply, erases the reply content, edit revisions, and user claims.
+- The post row remains, so the top-level display number is preserved.
+
+## POST `?action=destroyPostNumber`
+
+Admin-only action that physically removes a post/reply row.
+
+Fields:
+
+- `id`: required
+- `admin_password`: required
+
+Behavior:
+
+- For a top-level post, physically removes the thread and its replies.
+- Removing a top-level post this way compacts later top-level display numbers.
+
+## GET `?action=listAdminUsers&admin_password={password}`
+
+Admin-only action that returns registered users for maintenance.
+
+Response:
+
+- `success`: true
+- `users`: admin user records
+
+## POST `?action=adminUpdateUser`
+
+Admin-only action that updates a registered user.
+
+Fields:
+
+- `id`: required
+- `admin_password`: required
+- `login_id`: required
+- `display_name`: required, up to 30 characters
+- `post_password`: optional, truncated to 8 characters if longer
+- `home_url`: optional
+- `login_password`: optional. When present, resets the login password
+
+## POST `?action=adminDeleteUser`
+
+Admin-only action that erases or deletes a registered user.
+
+Fields:
+
+- `id`: required
+- `stage`: `1` or `2`
+- `admin_password`: required
+
+Behavior:
+
+- `stage=1`: erases personal user information and sessions while preserving the user number.
+- `stage=2`: physically deletes the user row and compacts remaining user numbers.
+
 ## Post Type
 
 ```ts

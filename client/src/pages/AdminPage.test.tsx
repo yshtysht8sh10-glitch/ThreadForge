@@ -11,6 +11,7 @@ vi.mock('../api', () => ({
     listThreads: vi.fn(),
     listDeletedPosts: vi.fn(),
     listAnalyticsPosts: vi.fn(),
+    listAdminUsers: vi.fn(),
     getSettings: vi.fn(),
     adminStatus: vi.fn(),
     initializeAdminPassword: vi.fn(),
@@ -18,6 +19,10 @@ vi.mock('../api', () => ({
     importBackup: vi.fn(),
     updateSettings: vi.fn(),
     restorePost: vi.fn(),
+    purgePostData: vi.fn(),
+    destroyPostNumber: vi.fn(),
+    adminUpdateUser: vi.fn(),
+    adminDeleteUser: vi.fn(),
     changeAdminPassword: vi.fn(),
     refreshSocialReactions: vi.fn(),
   },
@@ -93,6 +98,21 @@ describe('AdminPage', () => {
     vi.mocked(api.listThreads).mockResolvedValue([thread as any]);
     vi.mocked(api.listDeletedPosts).mockResolvedValue([deletedReply as any]);
     vi.mocked(api.listAnalyticsPosts).mockResolvedValue(analyticsThreads as any);
+    vi.mocked(api.listAdminUsers).mockResolvedValue({
+      success: true,
+      users: [{
+        id: 1,
+        login_id: 'alice',
+        display_name: 'Alice',
+        post_password: 'pass',
+        home_url: '',
+        icon_path: null,
+        created_at: '2026-05-05 09:00:00',
+        updated_at: '2026-05-05 09:00:00',
+        post_count: 1,
+        claim_count: 0,
+      }],
+    });
     vi.mocked(api.adminStatus).mockResolvedValue({ success: true, adminPasswordConfigured: true });
     vi.mocked(api.initializeAdminPassword).mockResolvedValue({ success: true, message: '管理者パスワードを設定しました。' });
     vi.mocked(api.getSettings).mockResolvedValue({
@@ -114,6 +134,10 @@ describe('AdminPage', () => {
       },
     });
     vi.mocked(api.adminDeletePosts).mockResolvedValue({ success: true, message: '2件を削除しました。' });
+    vi.mocked(api.purgePostData).mockResolvedValue({ success: true, message: '投稿データを消去しました。' });
+    vi.mocked(api.destroyPostNumber).mockResolvedValue({ success: true, message: '投稿番号ごと完全削除しました。' });
+    vi.mocked(api.adminUpdateUser).mockResolvedValue({ success: true, message: 'ユーザー情報を更新しました。' });
+    vi.mocked(api.adminDeleteUser).mockResolvedValue({ success: true, message: 'ユーザー情報を消去しました。' });
     vi.mocked(api.refreshSocialReactions).mockResolvedValue({
       success: true,
       message: 'SNSリアクションを更新しました。',
@@ -146,7 +170,7 @@ describe('AdminPage', () => {
     const nav = await screen.findByRole('navigation', { name: '管理メニュー' });
     expect(within(nav).getAllByRole('button').map((button) => button.textContent)).toEqual([
       '一括削除',
-      '投稿復元',
+      '復元/消去',
       '保守',
       'アナリティクス',
       '掲示板設定',
@@ -216,6 +240,21 @@ describe('AdminPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を一括削除' }));
 
     await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['1', '2'], 'admin-secret'));
+  });
+
+  it('selects bulk delete targets by display-number range', async () => {
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Body');
+    fireEvent.change(screen.getByLabelText('範囲指定'), { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('button', { name: '範囲を選択' }));
+    fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を一括削除' }));
+
+    await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['1'], 'admin-secret'));
   });
 
   it('edits HOME and manual settings from the settings tab', async () => {
@@ -342,6 +381,42 @@ describe('AdminPage', () => {
     expect(screen.queryByLabelText('ローカルアーカイブログディレクトリ')).not.toBeInTheDocument();
   });
 
+  it('edits and deletes registered users from maintenance', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '保守' }));
+    const userSection = screen.getByRole('heading', { name: 'ユーザー登録情報' }).closest('section')!;
+    fireEvent.click(within(userSection).getByRole('button', { name: '編集' }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('ユーザー No.1 Alice の情報を表示しますか？');
+    fireEvent.change(within(userSection).getByLabelText('ID'), { target: { value: 'alice2' } });
+    fireEvent.change(within(userSection).getByLabelText('名前'), { target: { value: 'Alice Updated' } });
+    fireEvent.change(within(userSection).getByLabelText('ログインパスワード再設定（任意）'), { target: { value: 'new-login-secret' } });
+    fireEvent.click(within(userSection).getByRole('button', { name: '保存' }));
+
+    await waitFor(() => expect(api.adminUpdateUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 1,
+        login_id: 'alice2',
+        display_name: 'Alice Updated',
+        login_password: 'new-login-secret',
+      }),
+      'admin-secret',
+    ));
+
+    fireEvent.click(within(userSection).getByRole('button', { name: '情報消去' }));
+    await waitFor(() => expect(api.adminDeleteUser).toHaveBeenCalledWith(1, 1, 'admin-secret'));
+
+    fireEvent.click(within(userSection).getByRole('button', { name: '番号ごと消去' }));
+    await waitFor(() => expect(api.adminDeleteUser).toHaveBeenCalledWith(1, 2, 'admin-secret'));
+    confirmSpy.mockRestore();
+  });
+
   it('requires confirmation when changing the admin password', async () => {
     vi.mocked(api.changeAdminPassword).mockResolvedValue({ success: true, message: '管理者パスワードを変更しました。' });
     render(
@@ -404,9 +479,27 @@ describe('AdminPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: '投稿復元' }));
+    fireEvent.click(await screen.findByRole('button', { name: '復元/消去' }));
 
     expect(screen.getByText(/No\.12-2/)).toBeInTheDocument();
     expect(screen.queryByText(/No\.514/)).not.toBeInTheDocument();
+  });
+
+  it('purges deleted posts by button and by display-number range', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '復元/消去' }));
+    fireEvent.click(screen.getByRole('button', { name: '消去' }));
+    await waitFor(() => expect(api.purgePostData).toHaveBeenCalledWith('514', 'admin-secret'));
+
+    fireEvent.change(screen.getByLabelText('範囲指定'), { target: { value: '12' } });
+    fireEvent.click(screen.getByRole('button', { name: '範囲を番号ごと消去' }));
+    await waitFor(() => expect(api.destroyPostNumber).toHaveBeenCalledWith('514', 'admin-secret'));
+    confirmSpy.mockRestore();
   });
 });
