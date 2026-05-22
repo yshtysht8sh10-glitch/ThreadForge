@@ -10,12 +10,13 @@ type SelectableThreadListProps = {
   multiple?: boolean;
   isDisabled?: (post: Post) => boolean;
   disabledLabel?: string;
+  compact?: boolean;
 };
 
-const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false, isDisabled, disabledLabel = '選択不可' }: SelectableThreadListProps) => {
+const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false, isDisabled, disabledLabel = '選択不可', compact = false }: SelectableThreadListProps) => {
   const inputType = multiple ? 'checkbox' : 'radio';
   return (
-    <div className="thread-list">
+    <div className={compact ? 'thread-list thread-list-compact' : 'thread-list'}>
       {threads.length === 0 && <div className="board-message">投稿はまだありません。</div>}
       {threads.map((thread) => (
         <article key={thread.id} id={`post-${thread.id}`} className={threadClassName(thread)}>
@@ -43,15 +44,17 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
               {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
             </p>
 
-            {mediaUrl(thread.image_path) && (
+            {!compact && mediaUrl(thread.image_path) && (
               <div className="board-image-link">
                 <img className="board-post-image" src={mediaUrl(thread.image_path) ?? undefined} alt={thread.title || '投稿画像'} />
               </div>
             )}
 
-            <div className="board-message-text">
-              <LinkedText text={thread.message} />
-            </div>
+            {!compact && (
+              <div className="board-message-text">
+                <LinkedText text={thread.message} />
+              </div>
+            )}
 
             {(thread.replies ?? []).slice(0, 10).map((reply) => (
               <section key={reply.id} className="board-reply selectable-board-reply">
@@ -60,11 +63,12 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
                     type={inputType}
                     name={multiple ? undefined : 'selected-post'}
                     checked={selectedIds.includes(String(reply.id))}
-                    disabled={isDisabled?.(reply) ?? false}
+                    disabled={selectedIds.includes(String(thread.id)) || (isDisabled?.(reply) ?? false)}
                     onChange={() => onToggle(String(reply.id))}
                   />
                   返信No.{thread.display_no ?? thread.id}-{reply.reply_no ?? reply.id} を選択
-                  {isDisabled?.(reply) && <span className="mode-select-disabled-note">{disabledLabel}</span>}
+                  {selectedIds.includes(String(thread.id)) && <span className="mode-select-disabled-note">親投稿と一緒に選択中</span>}
+                  {!selectedIds.includes(String(thread.id)) && isDisabled?.(reply) && <span className="mode-select-disabled-note">{disabledLabel}</span>}
                 </label>
                 <p className="board-meta">
                   {reply.user_icon_path && <img className="user-icon" src={mediaUrl(reply.user_icon_path) ?? undefined} alt="" />}
@@ -72,9 +76,11 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
                   {reply.url && <> <a href={reply.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                   {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>
                 </p>
-                <div className={replyTextClassName(reply.message)}>
-                  <LinkedText text={reply.message} />
-                </div>
+                {!compact && (
+                  <div className={replyTextClassName(reply.message)}>
+                    <LinkedText text={reply.message} />
+                  </div>
+                )}
               </section>
             ))}
           </div>

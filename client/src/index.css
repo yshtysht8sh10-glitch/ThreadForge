@@ -1022,6 +1022,32 @@ button.post-reset-button:hover {
   position: relative;
 }
 
+.thread-list-compact {
+  gap: 0.55rem;
+}
+
+.thread-list-compact .board-thread {
+  box-shadow: none;
+}
+
+.thread-list-compact .board-thread-title {
+  font-size: 0.95rem;
+  padding: 0.3rem 0.75rem;
+}
+
+.thread-list-compact .board-thread-body {
+  padding: 0.45rem 0.75rem;
+}
+
+.thread-list-compact .board-meta,
+.thread-list-compact .mode-select-checkbox {
+  font-size: 0.82rem;
+}
+
+.thread-list-compact .board-reply {
+  padding: 0.4rem 0;
+}
+
 .admin-page {
   max-width: 760px;
   margin: 0 auto;
@@ -1106,8 +1132,24 @@ button.post-reset-button:hover {
 }
 
 .admin-deleted-row {
-  grid-template-columns: minmax(0, 1fr) minmax(12rem, auto) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, auto) repeat(3, 8.5rem);
   margin-bottom: 0.5rem;
+}
+
+.admin-deleted-row p {
+  grid-column: 1 / -1;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.admin-deleted-row-compact {
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, auto) repeat(3, 8.5rem);
+}
+
+.admin-deleted-row-compact .admin-fixed-action-button {
+  min-width: 8.5rem;
+  width: 8.5rem;
 }
 
 .admin-maintenance-card {
@@ -1164,7 +1206,7 @@ button.post-reset-button:hover {
 
 .admin-range-actions {
   display: grid;
-  grid-template-columns: minmax(12rem, 20rem) auto auto;
+  grid-template-columns: minmax(8rem, 1fr) minmax(8rem, 1fr) auto auto;
   align-items: end;
   gap: 0.75rem;
   margin: 0 0 1rem;
@@ -1180,6 +1222,11 @@ button.post-reset-button:hover {
 .danger-outline {
   border-color: #ff7c7c;
   color: #ff7c7c;
+}
+
+.admin-fixed-action-button {
+  width: 8.5rem;
+  min-width: 8.5rem;
 }
 
 .admin-user-list {

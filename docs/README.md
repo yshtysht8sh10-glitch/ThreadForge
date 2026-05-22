@@ -46,7 +46,8 @@ The local archive importer reads `LOG_*.cgi` files and referenced images from th
 - Top page preview of up to 10 replies per thread
 - Thread-only display numbers with reply child numbers
 - Edit and soft delete
-- Admin restore and passwordless bulk delete
+- Admin passwordless bulk delete with start/end range selection, parent-to-reply linked selection, and full/compact display modes
+- Admin restore/purge with blue restore actions, red purge actions, and full/compact display modes
 - Admin DB integrity check
 - Admin backup export/import
 - Non-destructive local archive log import through a local operator batch, not the web admin screen

@@ -23,8 +23,12 @@ const AdminPage = () => {
   const [analyticsPosts, setAnalyticsPosts] = useState<Post[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [bulkRange, setBulkRange] = useState('');
-  const [deletedRange, setDeletedRange] = useState('');
+  const [bulkRangeStart, setBulkRangeStart] = useState('');
+  const [bulkRangeEnd, setBulkRangeEnd] = useState('');
+  const [deletedRangeStart, setDeletedRangeStart] = useState('');
+  const [deletedRangeEnd, setDeletedRangeEnd] = useState('');
+  const [bulkCompact, setBulkCompact] = useState(false);
+  const [deletedCompact, setDeletedCompact] = useState(true);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editingUserPassword, setEditingUserPassword] = useState('');
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -135,9 +139,20 @@ const AdminPage = () => {
   };
 
   const toggleSelected = (id: string) => {
-    setSelectedIds((current) => (
-      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
-    ));
+    setSelectedIds((current) => {
+      const thread = threads.find((item) => String(item.id) === id);
+      if (thread) {
+        const ids = [String(thread.id), ...(thread.replies ?? []).map((reply) => String(reply.id))];
+        return current.includes(id)
+          ? current.filter((item) => !ids.includes(item))
+          : [...new Set([...current, ...ids])];
+      }
+      const parent = threads.find((item) => (item.replies ?? []).some((reply) => String(reply.id) === id));
+      if (parent && current.includes(String(parent.id))) {
+        return current;
+      }
+      return current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+    });
   };
 
   const bulkDelete = guarded(async () => {
@@ -154,7 +169,7 @@ const AdminPage = () => {
   });
 
   const addBulkRange = () => {
-    const ids = idsFromDisplayRange(threads, bulkRange);
+    const ids = idsFromDisplayRange(threads, bulkRangeStart, bulkRangeEnd);
     if (ids.length === 0) {
       setError('範囲に一致する投稿がありません。');
       return;
@@ -198,7 +213,7 @@ const AdminPage = () => {
   };
 
   const purgeDeletedRange = async (stage: 1 | 2) => {
-    const ids = idsFromDisplayRange(deletedPosts, deletedRange);
+    const ids = idsFromDisplayRange(deletedPosts, deletedRangeStart, deletedRangeEnd);
     if (ids.length === 0) {
       setError('範囲に一致する削除済み投稿がありません。');
       return;
@@ -457,16 +472,21 @@ const AdminPage = () => {
               <p>投稿と返信を複数選択して、管理者権限で一括削除できます。</p>
               <div className="admin-range-actions">
                 <label>
-                  範囲指定
-                  <input value={bulkRange} onChange={(event) => setBulkRange(event.target.value)} placeholder="例: 1-10, 15" />
+                  開始
+                  <input value={bulkRangeStart} onChange={(event) => setBulkRangeStart(event.target.value)} placeholder="例: 90 / 99-3" />
+                </label>
+                <label>
+                  終了
+                  <input value={bulkRangeEnd} onChange={(event) => setBulkRangeEnd(event.target.value)} placeholder="例: 99 / 99-4" />
                 </label>
                 <button type="button" className="secondary" onClick={addBulkRange}>範囲を選択</button>
               </div>
               <div className="button-row align-right admin-bulk-actions">
+                <button type="button" className="secondary" onClick={() => setBulkCompact((value) => !value)}>{bulkCompact ? 'フル表示' : '簡易表示'}</button>
                 <button type="button" className="secondary" onClick={() => setSelectedIds([])} disabled={selectedIds.length === 0}>選択をすべて解除</button>
                 <button type="button" className="danger" onClick={bulkDelete}>チェックした項目を一括削除</button>
               </div>
-              <SelectableThreadList threads={threads} selectedIds={selectedIds} onToggle={toggleSelected} multiple />
+              <SelectableThreadList threads={threads} selectedIds={selectedIds} onToggle={toggleSelected} multiple compact={bulkCompact} />
             </section>
           )}
 
@@ -674,20 +694,28 @@ const AdminPage = () => {
               <p>削除済み投稿の復元、データ消去、番号ごとの完全削除を行います。</p>
               <div className="admin-range-actions">
                 <label>
-                  範囲指定
-                  <input value={deletedRange} onChange={(event) => setDeletedRange(event.target.value)} placeholder="例: 1-10, 15" />
+                  開始
+                  <input value={deletedRangeStart} onChange={(event) => setDeletedRangeStart(event.target.value)} placeholder="例: 90 / 90-1" />
                 </label>
-                <button type="button" className="secondary" onClick={() => void purgeDeletedRange(1)}>範囲を消去</button>
-                <button type="button" className="secondary danger-outline" onClick={() => void purgeDeletedRange(2)}>範囲を番号ごと消去</button>
+                <label>
+                  終了
+                  <input value={deletedRangeEnd} onChange={(event) => setDeletedRangeEnd(event.target.value)} placeholder="例: 99 / 90-6" />
+                </label>
+                <button type="button" className="danger admin-fixed-action-button" onClick={() => void purgeDeletedRange(1)}>範囲を消去</button>
+                <button type="button" className="danger admin-fixed-action-button" onClick={() => void purgeDeletedRange(2)}>範囲を番号ごと消去</button>
+              </div>
+              <div className="button-row align-right admin-bulk-actions">
+                <button type="button" className="secondary" onClick={() => setDeletedCompact((value) => !value)}>{deletedCompact ? 'フル表示' : '簡易表示'}</button>
               </div>
               {deletedPosts.length === 0 && <p>削除済み投稿はありません。</p>}
               {deletedPosts.map((post) => (
-                <div className="admin-deleted-row" key={post.id}>
+                <div className={deletedCompact ? 'admin-deleted-row admin-deleted-row-compact' : 'admin-deleted-row'} key={post.id}>
                   <strong>No.{adminDisplayNo(post)} {post.title || '無題'}</strong>
                   <span>{post.name} / 削除日時: {post.deleted_at}</span>
-                  <button type="button" className="secondary" onClick={() => restore(post.id)}>復元</button>
-                  <button type="button" className="secondary" onClick={() => void purgeDeleted(post.id)}>消去</button>
-                  <button type="button" className="secondary danger-outline" onClick={() => void destroyDeleted(post.id)}>番号ごと消去</button>
+                  {!deletedCompact && <p>{post.message}</p>}
+                  <button type="button" className="admin-fixed-action-button" onClick={() => restore(post.id)}>復元</button>
+                  <button type="button" className="danger admin-fixed-action-button" onClick={() => void purgeDeleted(post.id)}>消去</button>
+                  <button type="button" className="danger admin-fixed-action-button" onClick={() => void destroyDeleted(post.id)}>番号ごと消去</button>
                 </div>
               ))}
             </section>
@@ -1224,47 +1252,100 @@ function adminDisplayNo(post: Post): string {
   return `${post.display_no ?? post.thread_id}-${post.reply_no ?? post.id}`;
 }
 
-function idsFromDisplayRange(posts: Post[], rangeText: string): string[] {
+function idsFromDisplayRange(posts: Post[], startText: string, endText: string): string[] {
   const refs = displayRefs(posts);
   const selected = new Set<string>();
+  const start = parseDisplayRef(startText);
+  const end = parseDisplayRef(endText);
+  if (!start) {
+    return [];
+  }
 
-  rangeText.split(',').map((part) => part.trim()).filter(Boolean).forEach((part) => {
-    const pair = part.match(/^(\d+)\s*-\s*(\d+)$/);
-    if (pair) {
-      const first = Number(pair[1]);
-      const second = Number(pair[2]);
-      const exactReply = refs.find((ref) => ref.replyNo !== null && ref.displayNo === first && ref.replyNo === second);
-      if (exactReply && first >= second) {
-        selected.add(exactReply.id);
-        return;
-      }
-      const rangeRefs = refs.filter((ref) => ref.replyNo === null && ref.displayNo >= Math.min(first, second) && ref.displayNo <= Math.max(first, second));
-      rangeRefs.forEach((ref) => selected.add(ref.id));
-      if (rangeRefs.length === 0 && exactReply) {
-        selected.add(exactReply.id);
-      }
-      return;
-    }
+  if (!end) {
+    matchingRefsForSingle(refs, start).forEach((ref) => addRefWithChildren(selected, ref, refs));
+    return [...selected];
+  }
 
-    const single = Number(part);
-    if (!Number.isInteger(single) || single < 1) {
-      return;
-    }
-    const topLevelRefs = refs.filter((ref) => ref.replyNo === null && ref.displayNo === single);
-    const matchingRefs = topLevelRefs.length > 0 ? topLevelRefs : refs.filter((ref) => ref.displayNo === single);
-    matchingRefs.forEach((ref) => selected.add(ref.id));
-  });
+  const startKey = displayRefKey(start);
+  const endKey = displayRefKey(end);
+  const min = Math.min(startKey, endKey);
+  const max = Math.max(startKey, endKey);
+  let rangeRefs = refs
+    .filter((ref) => {
+      const key = displayRefKey(ref);
+      if (start.replyNo === null && end.replyNo === null) {
+        return ref.replyNo === null && key >= min && key <= max;
+      }
+      return key >= min && key <= max;
+    });
+  if (rangeRefs.length === 0 && start.replyNo === null && end.replyNo === null) {
+    rangeRefs = refs.filter((ref) => {
+      const key = displayRefKey(ref);
+      return key >= min && key <= max;
+    });
+  }
+  rangeRefs.forEach((ref) => addRefWithChildren(selected, ref, refs));
 
   return [...selected];
 }
 
-function displayRefs(posts: Post[]): Array<{ id: string; displayNo: number; replyNo: number | null }> {
+function matchingRefsForSingle(refs: DisplayRef[], target: DisplayRefKey): DisplayRef[] {
+  if (target.replyNo !== null) {
+    return refs.filter((ref) => ref.displayNo === target.displayNo && ref.replyNo === target.replyNo);
+  }
+  const topLevelRefs = refs.filter((ref) => ref.replyNo === null && ref.displayNo === target.displayNo);
+  if (topLevelRefs.length > 0) {
+    return topLevelRefs;
+  }
+  return refs.filter((ref) => ref.displayNo === target.displayNo);
+}
+
+function addRefWithChildren(selected: Set<string>, ref: DisplayRef, refs: DisplayRef[]): void {
+  selected.add(ref.id);
+  if (ref.replyNo === null) {
+    refs
+      .filter((candidate) => candidate.replyNo !== null && candidate.displayNo === ref.displayNo)
+      .forEach((candidate) => selected.add(candidate.id));
+  }
+}
+
+type DisplayRefKey = { displayNo: number; replyNo: number | null };
+type DisplayRef = DisplayRefKey & { id: string };
+
+function parseDisplayRef(value: string): DisplayRefKey | null {
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return null;
+  }
+  const reply = trimmed.match(/^(\d+)\s*-\s*(\d+)$/);
+  if (reply) {
+    return { displayNo: Number(reply[1]), replyNo: Number(reply[2]) };
+  }
+  const displayNo = Number(trimmed);
+  if (!Number.isInteger(displayNo) || displayNo < 1) {
+    return null;
+  }
+  return { displayNo, replyNo: null };
+}
+
+function displayRefKey(ref: DisplayRefKey): number {
+  return ref.displayNo * 10000 + (ref.replyNo ?? 0);
+}
+
+function displayRefs(posts: Post[]): DisplayRef[] {
   return posts.flatMap((post) => {
     const displayNo = Number(post.display_no ?? post.id);
+    if (post.parent_id !== 0) {
+      return [{
+        id: String(post.id),
+        displayNo,
+        replyNo: Number(post.reply_no ?? post.id),
+      }];
+    }
     const refs = [{
       id: String(post.id),
       displayNo,
-      replyNo: post.parent_id === 0 ? null : Number(post.reply_no ?? post.id),
+      replyNo: null,
     }];
     return refs.concat((post.replies ?? []).map((reply) => ({
       id: String(reply.id),

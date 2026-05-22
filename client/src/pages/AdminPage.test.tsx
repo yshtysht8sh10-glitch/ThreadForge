@@ -236,7 +236,7 @@ describe('AdminPage', () => {
 
     expect(await screen.findByText('Body')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('No.1 を選択'));
-    fireEvent.click(screen.getByLabelText('返信No.1-1 を選択'));
+    expect(screen.getByRole('checkbox', { name: /返信No\.1-1 を選択/ })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を一括削除' }));
 
     await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['1', '2'], 'admin-secret'));
@@ -250,11 +250,11 @@ describe('AdminPage', () => {
     );
 
     await screen.findByText('Body');
-    fireEvent.change(screen.getByLabelText('範囲指定'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('開始'), { target: { value: '1' } });
     fireEvent.click(screen.getByRole('button', { name: '範囲を選択' }));
     fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を一括削除' }));
 
-    await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['1'], 'admin-secret'));
+    await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['1', '2'], 'admin-secret'));
   });
 
   it('clears all selected bulk delete targets', async () => {
@@ -265,7 +265,7 @@ describe('AdminPage', () => {
     );
 
     await screen.findByText('Body');
-    fireEvent.change(screen.getByLabelText('範囲指定'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('開始'), { target: { value: '1' } });
     fireEvent.click(screen.getByRole('button', { name: '範囲を選択' }));
     expect(screen.getByLabelText('No.1 を選択')).toBeChecked();
 
@@ -281,11 +281,30 @@ describe('AdminPage', () => {
     );
 
     await screen.findByText('Body');
-    fireEvent.change(screen.getByLabelText('範囲指定'), { target: { value: '1-1' } });
+    fireEvent.change(screen.getByLabelText('開始'), { target: { value: '1-1' } });
     fireEvent.click(screen.getByRole('button', { name: '範囲を選択' }));
     fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を一括削除' }));
 
     await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['2'], 'admin-secret'));
+  });
+
+  it('selects children and locks their checkboxes when a parent post is selected', async () => {
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Body');
+    fireEvent.click(screen.getByLabelText('No.1 を選択'));
+
+    expect(screen.getByLabelText('No.1 を選択')).toBeChecked();
+    expect(screen.getByLabelText(/返信No\.1-1 を選択/)).toBeChecked();
+    expect(screen.getByLabelText(/返信No\.1-1 を選択/)).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'チェックした項目を一括削除' }));
+
+    await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['1', '2'], 'admin-secret'));
   });
 
   it('edits HOME and manual settings from the settings tab', async () => {
@@ -528,7 +547,7 @@ describe('AdminPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '消去' }));
     await waitFor(() => expect(api.purgePostData).toHaveBeenCalledWith('514', 'admin-secret'));
 
-    fireEvent.change(screen.getByLabelText('範囲指定'), { target: { value: '12' } });
+    fireEvent.change(screen.getByLabelText('開始'), { target: { value: '12' } });
     fireEvent.click(screen.getByRole('button', { name: '範囲を番号ごと消去' }));
     await waitFor(() => expect(api.destroyPostNumber).toHaveBeenCalledWith('514', 'admin-secret'));
     confirmSpy.mockRestore();
