@@ -257,6 +257,22 @@ describe('AdminPage', () => {
     await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['1'], 'admin-secret'));
   });
 
+  it('clears all selected bulk delete targets', async () => {
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Body');
+    fireEvent.change(screen.getByLabelText('範囲指定'), { target: { value: '1' } });
+    fireEvent.click(screen.getByRole('button', { name: '範囲を選択' }));
+    expect(screen.getByLabelText('No.1 を選択')).toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: '選択をすべて解除' }));
+    expect(screen.getByLabelText('No.1 を選択')).not.toBeChecked();
+  });
+
   it('selects reply comments by display-number range notation', async () => {
     render(
       <MemoryRouter>

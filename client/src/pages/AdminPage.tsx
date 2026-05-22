@@ -463,6 +463,7 @@ const AdminPage = () => {
                 <button type="button" className="secondary" onClick={addBulkRange}>範囲を選択</button>
               </div>
               <div className="button-row align-right admin-bulk-actions">
+                <button type="button" className="secondary" onClick={() => setSelectedIds([])} disabled={selectedIds.length === 0}>選択をすべて解除</button>
                 <button type="button" className="danger" onClick={bulkDelete}>チェックした項目を一括削除</button>
               </div>
               <SelectableThreadList threads={threads} selectedIds={selectedIds} onToggle={toggleSelected} multiple />
