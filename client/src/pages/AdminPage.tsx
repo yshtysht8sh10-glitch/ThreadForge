@@ -169,6 +169,10 @@ const AdminPage = () => {
   });
 
   const addBulkRange = () => {
+    if (isMixedParentAndReplyRange(bulkRangeStart, bulkRangeEnd)) {
+      setError('親投稿指定と返信指定は混在できません。開始と終了は同じ種類で指定してください。');
+      return;
+    }
     const ids = idsFromDisplayRange(threads, bulkRangeStart, bulkRangeEnd);
     if (ids.length === 0) {
       setError('範囲に一致する投稿がありません。');
@@ -213,6 +217,10 @@ const AdminPage = () => {
   };
 
   const purgeDeletedRange = async (stage: 1 | 2) => {
+    if (isMixedParentAndReplyRange(deletedRangeStart, deletedRangeEnd)) {
+      setError('親投稿指定と返信指定は混在できません。開始と終了は同じ種類で指定してください。');
+      return;
+    }
     const ids = idsFromDisplayRange(deletedPosts, deletedRangeStart, deletedRangeEnd);
     if (ids.length === 0) {
       setError('範囲に一致する削除済み投稿がありません。');
@@ -1287,6 +1295,15 @@ function idsFromDisplayRange(posts: Post[], startText: string, endText: string):
   rangeRefs.forEach((ref) => addRefWithChildren(selected, ref, refs));
 
   return [...selected];
+}
+
+function isMixedParentAndReplyRange(startText: string, endText: string): boolean {
+  const start = parseDisplayRef(startText);
+  const end = parseDisplayRef(endText);
+  if (!start || !end) {
+    return false;
+  }
+  return (start.replyNo === null) !== (end.replyNo === null);
 }
 
 function matchingRefsForSingle(refs: DisplayRef[], target: DisplayRefKey): DisplayRef[] {

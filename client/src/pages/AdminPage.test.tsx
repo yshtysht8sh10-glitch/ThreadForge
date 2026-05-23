@@ -288,6 +288,23 @@ describe('AdminPage', () => {
     await waitFor(() => expect(api.adminDeletePosts).toHaveBeenCalledWith(['2'], 'admin-secret'));
   });
 
+  it('rejects mixed parent and reply range notation', async () => {
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('Body');
+    fireEvent.change(screen.getByLabelText('開始'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('終了'), { target: { value: '1-1' } });
+    fireEvent.click(screen.getByRole('button', { name: '範囲を選択' }));
+
+    expect(screen.getByText('エラー: 親投稿指定と返信指定は混在できません。開始と終了は同じ種類で指定してください。')).toBeInTheDocument();
+    expect(screen.getByLabelText('No.1 を選択')).not.toBeChecked();
+    expect(api.adminDeletePosts).not.toHaveBeenCalled();
+  });
+
   it('selects children and locks their checkboxes when a parent post is selected', async () => {
     render(
       <MemoryRouter>
