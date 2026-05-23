@@ -3076,12 +3076,14 @@ function defaultSettings(): array
             'secondaryButtonBackgroundColor' => '#2f333b',
             'secondaryButtonTextColor' => '#ffffff',
             'secondaryButtonBorderColor' => '#7a8495',
-            'normalHeaderColor' => '#39988a',
+            'normalHeaderColor' => '#7f00a8',
             'normalTextColor' => '#ffffff',
-            'gdgdHeaderColor' => '#7f00a8',
+            'gdgdHeaderColor' => '#39988a',
             'gdgdTextColor' => '#ffffff',
             'replyBorderColor' => '#7a8495',
+            'quickReactionButtonBackgroundColor' => '#30343b',
             'dangerColor' => '#ff7c7c',
+            'warningColor' => '#ffd36a',
             'successColor' => '#8dff8d',
         ],
         'security' => [
@@ -3177,6 +3179,13 @@ function loadSettings(PDO $pdo): array
     }
     if (($settings['config']['gdgdLabel'] ?? '') === 'gdgd投稿') {
         $settings['config']['gdgdLabel'] = '特殊投稿';
+    }
+    if (
+        ($settings['skin']['normalHeaderColor'] ?? '') === '#39988a'
+        && ($settings['skin']['gdgdHeaderColor'] ?? '') === '#7f00a8'
+    ) {
+        $settings['skin']['normalHeaderColor'] = '#7f00a8';
+        $settings['skin']['gdgdHeaderColor'] = '#39988a';
     }
     $settings['config']['manualTitle'] = (string)($settings['config']['bbsTitle'] ?? 'ThreadForge');
     $defaultBodies = [legacyDefaultManualBody(), previousDefaultManualBody()];

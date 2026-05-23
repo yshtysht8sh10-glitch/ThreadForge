@@ -219,7 +219,16 @@ describe('AdminPage', () => {
     const designSection = screen.getByRole('heading', { name: '掲示板デザイン' }).closest('section')!;
     const normalFrameInputs = within(designSection).getAllByDisplayValue('#a23dff');
     const textColorInput = normalFrameInputs.find((element) => element.getAttribute('type') !== 'color')!;
-    const preview = within(designSection).getByRole('heading', { name: 'サンプル画面' }).closest('section')!;
+    const preview = within(designSection).getByRole('heading', { name: '色設定見本' }).closest('section')!;
+
+    expect(within(preview).getByLabelText('ラベル色 / 入力欄')).toBeInTheDocument();
+    expect(within(preview).getByRole('button', { name: '通常ボタン' })).toBeInTheDocument();
+    expect(within(preview).getByRole('button', { name: 'グレーボタン' })).toBeInTheDocument();
+    expect(within(preview).getByText('当板：')).toBeInTheDocument();
+    expect(within(preview).getByText('Misskey先：')).toBeInTheDocument();
+    expect(within(preview).getByText('X連携は未デバッグです。現時点では動作を保証しません。')).toBeInTheDocument();
+    expect(within(preview).getByText('成功メッセージのサンプル')).toBeInTheDocument();
+    expect(within(preview).getByText('警告メッセージのサンプル')).toBeInTheDocument();
 
     fireEvent.change(textColorInput, { target: { value: '#112233' } });
     expect(preview.style.getPropertyValue('--preview-normal-frame')).toBe('#112233');
@@ -488,10 +497,21 @@ describe('AdminPage', () => {
     expect(screen.getByRole('button', { name: 'ユーザー登録情報' })).toBeInTheDocument();
     fireEvent.click(within(userScreen).getAllByRole('button', { name: '編集' })[0]);
 
-    expect(confirmSpy).toHaveBeenCalledWith('ユーザー No.1 Alice の情報を表示しますか？');
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
     fireEvent.change(within(userScreen).getByLabelText('ID'), { target: { value: 'alice2' } });
     fireEvent.change(within(userScreen).getByLabelText('名前'), { target: { value: 'Alice Updated' } });
-    fireEvent.change(within(userScreen).getByLabelText('ログインパスワード再設定（任意）'), { target: { value: 'new-login-secret' } });
+    const loginPasswordInput = within(userScreen).getByLabelText('新しいログインパスワード（再設定する場合のみ）');
+    const loginPasswordConfirmInput = within(userScreen).getByLabelText('新しいログインパスワード（確認）');
+    expect(loginPasswordInput).toHaveAttribute('type', 'password');
+    expect(within(userScreen).getByText('現在のログインパスワードは安全のため表示できません。変更する場合のみ新しいパスワードを入力してください。')).toBeInTheDocument();
+    fireEvent.change(loginPasswordInput, { target: { value: 'new-login-secret' } });
+    fireEvent.click(within(userScreen).getByLabelText('入力内容を表示'));
+    expect(loginPasswordInput).toHaveAttribute('type', 'text');
+    expect(loginPasswordConfirmInput).toHaveAttribute('type', 'text');
+    fireEvent.click(within(userScreen).getByRole('button', { name: '保存' }));
+    expect(await screen.findByText(/新しいログインパスワードと確認用パスワードが一致しません。/)).toBeInTheDocument();
+    expect(api.adminUpdateUser).not.toHaveBeenCalled();
+    fireEvent.change(loginPasswordConfirmInput, { target: { value: 'new-login-secret' } });
     fireEvent.click(within(userScreen).getByRole('button', { name: '保存' }));
 
     await waitFor(() => expect(api.adminUpdateUser).toHaveBeenCalledWith(

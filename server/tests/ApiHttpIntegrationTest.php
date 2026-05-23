@@ -136,7 +136,12 @@ final class ApiHttpIntegrationTest extends TestCase
         $settings = $this->getJson(['action' => 'getSettings', 'admin_password' => 'admin-secret']);
         $this->assertSame(200, $settings['status']);
         $config = $settings['json']['settings']['config'];
+        $skin = $settings['json']['settings']['skin'];
         $this->assertSame(20, $config['logView']);
+        $this->assertSame('#7f00a8', $skin['normalHeaderColor']);
+        $this->assertSame('#39988a', $skin['gdgdHeaderColor']);
+        $this->assertSame('#30343b', $skin['quickReactionButtonBackgroundColor']);
+        $this->assertSame('#ffd36a', $skin['warningColor']);
         $this->assertSame('', $config['tweetBaseUrl']);
         $this->assertSame('', $config['tweetConsumerKey']);
         $this->assertSame('', $config['tweetConsumerSecret']);

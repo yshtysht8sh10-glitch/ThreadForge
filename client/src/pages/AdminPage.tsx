@@ -34,6 +34,8 @@ const AdminPage = () => {
   const [userDeleteEnabled, setUserDeleteEnabled] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editingUserPassword, setEditingUserPassword] = useState('');
+  const [editingUserPasswordConfirm, setEditingUserPasswordConfirm] = useState('');
+  const [showEditingUserPassword, setShowEditingUserPassword] = useState(false);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [savedSettings, setSavedSettings] = useState<Settings | null>(null);
   const [cronPath, setCronPath] = useState('');
@@ -305,21 +307,26 @@ const AdminPage = () => {
   };
 
   const startEditUser = (user: AdminUser) => {
-    if (!window.confirm(`ユーザー No.${user.id} ${user.display_name} の情報を表示しますか？`)) {
-      return;
-    }
     setEditingUser(user);
     setEditingUserPassword('');
+    setEditingUserPasswordConfirm('');
+    setShowEditingUserPassword(false);
   };
 
   const saveAdminUser = guarded(async () => {
     if (!editingUser) {
       return;
     }
+    if (editingUserPassword !== editingUserPasswordConfirm) {
+      setError('新しいログインパスワードと確認用パスワードが一致しません。');
+      return;
+    }
     const response = await api.adminUpdateUser({ ...editingUser, login_password: editingUserPassword }, adminPassword);
     setStatus(response.message);
     setEditingUser(null);
     setEditingUserPassword('');
+    setEditingUserPasswordConfirm('');
+    setShowEditingUserPassword(false);
     await reloadAdminUsers();
     await reloadThreads();
   });
@@ -650,12 +657,30 @@ const AdminPage = () => {
                     URL / HOME
                     <input value={editingUser.home_url ?? ''} onChange={(event) => setEditingUser({ ...editingUser, home_url: event.target.value })} />
                   </label>
-                  <label>
-                    ログインパスワード再設定（任意）
-                    <input type="password" value={editingUserPassword} onChange={(event) => setEditingUserPassword(event.target.value)} />
-                  </label>
+                  <div className="admin-user-login-password">
+                    <div className="admin-user-login-password-fields">
+                      <label>
+                        新しいログインパスワード（再設定する場合のみ）
+                        <input type={showEditingUserPassword ? 'text' : 'password'} value={editingUserPassword} onChange={(event) => setEditingUserPassword(event.target.value)} />
+                      </label>
+                      <label>
+                        新しいログインパスワード（確認）
+                        <input type={showEditingUserPassword ? 'text' : 'password'} value={editingUserPasswordConfirm} onChange={(event) => setEditingUserPasswordConfirm(event.target.value)} />
+                      </label>
+                    </div>
+                    <label className="admin-user-password-visible">
+                      <input type="checkbox" checked={showEditingUserPassword} onChange={(event) => setShowEditingUserPassword(event.target.checked)} />
+                      入力内容を表示
+                    </label>
+                    <p>現在のログインパスワードは安全のため表示できません。変更する場合のみ新しいパスワードを入力してください。</p>
+                  </div>
                   <div className="button-row align-right">
-                    <button type="button" className="secondary" onClick={() => setEditingUser(null)}>閉じる</button>
+                    <button type="button" className="secondary" onClick={() => {
+                      setEditingUser(null);
+                      setEditingUserPassword('');
+                      setEditingUserPasswordConfirm('');
+                      setShowEditingUserPassword(false);
+                    }}>閉じる</button>
                     <button type="submit">保存</button>
                   </div>
                 </form>
@@ -714,6 +739,7 @@ const AdminPage = () => {
               <SettingsForm
                 values={settings.config}
                 groups={configSettingGroups}
+                warningColor={settings.skin.warningColor}
                 onChange={(key, value) => updateSetting('config', key, value)}
               />
             </section>
@@ -817,7 +843,7 @@ function DesignPreview({ settings }: { settings: Settings }) {
   const config = settings.config;
   return (
     <section className="admin-design-preview" style={designPreviewStyle(skin)}>
-      <h3>サンプル画面</h3>
+      <h3>色設定見本</h3>
       <div className="design-preview-nav">HOME | 一覧 | 投稿 | 検索 | 順位</div>
       <article className="design-preview-thread normal">
         <header>[No.1] 通常投稿のサンプル</header>
@@ -827,13 +853,39 @@ function DesignPreview({ settings }: { settings: Settings }) {
       </article>
       <article className="design-preview-thread special">
         <header>[No.2] {String(config.gdgdLabel ?? '特殊投稿')}のサンプル</header>
-        <div className="design-preview-actions">
-          <button type="button">コメント</button>
-          <button type="button" style={{ color: String(config.eejanaikaOmigotoColor ?? '#ff72ff') }}>{shortReactionLabel(config.eejanaikaOmigotoText)}</button>
-          <button type="button" style={{ color: String(config.eejanaikaGoodjobColor ?? '#27a8ff') }}>{shortReactionLabel(config.eejanaikaGoodjobText)}</button>
-          <button type="button" style={{ color: String(config.eejanaikaEejanaikaColor ?? '#fff200') }}>{shortReactionLabel(config.eejanaikaEejanaikaText)}</button>
+        <div className="design-preview-thread-footer">
+          <div className="design-preview-social-rows">
+            <p><span>当板：</span><b>閲覧数: 45</b><b>ええじゃ数: 0</b><b>お美事数: 1</b><b>いい仕事数: 0</b></p>
+            <p><span>X先：</span><i aria-hidden="true">■</i><b>閲覧数: 0</b><b>いいね数: 0</b><b>RP数: 0</b></p>
+            <p><span>Bluesky先：</span><i aria-hidden="true">■</i><b>Like数: 0</b><b>Repost数: 0</b><b>Quote数: 0</b></p>
+            <p><span>Mastodon先：</span><i aria-hidden="true">■</i><b>Boost数: 0</b><b>Fav数: 0</b></p>
+            <p><span>Misskey先：</span><i aria-hidden="true">■</i><b>🔥: 0</b><b>👀: 0</b><b>😭: 0</b><b>🤔: 0</b><b>🎉: 0</b><b>他: 0</b></p>
+          </div>
+          <div className="design-preview-actions">
+            <button type="button">コメント</button>
+            <span className="design-preview-reaction-stack">
+              <button type="button" style={{ color: String(config.eejanaikaOmigotoColor ?? '#ff72ff') }}>{shortReactionLabel(config.eejanaikaOmigotoText)}</button>
+              <button type="button" style={{ color: String(config.eejanaikaGoodjobColor ?? '#27a8ff') }}>{shortReactionLabel(config.eejanaikaGoodjobText)}</button>
+              <button type="button" style={{ color: String(config.eejanaikaEejanaikaColor ?? '#fff200') }}>{shortReactionLabel(config.eejanaikaEejanaikaText)}</button>
+            </span>
+          </div>
         </div>
       </article>
+      <p className="design-preview-warning">X連携は未デバッグです。現時点では動作を保証しません。</p>
+      <section className="design-preview-controls" aria-label="入力欄と状態表示のサンプル">
+        <header>入力・ボタン・メッセージ</header>
+        <div className="design-preview-field">
+          <label htmlFor="design-preview-input">ラベル色 / 入力欄</label>
+          <input id="design-preview-input" type="text" value="入力文字のサンプル" readOnly />
+        </div>
+        <div className="design-preview-control-actions">
+          <button type="button">通常ボタン</button>
+          <button type="button" className="secondary">グレーボタン</button>
+          <button type="button" className="danger">警告ボタン</button>
+        </div>
+        <p className="design-preview-success">成功メッセージのサンプル</p>
+        <p className="design-preview-danger">警告メッセージのサンプル</p>
+      </section>
     </section>
   );
 }
@@ -842,10 +894,12 @@ function SettingsForm({
   values,
   groups,
   onChange,
+  warningColor,
 }: {
   values: Record<string, SettingValue>;
   groups: SettingGroup[];
   onChange: (key: string, value: SettingValue) => void;
+  warningColor?: SettingValue;
 }) {
   return (
     <>
@@ -858,7 +912,7 @@ function SettingsForm({
           <div className={settingsGroupClassName(group)} key={group.title}>
             {group.title && <h3 className="admin-settings-heading">{group.title}</h3>}
             {group.title === 'X' && (
-              <p className="admin-setting-note">X連携は未デバッグです。現時点では動作を保証しません。</p>
+              <p className="admin-setting-note" style={{ color: String(warningColor ?? '#ffd36a') }}>X連携は未デバッグです。現時点では動作を保証しません。</p>
             )}
             {keys.map((key) => {
               const value = values[key];
@@ -1041,12 +1095,22 @@ function designPreviewStyle(skin: Record<string, SettingValue>): CSSProperties {
     '--preview-button-text': String(skin.buttonTextColor ?? '#ffffff'),
     '--preview-button-border': String(skin.buttonBorderColor ?? '#8fb0ff'),
     '--preview-normal-frame': String(skin.normalFrameColor ?? '#a23dff'),
-    '--preview-normal-header': String(skin.normalHeaderColor ?? '#39988a'),
+    '--preview-normal-header': String(skin.normalHeaderColor ?? '#7f00a8'),
     '--preview-normal-text': String(skin.normalTextColor ?? '#ffffff'),
     '--preview-special-frame': String(skin.gdgdFrameColor ?? '#6dffc0'),
-    '--preview-special-header': String(skin.gdgdHeaderColor ?? '#7f00a8'),
+    '--preview-special-header': String(skin.gdgdHeaderColor ?? '#39988a'),
     '--preview-special-text': String(skin.gdgdTextColor ?? '#ffffff'),
     '--preview-reply-border': String(skin.replyBorderColor ?? '#7a8495'),
+    '--preview-label': String(skin.labelColor ?? '#8fc0ff'),
+    '--preview-input-bg': String(skin.inputBackgroundColor ?? '#30343a'),
+    '--preview-input-text': String(skin.inputTextColor ?? '#ffffff'),
+    '--preview-secondary-bg': String(skin.secondaryButtonBackgroundColor ?? '#2f333b'),
+    '--preview-secondary-text': String(skin.secondaryButtonTextColor ?? '#ffffff'),
+    '--preview-secondary-border': String(skin.secondaryButtonBorderColor ?? '#7a8495'),
+    '--preview-reaction-button-bg': String(skin.quickReactionButtonBackgroundColor ?? '#30343b'),
+    '--preview-danger': String(skin.dangerColor ?? '#ff7c7c'),
+    '--preview-warning': String(skin.warningColor ?? '#ffd36a'),
+    '--preview-success': String(skin.successColor ?? '#8dff8d'),
   } as CSSProperties;
 }
 
@@ -1061,7 +1125,7 @@ const configSettingGroups: SettingGroup[] = [
 
 const designSettingGroups: SettingGroup[] = [
   { title: '簡単リアクション', keys: ['eejanaikaOmigotoText', 'eejanaikaOmigotoColor', 'eejanaikaGoodjobText', 'eejanaikaGoodjobColor', 'eejanaikaEejanaikaText', 'eejanaikaEejanaikaColor'] },
-  { title: '色設定', keys: ['backgroundColor', 'pageTextColor', 'linkColor', 'panelBackgroundColor', 'panelTitleBackgroundColor', 'panelBorderColor', 'labelColor', 'inputBackgroundColor', 'inputTextColor', 'buttonBackgroundColor', 'buttonTextColor', 'buttonBorderColor', 'secondaryButtonBackgroundColor', 'secondaryButtonTextColor', 'secondaryButtonBorderColor', 'normalFrameColor', 'normalHeaderColor', 'normalTextColor', 'gdgdFrameColor', 'gdgdHeaderColor', 'gdgdTextColor', 'replyBorderColor', 'dangerColor', 'successColor'] },
+  { title: '色設定', keys: ['backgroundColor', 'pageTextColor', 'linkColor', 'panelBackgroundColor', 'panelTitleBackgroundColor', 'panelBorderColor', 'labelColor', 'inputBackgroundColor', 'inputTextColor', 'buttonBackgroundColor', 'buttonTextColor', 'buttonBorderColor', 'secondaryButtonBackgroundColor', 'secondaryButtonTextColor', 'secondaryButtonBorderColor', 'quickReactionButtonBackgroundColor', 'normalFrameColor', 'normalHeaderColor', 'normalTextColor', 'gdgdFrameColor', 'gdgdHeaderColor', 'gdgdTextColor', 'replyBorderColor', 'dangerColor', 'warningColor', 'successColor'] },
 ];
 
 const designConfigKeys = ['eejanaikaOmigotoText', 'eejanaikaOmigotoColor', 'eejanaikaGoodjobText', 'eejanaikaGoodjobColor', 'eejanaikaEejanaikaText', 'eejanaikaEejanaikaColor'];
@@ -1395,8 +1459,10 @@ const settingLabels: Record<string, string> = {
   secondaryButtonBackgroundColor: 'グレーボタン背景色',
   secondaryButtonTextColor: 'グレーボタン文字色',
   secondaryButtonBorderColor: 'グレーボタン枠色',
+  quickReactionButtonBackgroundColor: '簡単リアクションボタン背景色',
   replyBorderColor: '返信区切り線色',
-  dangerColor: '警告色',
+  dangerColor: '消去/エラー色',
+  warningColor: '注意文の色',
   successColor: '成功色',
 };
 
