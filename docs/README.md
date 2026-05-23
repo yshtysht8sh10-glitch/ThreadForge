@@ -47,7 +47,7 @@ The local archive importer reads `LOG_*.cgi` files and referenced images from th
 - Thread-only display numbers with reply child numbers
 - Edit and soft delete
 - Admin passwordless bulk delete with start/end range selection, parent-to-reply linked selection, and full/compact display modes
-- Admin restore/purge with blue restore actions, guarded red purge actions, and full/compact display modes
+- Admin restore/purge with the same selectable card layout as bulk delete, guarded red purge actions, and full/compact display modes
 - Dedicated admin user-information screen with guarded destructive actions
 - Admin DB integrity check
 - Admin backup export/import

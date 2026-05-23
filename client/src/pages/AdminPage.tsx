@@ -29,6 +29,7 @@ const AdminPage = () => {
   const [deletedRangeEnd, setDeletedRangeEnd] = useState('');
   const [bulkCompact, setBulkCompact] = useState(false);
   const [deletedCompact, setDeletedCompact] = useState(true);
+  const [deletedSelectedIds, setDeletedSelectedIds] = useState<string[]>([]);
   const [deletedPurgeEnabled, setDeletedPurgeEnabled] = useState(false);
   const [userDeleteEnabled, setUserDeleteEnabled] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -71,6 +72,7 @@ const AdminPage = () => {
       setCronApiKey(settingResponse.system?.cronApiKey ?? '');
       setAdminPasswordConfigured(settingResponse.system?.adminPasswordConfigured ?? null);
       setSelectedIds([]);
+      setDeletedSelectedIds([]);
       setEditingUser(null);
       setDeletedPurgeEnabled(false);
       setUserDeleteEnabled(false);
@@ -137,6 +139,7 @@ const AdminPage = () => {
 
   const reloadDeletedPosts = async () => {
     setDeletedPosts(await api.listDeletedPosts(adminPassword));
+    setDeletedSelectedIds([]);
   };
 
   const reloadAdminUsers = async () => {
@@ -144,21 +147,14 @@ const AdminPage = () => {
     setAdminUsers(response.users);
   };
 
+  const deletedThreads = groupDeletedPosts(deletedPosts);
+
   const toggleSelected = (id: string) => {
-    setSelectedIds((current) => {
-      const thread = threads.find((item) => String(item.id) === id);
-      if (thread) {
-        const ids = [String(thread.id), ...(thread.replies ?? []).map((reply) => String(reply.id))];
-        return current.includes(id)
-          ? current.filter((item) => !ids.includes(item))
-          : [...new Set([...current, ...ids])];
-      }
-      const parent = threads.find((item) => (item.replies ?? []).some((reply) => String(reply.id) === id));
-      if (parent && current.includes(String(parent.id))) {
-        return current;
-      }
-      return current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
-    });
+    setSelectedIds((current) => toggleThreadSelection(current, id, threads));
+  };
+
+  const toggleDeletedSelected = (id: string) => {
+    setDeletedSelectedIds((current) => toggleThreadSelection(current, id, deletedThreads));
   };
 
   const bulkDelete = guarded(async () => {
@@ -189,77 +185,61 @@ const AdminPage = () => {
     setError(null);
   };
 
-  const restore = async (id: number) => {
-    setError(null);
-    setStatus('復元中...');
-    const response = await api.restorePost(String(id), adminPassword);
-    setStatus(response.message);
-    await reloadThreads();
-    await reloadDeletedPosts();
-  };
-
-  const purgeDeleted = async (id: number) => {
-    if (!deletedPurgeEnabled) {
-      setError('消去を有効にしてください。');
-      return;
-    }
-    if (!window.confirm('画像やコメントなどのデータを消去します。表示番号は残ります。実行しますか？')) {
-      return;
-    }
-    setError(null);
-    setStatus('投稿データを消去中...');
-    const response = await api.purgePostData(String(id), adminPassword);
-    setStatus(response.message);
-    await reloadThreads();
-    await reloadDeletedPosts();
-  };
-
-  const destroyDeleted = async (id: number) => {
-    if (!deletedPurgeEnabled) {
-      setError('消去を有効にしてください。');
-      return;
-    }
-    if (!window.confirm('投稿番号ごと完全削除します。表示番号が前詰めされます。実行しますか？')) {
-      return;
-    }
-    setError(null);
-    setStatus('投稿番号を消去中...');
-    const response = await api.destroyPostNumber(String(id), adminPassword);
-    setStatus(response.message);
-    await reloadThreads();
-    await reloadDeletedPosts();
-  };
-
-  const purgeDeletedRange = async (stage: 1 | 2) => {
-    if (!deletedPurgeEnabled) {
-      setError('消去を有効にしてください。');
-      return;
-    }
+  const selectDeletedRange = () => {
     if (isMixedParentAndReplyRange(deletedRangeStart, deletedRangeEnd)) {
       setError('親投稿指定と返信指定は混在できません。開始と終了は同じ種類で指定してください。');
       return;
     }
-    const ids = idsFromDisplayRange(deletedPosts, deletedRangeStart, deletedRangeEnd);
+    const ids = idsFromDisplayRange(deletedThreads, deletedRangeStart, deletedRangeEnd);
     if (ids.length === 0) {
       setError('範囲に一致する削除済み投稿がありません。');
       return;
     }
+    setDeletedSelectedIds((current) => [...new Set([...current, ...ids])]);
+    setStatus(`${ids.length}件を選択しました。`);
+    setError(null);
+  };
+
+  const restoreDeletedSelected = async () => {
+    if (deletedSelectedIds.length === 0) {
+      setError('復元する投稿または返信を選択してください。');
+      return;
+    }
+    setError(null);
+    setStatus('復元中...');
+    for (const id of deletedSelectedIds) {
+      await api.restorePost(id, adminPassword);
+    }
+    setStatus(`${deletedSelectedIds.length}件を復元しました。`);
+    await reloadThreads();
+    await reloadDeletedPosts();
+  };
+
+  const purgeDeletedSelected = async (stage: 1 | 2) => {
+    if (!deletedPurgeEnabled) {
+      setError('消去を有効にしてください。');
+      return;
+    }
+    if (deletedSelectedIds.length === 0) {
+      setError('消去する投稿または返信を選択してください。');
+      return;
+    }
     const message = stage === 1
-      ? `${ids.length}件のデータを消去します。表示番号は残ります。`
-      : `${ids.length}件を番号ごと完全削除します。表示番号が前詰めされます。`;
+      ? `${deletedSelectedIds.length}件のデータを消去します。表示番号は残ります。`
+      : `${deletedSelectedIds.length}件を番号ごと完全削除します。表示番号が前詰めされます。`;
     if (!window.confirm(`${message} 実行しますか？`)) {
       return;
     }
     setError(null);
     setStatus(stage === 1 ? '投稿データを消去中...' : '投稿番号を消去中...');
-    for (const id of ids) {
+    for (const id of deletedSelectedIds) {
       if (stage === 1) {
         await api.purgePostData(id, adminPassword);
       } else {
         await api.destroyPostNumber(id, adminPassword);
       }
     }
-    setStatus(stage === 1 ? `${ids.length}件の投稿データを消去しました。` : `${ids.length}件を番号ごと完全削除しました。`);
+    setStatus(stage === 1 ? `${deletedSelectedIds.length}件の投稿データを消去しました。` : `${deletedSelectedIds.length}件を番号ごと完全削除しました。`);
     await reloadThreads();
     await reloadDeletedPosts();
   };
@@ -770,13 +750,7 @@ const AdminPage = () => {
               <h2>復元/消去</h2>
               <div className="admin-section-intro-row">
                 <p>削除済み投稿の復元、データ消去、番号ごとの完全削除を行います。</p>
-                <div className="admin-safety-controls">
-                  <DisplayModeSwitch compact={deletedCompact} onChange={setDeletedCompact} />
-                  <label className="admin-danger-enable">
-                    <input type="checkbox" checked={deletedPurgeEnabled} onChange={(event) => setDeletedPurgeEnabled(event.target.checked)} />
-                    消去を有効にする
-                  </label>
-                </div>
+                <DisplayModeSwitch compact={deletedCompact} onChange={setDeletedCompact} />
               </div>
               <div className="admin-range-actions">
                 <label>
@@ -787,20 +761,21 @@ const AdminPage = () => {
                   終了
                   <input value={deletedRangeEnd} onChange={(event) => setDeletedRangeEnd(event.target.value)} placeholder="例: 99 / 90-6" />
                 </label>
-                <button type="button" className="danger admin-fixed-action-button" disabled={!deletedPurgeEnabled} onClick={() => void purgeDeletedRange(1)}>範囲を消去</button>
-                <button type="button" className="danger admin-fixed-action-button" disabled={!deletedPurgeEnabled} onClick={() => void purgeDeletedRange(2)}>範囲を番号ごと消去</button>
+                <button type="button" className="secondary" onClick={selectDeletedRange}>範囲を選択</button>
+                <button type="button" className="secondary" onClick={() => setDeletedSelectedIds([])} disabled={deletedSelectedIds.length === 0}>選択をすべて解除</button>
               </div>
-              {deletedPosts.length === 0 && <p>削除済み投稿はありません。</p>}
-              {deletedPosts.map((post) => (
-                <div className={deletedCompact ? 'admin-deleted-row admin-deleted-row-compact' : 'admin-deleted-row'} key={post.id}>
-                  <strong>No.{adminDisplayNo(post)} {post.title || '無題'}</strong>
-                  <span>{post.name} / 削除日時: {post.deleted_at}</span>
-                  {!deletedCompact && <p>{post.message}</p>}
-                  <button type="button" className="admin-fixed-action-button" onClick={() => restore(post.id)}>復元</button>
-                  <button type="button" className="danger admin-fixed-action-button" disabled={!deletedPurgeEnabled} onClick={() => void purgeDeleted(post.id)}>消去</button>
-                  <button type="button" className="danger admin-fixed-action-button" disabled={!deletedPurgeEnabled} onClick={() => void destroyDeleted(post.id)}>番号ごと消去</button>
+              <div className="admin-deleted-actions">
+                <label className="admin-danger-enable">
+                  <input type="checkbox" checked={deletedPurgeEnabled} onChange={(event) => setDeletedPurgeEnabled(event.target.checked)} />
+                  消去を有効にする
+                </label>
+                <div className="button-row align-right">
+                  <button type="button" onClick={() => void restoreDeletedSelected()}>選択した項目を復元</button>
+                  <button type="button" className="danger" disabled={!deletedPurgeEnabled} onClick={() => void purgeDeletedSelected(1)}>選択した項目を消去</button>
+                  <button type="button" className="danger" disabled={!deletedPurgeEnabled} onClick={() => void purgeDeletedSelected(2)}>選択した項目を番号ごと消去</button>
                 </div>
-              ))}
+              </div>
+              <SelectableThreadList threads={deletedThreads} selectedIds={deletedSelectedIds} onToggle={toggleDeletedSelected} multiple compact={deletedCompact} />
             </section>
           )}
         </>
@@ -1421,6 +1396,36 @@ function adminDisplayNo(post: Post): string {
     return String(post.display_no ?? post.id);
   }
   return `${post.display_no ?? post.thread_id}-${post.reply_no ?? post.id}`;
+}
+
+function toggleThreadSelection(current: string[], id: string, threads: Post[]): string[] {
+  const thread = threads.find((item) => String(item.id) === id);
+  if (thread) {
+    const ids = [String(thread.id), ...(thread.replies ?? []).map((reply) => String(reply.id))];
+    return current.includes(id)
+      ? current.filter((item) => !ids.includes(item))
+      : [...new Set([...current, ...ids])];
+  }
+  const parent = threads.find((item) => (item.replies ?? []).some((reply) => String(reply.id) === id));
+  if (parent && current.includes(String(parent.id))) {
+    return current;
+  }
+  return current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+}
+
+function groupDeletedPosts(posts: Post[]): Post[] {
+  const repliesByThread = new Map<number, Post[]>();
+  posts.filter((post) => post.parent_id !== 0).forEach((post) => {
+    const replies = repliesByThread.get(post.thread_id) ?? [];
+    replies.push(post);
+    repliesByThread.set(post.thread_id, replies);
+  });
+  const parentIds = new Set(posts.filter((post) => post.parent_id === 0).map((post) => post.id));
+  const parents = posts
+    .filter((post) => post.parent_id === 0)
+    .map((post) => ({ ...post, replies: repliesByThread.get(post.id) ?? [] }));
+  const orphans = posts.filter((post) => post.parent_id !== 0 && !parentIds.has(post.thread_id));
+  return [...parents, ...orphans];
 }
 
 function idsFromDisplayRange(posts: Post[], startText: string, endText: string): string[] {

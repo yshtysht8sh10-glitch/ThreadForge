@@ -1141,6 +1141,17 @@ button.post-reset-button:hover {
   gap: 0.45rem;
 }
 
+.admin-deleted-actions {
+  display: grid;
+  justify-items: end;
+  gap: 0.65rem;
+  margin: 0 0 1rem;
+}
+
+.admin-deleted-actions .button-row button {
+  min-width: 10.5rem;
+}
+
 .admin-danger-enable {
   display: inline-flex;
   align-items: center;

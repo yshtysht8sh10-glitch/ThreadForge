@@ -28,12 +28,12 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
               disabled={isDisabled?.(thread) ?? false}
               onChange={() => onToggle(String(thread.id))}
             />
-            No.{thread.display_no ?? thread.id} を選択
+            No.{displayPostNumber(thread)} を選択
             {isDisabled?.(thread) && <span className="mode-select-disabled-note">{disabledLabel}</span>}
           </label>
 
           <header className="board-thread-title">
-            [No.{thread.display_no ?? thread.id}] {thread.title || '無題'}
+            [No.{displayPostNumber(thread)}] {thread.title || '無題'}
           </header>
 
           <div className="board-thread-body">
@@ -92,6 +92,13 @@ function threadClassName(thread: Post): string {
     classes.push('board-thread-gdgd');
   }
   return classes.join(' ');
+}
+
+function displayPostNumber(thread: Post): string {
+  if (thread.parent_id !== 0 && thread.reply_no != null) {
+    return `${thread.display_no ?? thread.thread_id}-${thread.reply_no}`;
+  }
+  return String(thread.display_no ?? thread.id);
 }
 
 function formatDate(value: string): string {

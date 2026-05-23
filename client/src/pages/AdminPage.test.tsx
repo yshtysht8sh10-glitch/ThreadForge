@@ -576,7 +576,7 @@ describe('AdminPage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: '復元/消去' }));
 
-    expect(screen.getByText(/No\.12-2/)).toBeInTheDocument();
+    expect(screen.getByText(/\[No\.12-2\]/)).toBeInTheDocument();
     expect(screen.queryByText(/No\.514/)).not.toBeInTheDocument();
   });
 
@@ -589,13 +589,15 @@ describe('AdminPage', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: '復元/消去' }));
-    expect(screen.getByRole('button', { name: '消去' })).toBeDisabled();
+    fireEvent.click(screen.getByLabelText('No.12-2 を選択'));
+    expect(screen.getByRole('button', { name: '選択した項目を消去' })).toBeDisabled();
     fireEvent.click(screen.getByLabelText('消去を有効にする'));
-    fireEvent.click(screen.getByRole('button', { name: '消去' }));
+    fireEvent.click(screen.getByRole('button', { name: '選択した項目を消去' }));
     await waitFor(() => expect(api.purgePostData).toHaveBeenCalledWith('514', 'admin-secret'));
 
     fireEvent.change(screen.getByLabelText('開始'), { target: { value: '12' } });
-    fireEvent.click(screen.getByRole('button', { name: '範囲を番号ごと消去' }));
+    fireEvent.click(screen.getByRole('button', { name: '範囲を選択' }));
+    fireEvent.click(screen.getByRole('button', { name: '選択した項目を番号ごと消去' }));
     await waitFor(() => expect(api.destroyPostNumber).toHaveBeenCalledWith('514', 'admin-secret'));
     confirmSpy.mockRestore();
   });
