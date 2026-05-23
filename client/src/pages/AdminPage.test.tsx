@@ -483,6 +483,7 @@ describe('AdminPage', () => {
     expect(within(maintenanceUserSection).queryByText('No.1 Alice')).not.toBeInTheDocument();
     fireEvent.click(within(maintenanceUserSection).getByRole('button', { name: '編集' }));
 
+    expect(confirmSpy).toHaveBeenCalledWith('ユーザー登録情報を表示しますか？');
     const userScreen = screen.getByRole('heading', { name: 'ユーザー登録情報' }).closest('section')!;
     expect(screen.getByRole('button', { name: 'ユーザー登録情報' })).toBeInTheDocument();
     fireEvent.click(within(userScreen).getAllByRole('button', { name: '編集' })[0]);
@@ -509,6 +510,24 @@ describe('AdminPage', () => {
 
     fireEvent.click(within(userScreen).getByRole('button', { name: '番号ごと消去' }));
     await waitFor(() => expect(api.adminDeleteUser).toHaveBeenCalledWith(1, 2, 'admin-secret'));
+    confirmSpy.mockRestore();
+  });
+
+  it('keeps user information hidden when opening the dedicated screen is cancelled', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '保守' }));
+    const userSection = screen.getByRole('heading', { name: 'ユーザー登録情報' }).closest('section')!;
+    fireEvent.click(within(userSection).getByRole('button', { name: '編集' }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('ユーザー登録情報を表示しますか？');
+    expect(within(userSection).queryByText('No.1 Alice')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '保守に戻る' })).not.toBeInTheDocument();
     confirmSpy.mockRestore();
   });
 
@@ -576,7 +595,8 @@ describe('AdminPage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: '復元/消去' }));
 
-    expect(screen.getByText(/\[No\.12-2\]/)).toBeInTheDocument();
+    expect(screen.getByLabelText('返信No.12-2 を選択')).toBeInTheDocument();
+    expect(screen.queryByText(/\[No\.12-2\]/)).not.toBeInTheDocument();
     expect(screen.queryByText(/No\.514/)).not.toBeInTheDocument();
   });
 
@@ -589,7 +609,7 @@ describe('AdminPage', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: '復元/消去' }));
-    fireEvent.click(screen.getByLabelText('No.12-2 を選択'));
+    fireEvent.click(screen.getByLabelText('返信No.12-2 を選択'));
     expect(screen.getByRole('button', { name: '選択した項目を消去' })).toBeDisabled();
     fireEvent.click(screen.getByLabelText('消去を有効にする'));
     fireEvent.click(screen.getByRole('button', { name: '選択した項目を消去' }));

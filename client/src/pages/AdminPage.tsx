@@ -295,6 +295,15 @@ const AdminPage = () => {
     setError(null);
   };
 
+  const openUserManagement = () => {
+    if (!window.confirm('ユーザー登録情報を表示しますか？')) {
+      return;
+    }
+    setActiveTab('users');
+    setEditingUser(null);
+    setUserDeleteEnabled(false);
+  };
+
   const startEditUser = (user: AdminUser) => {
     if (!window.confirm(`ユーザー No.${user.id} ${user.display_name} の情報を表示しますか？`)) {
       return;
@@ -561,7 +570,7 @@ const AdminPage = () => {
                 <div className="admin-maintenance-section-body">
                   <p>登録済みユーザーの情報編集や消去は、専用画面で行います。</p>
                   <div className="button-row align-right">
-                    <button type="button" className="secondary" onClick={() => setActiveTab('users')}>編集</button>
+                    <button type="button" className="secondary" onClick={openUserManagement}>編集</button>
                   </div>
                 </div>
               </section>
@@ -775,7 +784,7 @@ const AdminPage = () => {
                   <button type="button" className="danger" disabled={!deletedPurgeEnabled} onClick={() => void purgeDeletedSelected(2)}>選択した項目を番号ごと消去</button>
                 </div>
               </div>
-              <SelectableThreadList threads={deletedThreads} selectedIds={deletedSelectedIds} onToggle={toggleDeletedSelected} multiple compact={deletedCompact} />
+              <SelectableThreadList threads={deletedThreads} selectedIds={deletedSelectedIds} onToggle={toggleDeletedSelected} multiple compact={deletedCompact} standaloneRepliesAsComments />
             </section>
           )}
         </>

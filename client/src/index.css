@@ -1152,6 +1152,16 @@ button.post-reset-button:hover {
   min-width: 10.5rem;
 }
 
+.admin-deleted-actions button:disabled,
+.admin-user-maintenance-list button.danger:disabled {
+  border-color: #505866;
+  background: #292f38;
+  color: #778392;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 .admin-danger-enable {
   display: inline-flex;
   align-items: center;
@@ -1225,6 +1235,19 @@ button.post-reset-button:hover {
   padding: 0.55rem;
   border: 1px solid #4b5665;
   background: #0b1118;
+}
+
+.selectable-standalone-reply {
+  padding: 0.45rem 0.8rem;
+}
+
+.selectable-standalone-reply .selectable-board-reply {
+  border-top: 0;
+  padding: 0;
+}
+
+.selectable-standalone-reply .mode-select-checkbox {
+  margin-bottom: 0.3rem;
 }
 
 .admin-post-row input {

@@ -11,14 +11,40 @@ type SelectableThreadListProps = {
   isDisabled?: (post: Post) => boolean;
   disabledLabel?: string;
   compact?: boolean;
+  standaloneRepliesAsComments?: boolean;
 };
 
-const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false, isDisabled, disabledLabel = '選択不可', compact = false }: SelectableThreadListProps) => {
+const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false, isDisabled, disabledLabel = '選択不可', compact = false, standaloneRepliesAsComments = false }: SelectableThreadListProps) => {
   const inputType = multiple ? 'checkbox' : 'radio';
   return (
     <div className={compact ? 'thread-list thread-list-compact' : 'thread-list'}>
       {threads.length === 0 && <div className="board-message">投稿はまだありません。</div>}
-      {threads.map((thread) => (
+      {threads.map((thread) => standaloneRepliesAsComments && thread.parent_id !== 0 ? (
+        <article key={thread.id} id={`post-${thread.id}`} className="board-thread selectable-standalone-reply">
+          <section className="board-reply selectable-board-reply">
+            <label className="mode-select-checkbox mode-select-checkbox-reply">
+              <input
+                type={inputType}
+                name={multiple ? undefined : 'selected-post'}
+                checked={selectedIds.includes(String(thread.id))}
+                disabled={isDisabled?.(thread) ?? false}
+                onChange={() => onToggle(String(thread.id))}
+              />
+              返信No.{displayPostNumber(thread)} を選択
+              {isDisabled?.(thread) && <span className="mode-select-disabled-note">{disabledLabel}</span>}
+            </label>
+            <p className="board-meta">
+              {thread.user_icon_path && <img className="user-icon" src={mediaUrl(thread.user_icon_path) ?? undefined} alt="" />}
+              NAME：<strong>{thread.name}</strong>
+              {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
+              {' '}<span className="board-meta-sub">- {formatDate(thread.created_at)}</span>
+            </p>
+            <div className={replyTextClassName(thread.message)}>
+              <LinkedText text={thread.message} />
+            </div>
+          </section>
+        </article>
+      ) : (
         <article key={thread.id} id={`post-${thread.id}`} className={threadClassName(thread)}>
           <label className="mode-select-checkbox">
             <input
