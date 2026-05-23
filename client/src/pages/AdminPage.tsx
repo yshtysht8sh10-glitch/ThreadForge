@@ -490,7 +490,7 @@ const AdminPage = () => {
                 <button type="button" className="secondary" onClick={addBulkRange}>範囲を選択</button>
               </div>
               <div className="button-row align-right admin-bulk-actions">
-                <button type="button" className="secondary" onClick={() => setBulkCompact((value) => !value)}>{bulkCompact ? 'フル表示' : '簡易表示'}</button>
+                <DisplayModeSwitch compact={bulkCompact} onChange={setBulkCompact} />
                 <button type="button" className="secondary" onClick={() => setSelectedIds([])} disabled={selectedIds.length === 0}>選択をすべて解除</button>
                 <button type="button" className="danger" onClick={bulkDelete}>チェックした項目を一括削除</button>
               </div>
@@ -713,7 +713,7 @@ const AdminPage = () => {
                 <button type="button" className="danger admin-fixed-action-button" onClick={() => void purgeDeletedRange(2)}>範囲を番号ごと消去</button>
               </div>
               <div className="button-row align-right admin-bulk-actions">
-                <button type="button" className="secondary" onClick={() => setDeletedCompact((value) => !value)}>{deletedCompact ? 'フル表示' : '簡易表示'}</button>
+                <DisplayModeSwitch compact={deletedCompact} onChange={setDeletedCompact} />
               </div>
               {deletedPosts.length === 0 && <p>削除済み投稿はありません。</p>}
               {deletedPosts.map((post) => (
@@ -733,6 +733,25 @@ const AdminPage = () => {
     </div>
   );
 };
+
+function DisplayModeSwitch({ compact, onChange }: { compact: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <label className="admin-display-switch">
+      <span>フル表示</span>
+      <input
+        type="checkbox"
+        role="switch"
+        checked={compact}
+        onChange={(event) => onChange(event.target.checked)}
+        aria-label="簡易表示に切り替え"
+      />
+      <span className="admin-display-switch-track" aria-hidden="true">
+        <span className="admin-display-switch-thumb" />
+      </span>
+      <span>簡易表示</span>
+    </label>
+  );
+}
 
 function SettingsForm({
   values,
