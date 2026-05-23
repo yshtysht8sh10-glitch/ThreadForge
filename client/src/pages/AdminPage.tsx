@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { CSSProperties, FormEvent, useEffect, useRef, useState } from 'react';
 import { AdminUser, api, apiBase } from '../api';
 import { Post } from '../types';
 import SelectableThreadList from '../components/SelectableThreadList';
@@ -9,7 +9,7 @@ type Settings = {
 };
 
 type SettingValue = string | number | boolean | string[];
-type AdminTab = 'posts' | 'deleted' | 'maintenance' | 'analytics' | 'settings' | 'design';
+type AdminTab = 'posts' | 'deleted' | 'maintenance' | 'users' | 'analytics' | 'settings' | 'design';
 type AnalyticsMetric = 'postCount' | 'commentCount' | 'accessCount' | 'viewCount' | 'boardEejanaika' | 'boardOmigoto' | 'boardGoodjob' | 'xLikes' | 'xReposts' | 'xImpressions' | 'blueskyLikes' | 'blueskyReposts' | 'mastodonBoosts' | 'mastodonFavs' | 'misskeyReactions' | 'misskeyFire' | 'misskeyEyes' | 'misskeyCry' | 'misskeyThinking' | 'misskeyParty' | 'misskeyOther';
 type AnalyticsUnit = 'dayTotal' | 'dayCumulative' | 'monthTotal' | 'monthAverage' | 'monthCumulative' | 'yearTotal' | 'yearAverage' | 'yearCumulative';
 
@@ -29,9 +29,12 @@ const AdminPage = () => {
   const [deletedRangeEnd, setDeletedRangeEnd] = useState('');
   const [bulkCompact, setBulkCompact] = useState(false);
   const [deletedCompact, setDeletedCompact] = useState(true);
+  const [deletedPurgeEnabled, setDeletedPurgeEnabled] = useState(false);
+  const [userDeleteEnabled, setUserDeleteEnabled] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editingUserPassword, setEditingUserPassword] = useState('');
   const [settings, setSettings] = useState<Settings | null>(null);
+  const [savedSettings, setSavedSettings] = useState<Settings | null>(null);
   const [cronPath, setCronPath] = useState('');
   const [cronApiUrl, setCronApiUrl] = useState('');
   const [cronApiKey, setCronApiKey] = useState('');
@@ -62,12 +65,15 @@ const AdminPage = () => {
       setAnalyticsPosts(analytics);
       setAdminUsers(userResponse.users);
       setSettings(settingResponse.settings);
+      setSavedSettings(cloneSettings(settingResponse.settings));
       setCronPath(settingResponse.system?.cronPath ?? '');
       setCronApiUrl(settingResponse.system?.cronApiUrl ?? '');
       setCronApiKey(settingResponse.system?.cronApiKey ?? '');
       setAdminPasswordConfigured(settingResponse.system?.adminPasswordConfigured ?? null);
       setSelectedIds([]);
       setEditingUser(null);
+      setDeletedPurgeEnabled(false);
+      setUserDeleteEnabled(false);
       window.localStorage.setItem('threadforgeAdminPassword', password);
       setStatus('管理データを読み込みました。');
     } catch (err) {
@@ -193,6 +199,10 @@ const AdminPage = () => {
   };
 
   const purgeDeleted = async (id: number) => {
+    if (!deletedPurgeEnabled) {
+      setError('消去を有効にしてください。');
+      return;
+    }
     if (!window.confirm('画像やコメントなどのデータを消去します。表示番号は残ります。実行しますか？')) {
       return;
     }
@@ -205,6 +215,10 @@ const AdminPage = () => {
   };
 
   const destroyDeleted = async (id: number) => {
+    if (!deletedPurgeEnabled) {
+      setError('消去を有効にしてください。');
+      return;
+    }
     if (!window.confirm('投稿番号ごと完全削除します。表示番号が前詰めされます。実行しますか？')) {
       return;
     }
@@ -217,6 +231,10 @@ const AdminPage = () => {
   };
 
   const purgeDeletedRange = async (stage: 1 | 2) => {
+    if (!deletedPurgeEnabled) {
+      setError('消去を有効にしてください。');
+      return;
+    }
     if (isMixedParentAndReplyRange(deletedRangeStart, deletedRangeEnd)) {
       setError('親投稿指定と返信指定は混在できません。開始と終了は同じ種類で指定してください。');
       return;
@@ -281,8 +299,21 @@ const AdminPage = () => {
     }
     setStatus('設定を保存中...');
     const response = await api.updateSettings(settings, adminPassword);
+    setSavedSettings(cloneSettings(settings));
     setStatus(response.message);
   });
+
+  const resetDesignSettings = () => {
+    if (!settings || !savedSettings) {
+      return;
+    }
+    setSettings({
+      config: { ...settings.config, ...pickKeys(savedSettings.config, designConfigKeys) },
+      skin: { ...savedSettings.skin },
+    });
+    setStatus('掲示板デザインを保存済みの設定に戻しました。');
+    setError(null);
+  };
 
   const startEditUser = (user: AdminUser) => {
     if (!window.confirm(`ユーザー No.${user.id} ${user.display_name} の情報を表示しますか？`)) {
@@ -305,6 +336,10 @@ const AdminPage = () => {
   });
 
   const deleteAdminUser = async (user: AdminUser, stage: 1 | 2) => {
+    if (!userDeleteEnabled) {
+      setError('ユーザー情報の消去を有効にしてください。');
+      return;
+    }
     const message = stage === 1
       ? `ユーザー No.${user.id} の登録情報を消去します。ユーザー番号は残ります。`
       : `ユーザー No.${user.id} を番号ごと完全削除します。ユーザー番号が前詰めされます。`;
@@ -462,12 +497,18 @@ const AdminPage = () => {
       {settings && (
         <>
           <nav className="admin-tabs" aria-label="管理メニュー">
-            {adminTabs.map((tab) => (
+            {(activeTab === 'users' ? userAdminTabs : adminTabs).map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 className={activeTab === tab.id ? 'active' : undefined}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (tab.id !== 'users') {
+                    setEditingUser(null);
+                    setUserDeleteEnabled(false);
+                  }
+                }}
               >
                 {tab.label}
               </button>
@@ -538,52 +579,10 @@ const AdminPage = () => {
               <section className="admin-maintenance-section">
                 <h3>ユーザー登録情報</h3>
                 <div className="admin-maintenance-section-body">
-                  <p>登録済みユーザーの情報編集、登録情報の消去、ユーザー番号ごとの完全削除を行います。</p>
-                  <div className="admin-user-list">
-                    {adminUsers.length === 0 && <p>登録ユーザーはありません。</p>}
-                    {adminUsers.map((user) => (
-                      <article className="admin-user-row" key={user.id}>
-                        <div>
-                          <strong>No.{user.id} {user.display_name}</strong>
-                          <span>ID: {user.login_id} / 投稿: {user.post_count} / 自分の作品: {user.claim_count}</span>
-                        </div>
-                        <div className="button-row align-right">
-                          <button type="button" className="secondary" onClick={() => startEditUser(user)}>編集</button>
-                          <button type="button" className="secondary" onClick={() => void deleteAdminUser(user, 1)}>情報消去</button>
-                          <button type="button" className="secondary danger-outline" onClick={() => void deleteAdminUser(user, 2)}>番号ごと消去</button>
-                        </div>
-                      </article>
-                    ))}
+                  <p>登録済みユーザーの情報編集や消去は、専用画面で行います。</p>
+                  <div className="button-row align-right">
+                    <button type="button" className="secondary" onClick={() => setActiveTab('users')}>編集</button>
                   </div>
-                  {editingUser && (
-                    <form className="admin-user-edit-form" onSubmit={saveAdminUser}>
-                      <h4>ユーザー No.{editingUser.id} を編集</h4>
-                      <label>
-                        ID
-                        <input value={editingUser.login_id} onChange={(event) => setEditingUser({ ...editingUser, login_id: event.target.value })} />
-                      </label>
-                      <label>
-                        名前
-                        <input value={editingUser.display_name} maxLength={30} onChange={(event) => setEditingUser({ ...editingUser, display_name: event.target.value })} />
-                      </label>
-                      <label>
-                        投稿パスワード
-                        <input value={editingUser.post_password} maxLength={8} onChange={(event) => setEditingUser({ ...editingUser, post_password: event.target.value })} />
-                      </label>
-                      <label>
-                        URL / HOME
-                        <input value={editingUser.home_url ?? ''} onChange={(event) => setEditingUser({ ...editingUser, home_url: event.target.value })} />
-                      </label>
-                      <label>
-                        ログインパスワード再設定（任意）
-                        <input type="password" value={editingUserPassword} onChange={(event) => setEditingUserPassword(event.target.value)} />
-                      </label>
-                      <div className="button-row align-right">
-                        <button type="button" className="secondary" onClick={() => setEditingUser(null)}>閉じる</button>
-                        <button type="submit">保存</button>
-                      </div>
-                    </form>
-                  )}
                 </div>
               </section>
 
@@ -608,6 +607,70 @@ const AdminPage = () => {
                   </div>
                 </div>
               </section>
+            </section>
+          )}
+          {activeTab === 'users' && (
+            <section className="card admin-maintenance-card">
+              <h2>ユーザー登録情報</h2>
+              <div className="admin-section-intro-row">
+                <p>登録済みユーザーの情報編集、登録情報の消去、ユーザー番号ごとの完全削除を行います。</p>
+                <label className="admin-danger-enable">
+                  <input type="checkbox" checked={userDeleteEnabled} onChange={(event) => setUserDeleteEnabled(event.target.checked)} />
+                  消去を有効にする
+                </label>
+              </div>
+              <div className="button-row align-right admin-bulk-actions">
+                <button type="button" className="secondary" onClick={() => {
+                  setActiveTab('maintenance');
+                  setEditingUser(null);
+                  setUserDeleteEnabled(false);
+                }}>保守に戻る</button>
+              </div>
+              <div className="admin-user-list admin-user-maintenance-list">
+                {adminUsers.length === 0 && <p>登録ユーザーはありません。</p>}
+                {adminUsers.map((user) => (
+                  <article className="admin-user-row" key={user.id}>
+                    <div>
+                      <strong>No.{user.id} {user.display_name}</strong>
+                      <span>ID: {user.login_id} / 投稿: {user.post_count} / 自分の作品: {user.claim_count}</span>
+                    </div>
+                    <div className="button-row align-right">
+                      <button type="button" className="admin-fixed-action-button" onClick={() => startEditUser(user)}>編集</button>
+                      <button type="button" className="danger admin-fixed-action-button" disabled={!userDeleteEnabled} onClick={() => void deleteAdminUser(user, 1)}>情報消去</button>
+                      <button type="button" className="danger admin-fixed-action-button" disabled={!userDeleteEnabled} onClick={() => void deleteAdminUser(user, 2)}>番号ごと消去</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              {editingUser && (
+                <form className="admin-user-edit-form" onSubmit={saveAdminUser}>
+                  <h4>ユーザー No.{editingUser.id} を編集</h4>
+                  <label>
+                    ID
+                    <input value={editingUser.login_id} onChange={(event) => setEditingUser({ ...editingUser, login_id: event.target.value })} />
+                  </label>
+                  <label>
+                    名前
+                    <input value={editingUser.display_name} maxLength={30} onChange={(event) => setEditingUser({ ...editingUser, display_name: event.target.value })} />
+                  </label>
+                  <label>
+                    投稿パスワード
+                    <input value={editingUser.post_password} maxLength={8} onChange={(event) => setEditingUser({ ...editingUser, post_password: event.target.value })} />
+                  </label>
+                  <label>
+                    URL / HOME
+                    <input value={editingUser.home_url ?? ''} onChange={(event) => setEditingUser({ ...editingUser, home_url: event.target.value })} />
+                  </label>
+                  <label>
+                    ログインパスワード再設定（任意）
+                    <input type="password" value={editingUserPassword} onChange={(event) => setEditingUserPassword(event.target.value)} />
+                  </label>
+                  <div className="button-row align-right">
+                    <button type="button" className="secondary" onClick={() => setEditingUser(null)}>閉じる</button>
+                    <button type="submit">保存</button>
+                  </div>
+                </form>
+              )}
             </section>
           )}
           {activeTab === 'analytics' && (
@@ -681,13 +744,17 @@ const AdminPage = () => {
               <h2>掲示板デザイン</h2>
               <div className="admin-settings-intro">
                 <p>投稿枠や背景など、見た目に関する設定をここで調整できます。</p>
-                <button type="button" onClick={saveSettings}>設定を保存</button>
+                <div className="button-row align-right">
+                  <button type="button" className="secondary" onClick={resetDesignSettings}>編集前に戻す</button>
+                  <button type="button" onClick={saveSettings}>設定を保存</button>
+                </div>
               </div>
               <SettingsForm
                 values={{ ...settings.skin, ...settings.config }}
                 groups={designSettingGroups}
                 onChange={(key, value) => updateSetting(key in settings.skin ? 'skin' : 'config', key, value)}
               />
+              <DesignPreview settings={settings} />
             </section>
             <section className="card admin-json-tools-card">
               <SettingsJsonTools
@@ -703,7 +770,13 @@ const AdminPage = () => {
               <h2>復元/消去</h2>
               <div className="admin-section-intro-row">
                 <p>削除済み投稿の復元、データ消去、番号ごとの完全削除を行います。</p>
-                <DisplayModeSwitch compact={deletedCompact} onChange={setDeletedCompact} />
+                <div className="admin-safety-controls">
+                  <DisplayModeSwitch compact={deletedCompact} onChange={setDeletedCompact} />
+                  <label className="admin-danger-enable">
+                    <input type="checkbox" checked={deletedPurgeEnabled} onChange={(event) => setDeletedPurgeEnabled(event.target.checked)} />
+                    消去を有効にする
+                  </label>
+                </div>
               </div>
               <div className="admin-range-actions">
                 <label>
@@ -714,8 +787,8 @@ const AdminPage = () => {
                   終了
                   <input value={deletedRangeEnd} onChange={(event) => setDeletedRangeEnd(event.target.value)} placeholder="例: 99 / 90-6" />
                 </label>
-                <button type="button" className="danger admin-fixed-action-button" onClick={() => void purgeDeletedRange(1)}>範囲を消去</button>
-                <button type="button" className="danger admin-fixed-action-button" onClick={() => void purgeDeletedRange(2)}>範囲を番号ごと消去</button>
+                <button type="button" className="danger admin-fixed-action-button" disabled={!deletedPurgeEnabled} onClick={() => void purgeDeletedRange(1)}>範囲を消去</button>
+                <button type="button" className="danger admin-fixed-action-button" disabled={!deletedPurgeEnabled} onClick={() => void purgeDeletedRange(2)}>範囲を番号ごと消去</button>
               </div>
               {deletedPosts.length === 0 && <p>削除済み投稿はありません。</p>}
               {deletedPosts.map((post) => (
@@ -724,8 +797,8 @@ const AdminPage = () => {
                   <span>{post.name} / 削除日時: {post.deleted_at}</span>
                   {!deletedCompact && <p>{post.message}</p>}
                   <button type="button" className="admin-fixed-action-button" onClick={() => restore(post.id)}>復元</button>
-                  <button type="button" className="danger admin-fixed-action-button" onClick={() => void purgeDeleted(post.id)}>消去</button>
-                  <button type="button" className="danger admin-fixed-action-button" onClick={() => void destroyDeleted(post.id)}>番号ごと消去</button>
+                  <button type="button" className="danger admin-fixed-action-button" disabled={!deletedPurgeEnabled} onClick={() => void purgeDeleted(post.id)}>消去</button>
+                  <button type="button" className="danger admin-fixed-action-button" disabled={!deletedPurgeEnabled} onClick={() => void destroyDeleted(post.id)}>番号ごと消去</button>
                 </div>
               ))}
             </section>
@@ -752,6 +825,32 @@ function DisplayModeSwitch({ compact, onChange }: { compact: boolean; onChange: 
       </span>
       <span>簡易表示</span>
     </label>
+  );
+}
+
+function DesignPreview({ settings }: { settings: Settings }) {
+  const skin = settings.skin;
+  const config = settings.config;
+  return (
+    <section className="admin-design-preview" style={designPreviewStyle(skin)}>
+      <h3>サンプル画面</h3>
+      <div className="design-preview-nav">HOME | 一覧 | 投稿 | 検索 | 順位</div>
+      <article className="design-preview-thread normal">
+        <header>[No.1] 通常投稿のサンプル</header>
+        <p>NAME: Blank　投稿日時: 2026/05/23 12:00</p>
+        <div>設定変更はこのプレビューへ即時反映されます。</div>
+        <div className="design-preview-reply">返信コメントの表示サンプル</div>
+      </article>
+      <article className="design-preview-thread special">
+        <header>[No.2] {String(config.gdgdLabel ?? '特殊投稿')}のサンプル</header>
+        <div className="design-preview-actions">
+          <button type="button">コメント</button>
+          <button type="button" style={{ color: String(config.eejanaikaOmigotoColor ?? '#ff72ff') }}>{shortReactionLabel(config.eejanaikaOmigotoText)}</button>
+          <button type="button" style={{ color: String(config.eejanaikaGoodjobColor ?? '#27a8ff') }}>{shortReactionLabel(config.eejanaikaGoodjobText)}</button>
+          <button type="button" style={{ color: String(config.eejanaikaEejanaikaColor ?? '#fff200') }}>{shortReactionLabel(config.eejanaikaEejanaikaText)}</button>
+        </div>
+      </article>
+    </section>
   );
 }
 
@@ -930,6 +1029,43 @@ function settingStoredValue(key: string, value: string): SettingValue {
   return value;
 }
 
+function cloneSettings(settings: Settings): Settings {
+  return {
+    config: { ...settings.config },
+    skin: { ...settings.skin },
+  };
+}
+
+function pickKeys(values: Record<string, SettingValue>, keys: string[]): Record<string, SettingValue> {
+  return Object.fromEntries(keys.filter((key) => key in values).map((key) => [key, values[key]]));
+}
+
+function shortReactionLabel(value: SettingValue | undefined): string {
+  const text = String(value ?? '');
+  return text.length > 4 ? `${text.slice(0, 4)}..` : text;
+}
+
+function designPreviewStyle(skin: Record<string, SettingValue>): CSSProperties {
+  return {
+    '--preview-bg': String(skin.backgroundColor ?? '#000000'),
+    '--preview-text': String(skin.pageTextColor ?? '#ffffff'),
+    '--preview-link': String(skin.linkColor ?? '#58a6ff'),
+    '--preview-panel-bg': String(skin.panelBackgroundColor ?? '#101821'),
+    '--preview-panel-title': String(skin.panelTitleBackgroundColor ?? '#5b6572'),
+    '--preview-panel-border': String(skin.panelBorderColor ?? '#738196'),
+    '--preview-button-bg': String(skin.buttonBackgroundColor ?? '#3f74ff'),
+    '--preview-button-text': String(skin.buttonTextColor ?? '#ffffff'),
+    '--preview-button-border': String(skin.buttonBorderColor ?? '#8fb0ff'),
+    '--preview-normal-frame': String(skin.normalFrameColor ?? '#a23dff'),
+    '--preview-normal-header': String(skin.normalHeaderColor ?? '#39988a'),
+    '--preview-normal-text': String(skin.normalTextColor ?? '#ffffff'),
+    '--preview-special-frame': String(skin.gdgdFrameColor ?? '#6dffc0'),
+    '--preview-special-header': String(skin.gdgdHeaderColor ?? '#7f00a8'),
+    '--preview-special-text': String(skin.gdgdTextColor ?? '#ffffff'),
+    '--preview-reply-border': String(skin.replyBorderColor ?? '#7a8495'),
+  } as CSSProperties;
+}
+
 const configSettingGroups: SettingGroup[] = [
   { title: '基本', keys: ['bbsTitle', 'homePageUrl', 'manualBody', 'gdgdEnabled', 'gdgdLabel', 'logView', 'maxUploadBytes', 'maxImageWidth', 'maxImageHeight', 'allowedImageTypes'] },
   { title: 'SNS共通', keys: ['socialHashtags'] },
@@ -944,6 +1080,8 @@ const designSettingGroups: SettingGroup[] = [
   { title: '色設定', keys: ['backgroundColor', 'pageTextColor', 'linkColor', 'panelBackgroundColor', 'panelTitleBackgroundColor', 'panelBorderColor', 'labelColor', 'inputBackgroundColor', 'inputTextColor', 'buttonBackgroundColor', 'buttonTextColor', 'buttonBorderColor', 'secondaryButtonBackgroundColor', 'secondaryButtonTextColor', 'secondaryButtonBorderColor', 'normalFrameColor', 'normalHeaderColor', 'normalTextColor', 'gdgdFrameColor', 'gdgdHeaderColor', 'gdgdTextColor', 'replyBorderColor', 'dangerColor', 'successColor'] },
 ];
 
+const designConfigKeys = ['eejanaikaOmigotoText', 'eejanaikaOmigotoColor', 'eejanaikaGoodjobText', 'eejanaikaGoodjobColor', 'eejanaikaEejanaikaText', 'eejanaikaEejanaikaColor'];
+
 const adminTabs: Array<{ id: AdminTab; label: string }> = [
   { id: 'posts', label: '一括削除' },
   { id: 'deleted', label: '復元/消去' },
@@ -952,6 +1090,10 @@ const adminTabs: Array<{ id: AdminTab; label: string }> = [
   { id: 'settings', label: '掲示板設定' },
   { id: 'design', label: '掲示板デザイン' },
 ];
+
+const userAdminTabs: Array<{ id: AdminTab; label: string }> = adminTabs.map((tab) => (
+  tab.id === 'maintenance' ? { id: 'users', label: 'ユーザー登録情報' } : tab
+));
 
 const analyticsMetricOptions: Array<{ id: AnalyticsMetric; label: string; value: (post: Post) => number }> = [
   { id: 'postCount', label: '投稿数', value: (post) => post.analytics_kind === 'access' ? 0 : 1 },

@@ -207,6 +207,27 @@ describe('AdminPage', () => {
       'admin-secret',
     ));
   });
+
+  it('previews design changes live and restores saved design values', async () => {
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '掲示板デザイン' }));
+    const designSection = screen.getByRole('heading', { name: '掲示板デザイン' }).closest('section')!;
+    const normalFrameInputs = within(designSection).getAllByDisplayValue('#a23dff');
+    const textColorInput = normalFrameInputs.find((element) => element.getAttribute('type') !== 'color')!;
+    const preview = within(designSection).getByRole('heading', { name: 'サンプル画面' }).closest('section')!;
+
+    fireEvent.change(textColorInput, { target: { value: '#112233' } });
+    expect(preview.style.getPropertyValue('--preview-normal-frame')).toBe('#112233');
+
+    fireEvent.click(within(designSection).getByRole('button', { name: '編集前に戻す' }));
+    expect(preview.style.getPropertyValue('--preview-normal-frame')).toBe('#a23dff');
+  });
+
   it('sets the first admin password from the admin screen', async () => {
     window.localStorage.clear();
     vi.mocked(api.adminStatus).mockResolvedValue({ success: true, adminPasswordConfigured: false });
@@ -440,6 +461,7 @@ describe('AdminPage', () => {
     expect(screen.getByText('運用中のデータ保全、復元、外部SNS情報の更新、管理者パスワード変更を行います。')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '管理者パスワード変更' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'SNSリアクション更新' })).toBeInTheDocument();
+    expect(screen.queryByText('No.1 Alice')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'フルバックアップ インポート/エクスポート' })).toBeInTheDocument();
     expect(screen.getByText('投稿、返信、画像、ユーザー、作品登録、アクセス履歴、設定をフルバックアップZIPとして保存、またはフルバックアップZIPから復元します。ログインセッションは含めません。')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'エクスポート' })).toBeInTheDocument();
@@ -448,7 +470,7 @@ describe('AdminPage', () => {
     expect(screen.queryByLabelText('ローカルアーカイブログディレクトリ')).not.toBeInTheDocument();
   });
 
-  it('edits and deletes registered users from maintenance', async () => {
+  it('opens a dedicated screen to edit and delete registered users', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(
       <MemoryRouter>
@@ -457,14 +479,19 @@ describe('AdminPage', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: '保守' }));
-    const userSection = screen.getByRole('heading', { name: 'ユーザー登録情報' }).closest('section')!;
-    fireEvent.click(within(userSection).getByRole('button', { name: '編集' }));
+    const maintenanceUserSection = screen.getByRole('heading', { name: 'ユーザー登録情報' }).closest('section')!;
+    expect(within(maintenanceUserSection).queryByText('No.1 Alice')).not.toBeInTheDocument();
+    fireEvent.click(within(maintenanceUserSection).getByRole('button', { name: '編集' }));
+
+    const userScreen = screen.getByRole('heading', { name: 'ユーザー登録情報' }).closest('section')!;
+    expect(screen.getByRole('button', { name: 'ユーザー登録情報' })).toBeInTheDocument();
+    fireEvent.click(within(userScreen).getAllByRole('button', { name: '編集' })[0]);
 
     expect(confirmSpy).toHaveBeenCalledWith('ユーザー No.1 Alice の情報を表示しますか？');
-    fireEvent.change(within(userSection).getByLabelText('ID'), { target: { value: 'alice2' } });
-    fireEvent.change(within(userSection).getByLabelText('名前'), { target: { value: 'Alice Updated' } });
-    fireEvent.change(within(userSection).getByLabelText('ログインパスワード再設定（任意）'), { target: { value: 'new-login-secret' } });
-    fireEvent.click(within(userSection).getByRole('button', { name: '保存' }));
+    fireEvent.change(within(userScreen).getByLabelText('ID'), { target: { value: 'alice2' } });
+    fireEvent.change(within(userScreen).getByLabelText('名前'), { target: { value: 'Alice Updated' } });
+    fireEvent.change(within(userScreen).getByLabelText('ログインパスワード再設定（任意）'), { target: { value: 'new-login-secret' } });
+    fireEvent.click(within(userScreen).getByRole('button', { name: '保存' }));
 
     await waitFor(() => expect(api.adminUpdateUser).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -476,10 +503,11 @@ describe('AdminPage', () => {
       'admin-secret',
     ));
 
-    fireEvent.click(within(userSection).getByRole('button', { name: '情報消去' }));
+    fireEvent.click(within(userScreen).getByLabelText('消去を有効にする'));
+    fireEvent.click(within(userScreen).getByRole('button', { name: '情報消去' }));
     await waitFor(() => expect(api.adminDeleteUser).toHaveBeenCalledWith(1, 1, 'admin-secret'));
 
-    fireEvent.click(within(userSection).getByRole('button', { name: '番号ごと消去' }));
+    fireEvent.click(within(userScreen).getByRole('button', { name: '番号ごと消去' }));
     await waitFor(() => expect(api.adminDeleteUser).toHaveBeenCalledWith(1, 2, 'admin-secret'));
     confirmSpy.mockRestore();
   });
@@ -561,6 +589,8 @@ describe('AdminPage', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: '復元/消去' }));
+    expect(screen.getByRole('button', { name: '消去' })).toBeDisabled();
+    fireEvent.click(screen.getByLabelText('消去を有効にする'));
     fireEvent.click(screen.getByRole('button', { name: '消去' }));
     await waitFor(() => expect(api.purgePostData).toHaveBeenCalledWith('514', 'admin-secret'));
 

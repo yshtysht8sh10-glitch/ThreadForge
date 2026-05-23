@@ -62,8 +62,9 @@ Covered behavior:
 - Search API empty query, pagination, scope, and escaped wildcard edges
 - Error paths for password mismatch and missing posts
 - Admin bulk-delete range selection, parent-to-reply linked selection, and clear-selection behavior
-- Admin restore/purge flows, including data purge, row-level number purge, and top-level display-number compaction
-- Admin user management, including edit, information erase, row-level user delete, and user-number compaction
+- Admin restore/purge flows, including destructive-action enabling, data purge, row-level number purge, and top-level display-number compaction
+- Dedicated admin user management screen, including edit, destructive-action enabling, information erase, row-level user delete, and user-number compaction
+- Admin design live preview and reset to persisted values
 
 Run:
 

@@ -47,7 +47,8 @@ The local archive importer reads `LOG_*.cgi` files and referenced images from th
 - Thread-only display numbers with reply child numbers
 - Edit and soft delete
 - Admin passwordless bulk delete with start/end range selection, parent-to-reply linked selection, and full/compact display modes
-- Admin restore/purge with blue restore actions, red purge actions, and full/compact display modes
+- Admin restore/purge with blue restore actions, guarded red purge actions, and full/compact display modes
+- Dedicated admin user-information screen with guarded destructive actions
 - Admin DB integrity check
 - Admin backup export/import
 - Non-destructive local archive log import through a local operator batch, not the web admin screen
@@ -61,7 +62,7 @@ The local archive importer reads `LOG_*.cgi` files and referenced images from th
 - Cached social reaction counts can be refreshed from the admin maintenance screen, local cron, or an API-key-protected external scheduler URL
 - gdgd visual mode
 - Embedded manual page
-- Admin-configurable HOME link, manual text, SNS platform switches, gdgd switch, gdgd label, and basic colors
+- Admin-configurable HOME link, manual text, SNS platform switches, gdgd switch, gdgd label, and live-preview design colors
 - SNS credential fields are disabled in the admin UI while each platform integration is OFF
 - Admin password change
 

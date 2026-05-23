@@ -1135,6 +1135,27 @@ button.post-reset-button:hover {
   margin: 0;
 }
 
+.admin-safety-controls {
+  display: grid;
+  justify-items: end;
+  gap: 0.45rem;
+}
+
+.admin-danger-enable {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  color: #ff9d9d;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-danger-enable input {
+  width: auto;
+  accent-color: #dc4e4e;
+}
+
 .admin-display-switch {
   display: inline-grid;
   grid-template-columns: auto 3.25rem auto;
@@ -1304,6 +1325,10 @@ button.post-reset-button:hover {
 .admin-user-list {
   display: grid;
   gap: 0.5rem;
+}
+
+.admin-user-maintenance-list {
+  margin: 0 var(--admin-content-x) var(--admin-content-y);
 }
 
 .admin-user-row {
@@ -1562,6 +1587,95 @@ button.post-reset-button:hover {
 .admin-setting-inline-row input[type="color"] {
   padding: 0.15rem;
   min-height: 2rem;
+}
+
+.admin-design-preview {
+  --preview-bg: #000;
+  --preview-text: #fff;
+  --preview-link: #58a6ff;
+  --preview-panel-bg: #101821;
+  --preview-panel-title: #5b6572;
+  --preview-panel-border: #738196;
+  --preview-button-bg: #3f74ff;
+  --preview-button-text: #fff;
+  --preview-button-border: #8fb0ff;
+  --preview-normal-frame: #a23dff;
+  --preview-normal-header: #39988a;
+  --preview-normal-text: #fff;
+  --preview-special-frame: #6dffc0;
+  --preview-special-header: #7f00a8;
+  --preview-special-text: #fff;
+  --preview-reply-border: #7a8495;
+  margin: 1rem calc(var(--admin-content-x) * -1) 0;
+  padding: 0 var(--admin-content-x) var(--admin-content-y);
+  background: var(--preview-bg);
+  color: var(--preview-text);
+}
+
+.admin-page .admin-design-preview h3 {
+  margin: 0 calc(var(--admin-content-x) * -1) 0.75rem;
+  background: var(--preview-panel-title);
+  color: var(--preview-text);
+}
+
+.design-preview-nav {
+  color: var(--preview-link);
+  margin: 0 0 0.75rem;
+}
+
+.design-preview-thread {
+  overflow: hidden;
+  margin-bottom: 0.7rem;
+  border: 1px solid;
+  border-radius: 6px;
+  background: var(--preview-panel-bg);
+}
+
+.design-preview-thread header {
+  padding: 0.35rem 0.65rem;
+  font-size: 1rem;
+}
+
+.design-preview-thread p,
+.design-preview-thread > div:not(.design-preview-actions) {
+  padding: 0 0.65rem;
+}
+
+.design-preview-thread.normal {
+  border-color: var(--preview-normal-frame);
+  color: var(--preview-normal-text);
+}
+
+.design-preview-thread.normal header {
+  background: var(--preview-normal-header);
+}
+
+.design-preview-thread.special {
+  border-color: var(--preview-special-frame);
+  color: var(--preview-special-text);
+}
+
+.design-preview-thread.special header {
+  background: var(--preview-special-header);
+}
+
+.design-preview-reply {
+  border-top: 1px solid var(--preview-reply-border);
+  margin: 0.65rem;
+  padding-top: 0.5rem !important;
+}
+
+.design-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  padding: 0.7rem;
+}
+
+.design-preview-actions button {
+  border-color: var(--preview-button-border);
+  background: var(--preview-button-bg);
+  color: var(--preview-button-text);
 }
 
 .admin-setting-wide {
