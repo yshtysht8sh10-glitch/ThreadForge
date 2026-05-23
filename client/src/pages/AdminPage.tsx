@@ -477,7 +477,10 @@ const AdminPage = () => {
           {activeTab === 'posts' && (
             <section className="card">
               <h2>一括削除</h2>
-              <p>投稿と返信を複数選択して、管理者権限で一括削除できます。</p>
+              <div className="admin-section-intro-row">
+                <p>投稿と返信を複数選択して、管理者権限で一括削除できます。</p>
+                <DisplayModeSwitch compact={bulkCompact} onChange={setBulkCompact} />
+              </div>
               <div className="admin-range-actions">
                 <label>
                   開始
@@ -488,10 +491,9 @@ const AdminPage = () => {
                   <input value={bulkRangeEnd} onChange={(event) => setBulkRangeEnd(event.target.value)} placeholder="例: 99 / 99-4" />
                 </label>
                 <button type="button" className="secondary" onClick={addBulkRange}>範囲を選択</button>
+                <button type="button" className="secondary" onClick={() => setSelectedIds([])} disabled={selectedIds.length === 0}>選択をすべて解除</button>
               </div>
               <div className="button-row align-right admin-bulk-actions">
-                <DisplayModeSwitch compact={bulkCompact} onChange={setBulkCompact} />
-                <button type="button" className="secondary" onClick={() => setSelectedIds([])} disabled={selectedIds.length === 0}>選択をすべて解除</button>
                 <button type="button" className="danger" onClick={bulkDelete}>チェックした項目を一括削除</button>
               </div>
               <SelectableThreadList threads={threads} selectedIds={selectedIds} onToggle={toggleSelected} multiple compact={bulkCompact} />
@@ -699,7 +701,10 @@ const AdminPage = () => {
           {activeTab === 'deleted' && (
             <section className="card">
               <h2>復元/消去</h2>
-              <p>削除済み投稿の復元、データ消去、番号ごとの完全削除を行います。</p>
+              <div className="admin-section-intro-row">
+                <p>削除済み投稿の復元、データ消去、番号ごとの完全削除を行います。</p>
+                <DisplayModeSwitch compact={deletedCompact} onChange={setDeletedCompact} />
+              </div>
               <div className="admin-range-actions">
                 <label>
                   開始
@@ -711,9 +716,6 @@ const AdminPage = () => {
                 </label>
                 <button type="button" className="danger admin-fixed-action-button" onClick={() => void purgeDeletedRange(1)}>範囲を消去</button>
                 <button type="button" className="danger admin-fixed-action-button" onClick={() => void purgeDeletedRange(2)}>範囲を番号ごと消去</button>
-              </div>
-              <div className="button-row align-right admin-bulk-actions">
-                <DisplayModeSwitch compact={deletedCompact} onChange={setDeletedCompact} />
               </div>
               {deletedPosts.length === 0 && <p>削除済み投稿はありません。</p>}
               {deletedPosts.map((post) => (

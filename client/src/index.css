@@ -1120,6 +1120,19 @@ button.post-reset-button:hover {
 
 .admin-bulk-actions {
   margin-bottom: 1rem;
+  margin-top: -0.15rem;
+}
+
+.admin-section-intro-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  margin: 0 0 0.75rem;
+}
+
+.admin-section-intro-row p {
+  margin: 0;
 }
 
 .admin-display-switch {
@@ -1261,10 +1274,10 @@ button.post-reset-button:hover {
 
 .admin-range-actions {
   display: grid;
-  grid-template-columns: minmax(8rem, 1fr) minmax(8rem, 1fr) auto auto;
+  grid-template-columns: minmax(8rem, 1fr) minmax(8rem, 1fr) auto minmax(8.5rem, auto);
   align-items: end;
   gap: 0.75rem;
-  margin: 0 0 1rem;
+  margin: 0 0 0.75rem;
 }
 
 .admin-range-actions label {
@@ -1272,6 +1285,10 @@ button.post-reset-button:hover {
   color: var(--panel-label);
   font-size: 0.86rem;
   font-weight: 700;
+}
+
+.admin-range-actions button {
+  min-height: 2.35rem;
 }
 
 .danger-outline {
@@ -1568,6 +1585,7 @@ button.post-reset-button:hover {
 
 @media (max-width: 720px) {
   .admin-password-change-form,
+  .admin-section-intro-row,
   .admin-range-actions,
   .admin-user-row,
   .admin-user-edit-form,
