@@ -44,17 +44,15 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
               {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
             </p>
 
-            {!compact && mediaUrl(thread.image_path) && (
+            {mediaUrl(thread.image_path) && (
               <div className="board-image-link">
                 <img className="board-post-image" src={mediaUrl(thread.image_path) ?? undefined} alt={thread.title || '投稿画像'} />
               </div>
             )}
 
-            {!compact && (
-              <div className="board-message-text">
-                <LinkedText text={thread.message} />
-              </div>
-            )}
+            <div className="board-message-text">
+              <LinkedText text={thread.message} />
+            </div>
 
             {(thread.replies ?? []).slice(0, 10).map((reply) => (
               <section key={reply.id} className="board-reply selectable-board-reply">
@@ -76,11 +74,9 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
                   {reply.url && <> <a href={reply.url} target="_blank" rel="noreferrer">[HOME]</a></>}
                   {' '}<span className="board-meta-sub">- {formatDate(reply.created_at)}</span>
                 </p>
-                {!compact && (
-                  <div className={replyTextClassName(reply.message)}>
-                    <LinkedText text={reply.message} />
-                  </div>
-                )}
+                <div className={replyTextClassName(reply.message)}>
+                  <LinkedText text={reply.message} />
+                </div>
               </section>
             ))}
           </div>
