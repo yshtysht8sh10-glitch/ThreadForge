@@ -1,5 +1,5 @@
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from 'react';
-import { AdminUser, api, apiBase } from '../api';
+import { AdminUser, api, apiBase, mediaUrl } from '../api';
 import { Post } from '../types';
 import SelectableThreadList from '../components/SelectableThreadList';
 
@@ -626,9 +626,14 @@ const AdminPage = () => {
                 {adminUsers.length === 0 && <p>登録ユーザーはありません。</p>}
                 {adminUsers.map((user) => (
                   <article className="admin-user-row" key={user.id}>
-                    <div>
-                      <strong>No.{user.id} {user.display_name}</strong>
-                      <span>ID: {user.login_id} / 投稿: {user.post_count} / 自分の作品: {user.claim_count}</span>
+                    <div className="admin-user-summary">
+                      {mediaUrl(user.icon_path) && <img className="admin-user-icon" src={mediaUrl(user.icon_path) ?? undefined} alt="" />}
+                      <div>
+                        <strong>No.{user.id} {user.display_name}</strong>
+                        <span>ID: {user.login_id} / 投稿: {user.post_count} / 自分の作品: {user.claim_count}</span>
+                        <span>作成: {formatAdminDate(user.created_at)} / 更新: {formatAdminDate(user.updated_at)}</span>
+                        <span>最終ログイン: {formatAdminDate(user.last_login_at)} / 有効セッション: {user.active_session_count ?? 0}</span>
+                      </div>
                     </div>
                     <div className="button-row align-right">
                       <button type="button" className="admin-fixed-action-button" onClick={() => startEditUser(user)}>編集</button>
@@ -641,6 +646,15 @@ const AdminPage = () => {
               {editingUser && (
                 <form className="admin-user-edit-form" onSubmit={saveAdminUser}>
                   <h4>ユーザー No.{editingUser.id} を編集</h4>
+                  <div className="admin-user-edit-profile">
+                    {mediaUrl(editingUser.icon_path) && <img className="admin-user-icon large" src={mediaUrl(editingUser.icon_path) ?? undefined} alt="" />}
+                    <dl>
+                      <div><dt>作成日時</dt><dd>{formatAdminDate(editingUser.created_at)}</dd></div>
+                      <div><dt>更新日時</dt><dd>{formatAdminDate(editingUser.updated_at)}</dd></div>
+                      <div><dt>最終ログイン</dt><dd>{formatAdminDate(editingUser.last_login_at)}</dd></div>
+                      <div><dt>有効セッション</dt><dd>{editingUser.active_session_count ?? 0}</dd></div>
+                    </dl>
+                  </div>
                   <label>
                     ID
                     <input value={editingUser.login_id} onChange={(event) => setEditingUser({ ...editingUser, login_id: event.target.value })} />
@@ -976,6 +990,11 @@ function SettingsForm({
                       <option value="true">ON</option>
                       <option value="false">OFF</option>
                     </select>
+                  ) : key === 'listOrder' ? (
+                    <select value={stringValue || 'number'} onChange={(event) => onChange(key, event.target.value)}>
+                      <option value="number">No.の新しい順</option>
+                      <option value="createdAt">投稿日が新しい順</option>
+                    </select>
                   ) : isSecretSetting(key) ? (
                     <input type="password" value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
                   ) : key.endsWith('Color') ? (
@@ -1115,7 +1134,7 @@ function designPreviewStyle(skin: Record<string, SettingValue>): CSSProperties {
 }
 
 const configSettingGroups: SettingGroup[] = [
-  { title: '基本', keys: ['bbsTitle', 'homePageUrl', 'manualBody', 'gdgdEnabled', 'gdgdLabel', 'logView', 'maxUploadBytes', 'maxImageWidth', 'maxImageHeight', 'allowedImageTypes'] },
+  { title: '基本', keys: ['bbsTitle', 'homePageUrl', 'manualBody', 'gdgdEnabled', 'gdgdLabel', 'listOrder', 'maxUploadBytes', 'maxImageWidth', 'maxImageHeight', 'allowedImageTypes'] },
   { title: 'SNS共通', keys: ['socialHashtags'] },
   { title: 'X', keys: ['tweetEnabled', 'tweetBaseUrl', 'tweetConsumerKey', 'tweetConsumerSecret', 'tweetAccessToken', 'tweetAccessTokenSecret'] },
   { title: 'Bluesky', keys: ['blueskyEnabled', 'blueskyServiceUrl', 'blueskyPublicApiUrl', 'blueskyHandle', 'blueskyAppPassword'] },
@@ -1394,6 +1413,23 @@ function parsePostDate(value: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function formatAdminDate(value?: string | null): string {
+  if (!value) {
+    return '未記録';
+  }
+  const date = new Date(value.replace(' ', 'T'));
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString('ja-JP', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function formatAnalyticsValue(value: number): string {
   if (Number.isInteger(value)) {
     return value.toLocaleString('ja-JP');
@@ -1433,7 +1469,7 @@ const settingLabels: Record<string, string> = {
   socialHashtags: 'SNS投稿ハッシュタグ',
   gdgdEnabled: '特殊投稿機能',
   gdgdLabel: '特殊投稿の表示名',
-  logView: '一覧表示件数',
+  listOrder: '一覧の並び順',
   maxUploadBytes: '最大アップロードサイズ(KB)',
   maxImageWidth: '最大画像幅(px)',
   maxImageHeight: '最大画像高さ(px)',

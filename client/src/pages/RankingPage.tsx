@@ -8,11 +8,27 @@ import UserIconLink from '../components/UserIconLink';
 const RankingPage = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [metric, setMetric] = useState<MetricId>('views');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.listRankingPosts().then(setPosts).catch((err) => setError((err as Error).message));
-  }, []);
+    let ignore = false;
+    setLoading(true);
+    setError(null);
+    api.listRankingPosts(metric)
+      .then((data) => {
+        if (!ignore) setPosts(data);
+      })
+      .catch((err) => {
+        if (!ignore) setError((err as Error).message);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [metric]);
 
   const ranked = useMemo(() => {
     const sorted = [...posts].sort((a, b) => metricValue(b, metric) - metricValue(a, metric));
@@ -36,6 +52,7 @@ const RankingPage = () => {
           {metricOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
         </select>
       </label>
+      {loading && <p>読み込み中...</p>}
       {error && <p className="error">{error}</p>}
       <div className="ranking-list">
         {ranked.map(({ post, rank, value }) => (

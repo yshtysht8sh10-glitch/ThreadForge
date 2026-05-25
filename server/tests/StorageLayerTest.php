@@ -366,6 +366,94 @@ final class StorageLayerTest extends TestCase
         $this->assertSame("Reply\nBody", $rows[1]['message']);
     }
 
+    public function testImportLocalArchiveTreeDirectoryOrdersThreadsByDateAndAppliesFolderRules(): void
+    {
+        $pdo = getConnection();
+        $archiveRoot = sys_get_temp_dir() . '/threadforge-archive-tree-' . bin2hex(random_bytes(4));
+        mkdir($archiveRoot, 0775, true);
+
+        $folders = [
+            'bbs1-999',
+            'bbs10_DoteitaArchive_Doteita',
+            'bbs20_DoteitaArchive_gdgd',
+            'bbsOO_DoteitaArchive',
+        ];
+        foreach ($folders as $folder) {
+            mkdir($archiveRoot . '/' . $folder, 0775, true);
+        }
+
+        $makeMain = function (string $no, string $name, string $date, string $title, string $message, string $image, array $extra = []): string {
+            return implode("\t", array_merge(array_pad([
+                $no,
+                $name,
+                $date,
+                $title,
+                '',
+                '',
+                $message,
+                'host',
+                '127.0.0.1',
+                'agent',
+                $image,
+                '100',
+                '100',
+                '12',
+                'pass',
+                '',
+                '',
+                '',
+            ], 24, ''), $extra));
+        };
+        $makeReply = fn (string $no, string $name, string $date, string $message): string => implode("\t", array_pad([
+            $no,
+            $name,
+            $date,
+            $message,
+            'reply-pass',
+            'host',
+            '',
+            '',
+            'browser',
+            'os',
+        ], 10, ''));
+
+        file_put_contents($archiveRoot . '/bbs10_DoteitaArchive_Doteita/LOG_000001.cgi', $makeMain('1', 'Normal', '2012/01/03 (Tue) 00:00:00', 'Normal title', 'normal', 'DOTIMG_000001.gif') . PHP_EOL);
+        file_put_contents($archiveRoot . '/bbs10_DoteitaArchive_Doteita/DOTIMG_000001.gif', 'gif');
+
+        file_put_contents($archiveRoot . '/bbs20_DoteitaArchive_gdgd/LOG_000001.cgi', $makeMain('2', 'Special folder', '2012/01/02 (Mon) 00:00:00', 'Special folder title', 'special', 'GDDOTIMG_000001.gif') . PHP_EOL);
+        file_put_contents($archiveRoot . '/bbs20_DoteitaArchive_gdgd/GDDOTIMG_000001.gif', 'gif');
+
+        file_put_contents($archiveRoot . '/bbsOO_DoteitaArchive/LOG_000001.cgi', $makeMain('3', 'Title special', '2012/01/04 (Wed) 00:00:00', '「gdgd」Title', 'title special', 'DOTIMG_000001.gif') . PHP_EOL);
+        file_put_contents($archiveRoot . '/bbsOO_DoteitaArchive/DOTIMG_000001.gif', 'gif');
+
+        file_put_contents(
+            $archiveRoot . '/bbs1-999/LOG_000001.cgi',
+            $makeMain('4', 'Internal special', '2012/01/01 (Sun) 00:00:00', 'Internal title', 'internal', 'DOTIMG_000001.gif', ['gdgd=1'])
+            . PHP_EOL
+            . $makeReply('5', 'Reply', '2012/01/01 (Sun) 00:10:00', 'Reply body')
+            . PHP_EOL
+        );
+        file_put_contents($archiveRoot . '/bbs1-999/DOTIMG_000001.gif', 'gif');
+        file_put_contents($archiveRoot . '/bbs1-999/LOG_999999.cgi', str_repeat("\t", 20) . "3\t0" . PHP_EOL);
+
+        try {
+            $result = importLocalArchiveTreeDirectory($pdo, $archiveRoot);
+        } finally {
+            $this->removeDirectory($archiveRoot);
+        }
+
+        $this->assertSame(4, $result['imported_threads']);
+        $this->assertSame(1, $result['imported_replies']);
+        $this->assertSame(1, $result['skipped_invalid_threads']);
+        $this->assertSame(3, $result['gdgd_threads']);
+        $this->assertSame(1, $result['normal_threads']);
+
+        $rows = $pdo->query('SELECT title, gdgd, parent_id FROM posts ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
+        $threads = array_values(array_filter($rows, fn (array $row): bool => (int)$row['parent_id'] === 0));
+        $this->assertSame(['Internal title', 'Special folder title', 'Normal title', '「gdgd」Title'], array_column($threads, 'title'));
+        $this->assertSame([1, 1, 0, 1], array_map('intval', array_column($threads, 'gdgd')));
+    }
+
     private function removeDirectory(string $directory): void
     {
         $items = new RecursiveIteratorIterator(

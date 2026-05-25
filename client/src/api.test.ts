@@ -89,6 +89,19 @@ describe('API Module', () => {
       expect(threads[0]).toHaveProperty('title');
       expect(threads[0]).toHaveProperty('message');
     });
+
+    it('should request a limited page of threads', async () => {
+      const threads = await api.listThreads(null, 1, 1);
+      expect(threads).toHaveLength(1);
+    });
+
+    it('should return archive period metadata from mock API', async () => {
+      const meta = await api.listThreadArchiveMeta(['2024'], ['2024-01']);
+      expect(meta.success).toBe(true);
+      expect(meta.total).toBeGreaterThan(0);
+      expect(meta.periods[0]).toHaveProperty('year');
+      expect(meta.periods[0]).toHaveProperty('month');
+    });
   });
 
   // 指定スレッドの詳細と返信を取得する API の動作確認

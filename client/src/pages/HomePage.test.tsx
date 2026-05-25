@@ -15,6 +15,19 @@ describe('HomePage', () => {
     expect(threadLinks.length).toBeGreaterThan(0);
   });
 
+  it('shows period filters with the selected post total', async () => {
+    render(
+      <BrowserRouter>
+        <HomePage />
+      </BrowserRouter>,
+    );
+
+    expect(await screen.findByRole('heading', { name: '表示期間' })).toBeInTheDocument();
+    expect(screen.getByText(/総投稿数:/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /2024年/ }));
+    expect(await screen.findByRole('button', { name: '期間指定を解除' })).toBeInTheDocument();
+  });
+
   it('renders uploaded images from the API origin', async () => {
     import.meta.env.VITE_API_BASE_URL = 'http://127.0.0.1:8000/api.php';
 

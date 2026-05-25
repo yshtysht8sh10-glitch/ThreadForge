@@ -109,6 +109,9 @@ describe('AdminPage', () => {
         icon_path: null,
         created_at: '2026-05-05 09:00:00',
         updated_at: '2026-05-05 09:00:00',
+        last_login_at: '2026-05-06 10:30:00',
+        last_session_at: '2026-05-06 10:30:00',
+        active_session_count: 1,
         post_count: 1,
         claim_count: 0,
       }],
@@ -127,7 +130,7 @@ describe('AdminPage', () => {
           gdgdEnabled: true,
           gdgdLabel: '特殊投稿',
           socialHashtags: '#art',
-          logView: 20,
+          listOrder: 'number',
           maxUploadBytes: 5100000,
         },
         skin: { normalFrameColor: '#a23dff' },
@@ -408,6 +411,32 @@ describe('AdminPage', () => {
     ));
   });
 
+  it('saves the thread list order setting', async () => {
+    vi.mocked(api.updateSettings).mockResolvedValue({ success: true, message: '設定を保存しました。' });
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '掲示板設定' }));
+
+    const settingsPanel = screen.getByRole('heading', { name: '掲示板設定' }).closest('section')!;
+    const listOrder = within(settingsPanel).getByLabelText('一覧の並び順');
+    expect(listOrder).toHaveValue('number');
+    fireEvent.change(listOrder, { target: { value: 'createdAt' } });
+    fireEvent.click(within(settingsPanel).getByRole('button', { name: '設定を保存' }));
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          listOrder: 'createdAt',
+        }),
+      }),
+      'admin-secret',
+    ));
+  });
+
   it('disables tweet settings while the tweet feature is off', async () => {
     vi.mocked(api.getSettings).mockResolvedValue({
       success: true,
@@ -502,6 +531,8 @@ describe('AdminPage', () => {
     fireEvent.change(within(userScreen).getByLabelText('名前'), { target: { value: 'Alice Updated' } });
     const loginPasswordInput = within(userScreen).getByLabelText('新しいログインパスワード（再設定する場合のみ）');
     const loginPasswordConfirmInput = within(userScreen).getByLabelText('新しいログインパスワード（確認）');
+    expect(within(userScreen).getByText('最終ログイン')).toBeInTheDocument();
+    expect(within(userScreen).getByText('有効セッション')).toBeInTheDocument();
     expect(loginPasswordInput).toHaveAttribute('type', 'password');
     expect(within(userScreen).getByText('現在のログインパスワードは安全のため表示できません。変更する場合のみ新しいパスワードを入力してください。')).toBeInTheDocument();
     fireEvent.change(loginPasswordInput, { target: { value: 'new-login-secret' } });

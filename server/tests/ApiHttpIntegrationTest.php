@@ -124,20 +124,22 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->assertFalse($second['json']['success']);
     }
 
-    public function testFreshDatabaseDefaultsAndConfiguredPagination(): void
+    public function testFreshDatabaseDefaultsAndArchivePeriodFiltering(): void
     {
         $public = $this->getJson(['action' => 'publicSettings']);
         $this->assertSame(200, $public['status']);
         $this->assertFalse($public['json']['settings']['config']['gdgdEnabled']);
         $this->assertSame('#art', $public['json']['settings']['config']['socialHashtags']);
-        $this->assertSame(20, $public['json']['settings']['config']['logView']);
+        $this->assertArrayNotHasKey('logView', $public['json']['settings']['config']);
+        $this->assertSame('number', $public['json']['settings']['config']['listOrder']);
 
         $this->setAdminPassword('admin-secret');
         $settings = $this->getJson(['action' => 'getSettings', 'admin_password' => 'admin-secret']);
         $this->assertSame(200, $settings['status']);
         $config = $settings['json']['settings']['config'];
         $skin = $settings['json']['settings']['skin'];
-        $this->assertSame(20, $config['logView']);
+        $this->assertArrayNotHasKey('logView', $config);
+        $this->assertSame('number', $config['listOrder']);
         $this->assertSame('#7f00a8', $skin['normalHeaderColor']);
         $this->assertSame('#39988a', $skin['gdgdHeaderColor']);
         $this->assertSame('#30343b', $skin['quickReactionButtonBackgroundColor']);
@@ -157,22 +159,69 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->assertSame('', $config['misskeyInstanceUrl']);
         $this->assertSame('', $config['misskeyAccessToken']);
 
-        for ($i = 1; $i <= 21; $i++) {
-            $this->insertPost('User', 'Title ' . $i, 'Body ' . $i, sprintf('2026-05-%02d 12:00:00', $i));
-        }
-        $firstPage = $this->getJson(['action' => 'listThreads']);
-        $this->assertSame(200, $firstPage['status']);
-        $this->assertCount(20, $firstPage['json']);
+        $this->insertPost('User', 'May 2025', 'Body', '2025-05-01 12:00:00');
+        $this->insertPost('User', 'June 2025', 'Body', '2025-06-01 12:00:00');
+        $this->insertPost('User', 'May 2026', 'Body', '2026-05-01 12:00:00');
+
+        $allPosts = $this->getJson(['action' => 'listThreads']);
+        $this->assertSame(200, $allPosts['status']);
+        $this->assertCount(3, $allPosts['json']);
+
+        $filtered = $this->getJson(['action' => 'listThreads', 'years' => '2025', 'months' => '2026-05']);
+        $this->assertSame(200, $filtered['status']);
+        $this->assertCount(3, $filtered['json']);
+
+        $monthOnly = $this->getJson(['action' => 'listThreads', 'months' => '2025-06']);
+        $this->assertSame(200, $monthOnly['status']);
+        $this->assertCount(1, $monthOnly['json']);
+        $this->assertSame('June 2025', $monthOnly['json'][0]['title']);
+
+        $meta = $this->getJson(['action' => 'listThreadArchiveMeta', 'months' => '2025-06']);
+        $this->assertSame(200, $meta['status']);
+        $this->assertTrue($meta['json']['success']);
+        $this->assertSame(1, $meta['json']['total']);
+        $this->assertGreaterThanOrEqual(3, count($meta['json']['periods']));
+    }
+
+    public function testThreadListOrderCanSwitchBetweenNumberAndCreatedDate(): void
+    {
+        $this->insertPost('User', 'Older No with newer date', 'Body 1', '2026-05-20 12:00:00');
+        $this->insertPost('User', 'Newer No with older date', 'Body 2', '2026-05-01 12:00:00');
+
+        $numberOrder = $this->getJson(['action' => 'listThreads']);
+        $this->assertSame(200, $numberOrder['status']);
+        $this->assertSame('Newer No with older date', $numberOrder['json'][0]['title']);
+        $this->assertSame(2, $numberOrder['json'][0]['display_no']);
 
         getConnection()
             ->prepare('REPLACE INTO settings (key, value) VALUES (:key, :value)')
             ->execute([
                 ':key' => 'config',
-                ':value' => json_encode(['logView' => ''], JSON_UNESCAPED_UNICODE),
+                ':value' => json_encode(['listOrder' => 'createdAt'], JSON_UNESCAPED_UNICODE),
             ]);
-        $allPosts = $this->getJson(['action' => 'listThreads']);
-        $this->assertSame(200, $allPosts['status']);
-        $this->assertCount(21, $allPosts['json']);
+
+        $createdAtOrder = $this->getJson(['action' => 'listThreads']);
+        $this->assertSame(200, $createdAtOrder['status']);
+        $this->assertSame('Older No with newer date', $createdAtOrder['json'][0]['title']);
+        $this->assertSame(1, $createdAtOrder['json'][0]['display_no']);
+    }
+
+    public function testRankingReturnsOnlyTopHundredForSelectedMetric(): void
+    {
+        $pdo = getConnection();
+        $update = $pdo->prepare('UPDATE posts SET view_count = :views WHERE id = :id');
+        for ($i = 1; $i <= 105; $i++) {
+            $id = $this->insertPost('User', 'Rank ' . $i, 'Body', sprintf('2026-05-%02d 10:00:00', (($i - 1) % 28) + 1));
+            $update->execute([':id' => $id, ':views' => $i]);
+        }
+
+        $response = $this->getJson(['action' => 'listRankingPosts', 'metric' => 'views']);
+        $this->assertSame(200, $response['status']);
+        $this->assertCount(100, $response['json']);
+        $this->assertSame('Rank 105', $response['json'][0]['title']);
+        $this->assertSame(105, $response['json'][0]['board_reactions']['views']);
+        $this->assertSame('Rank 6', $response['json'][99]['title']);
+        $this->assertSame(6, $response['json'][99]['board_reactions']['views']);
     }
 
     public function testDeletingThreadSoftDeletesRepliesWithoutPhysicalDeletion(): void
@@ -745,6 +794,13 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->setAdminPassword('admin-secret');
         $firstUserId = $this->insertUser('first', 'First');
         $secondUserId = $this->insertUser('second', 'Second');
+        $login = $this->postForm([
+            'action' => 'loginUser',
+            'login_id' => 'first',
+            'password' => 'secret',
+        ]);
+        $this->assertSame(200, $login['status'], (string)$login['body']);
+        $this->assertTrue($login['json']['success']);
 
         $updated = $this->postForm([
             'action' => 'adminUpdateUser',
@@ -762,6 +818,8 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->assertSame(200, $users['status']);
         $this->assertSame('first2', $users['json']['users'][0]['login_id']);
         $this->assertSame('First Updated', $users['json']['users'][0]['display_name']);
+        $this->assertNotEmpty($users['json']['users'][0]['last_login_at']);
+        $this->assertSame(1, $users['json']['users'][0]['active_session_count']);
 
         $erased = $this->postForm([
             'action' => 'adminDeleteUser',

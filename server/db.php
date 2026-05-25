@@ -152,9 +152,30 @@ function initializeDatabase(PDO $pdo): void
     ensureColumnExists($pdo, 'posts', 'misskey_other_count', 'INTEGER NOT NULL DEFAULT 0');
     ensureColumnExists($pdo, 'posts', 'user_id', 'INTEGER');
     ensureColumnExists($pdo, 'posts', 'view_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'users', 'last_login_at', 'TEXT');
+
+    ensureDatabaseIndexes($pdo);
 
     if (!is_dir(STORAGE_DIR)) {
         mkdir(STORAGE_DIR, 0775, true);
+    }
+}
+
+function ensureDatabaseIndexes(PDO $pdo): void
+{
+    $indexes = [
+        'CREATE INDEX IF NOT EXISTS idx_posts_parent_deleted_id ON posts(parent_id, deleted_at, id)',
+        'CREATE INDEX IF NOT EXISTS idx_posts_parent_deleted_created_id ON posts(parent_id, deleted_at, created_at, id)',
+        'CREATE INDEX IF NOT EXISTS idx_posts_thread_parent_deleted_created ON posts(thread_id, parent_id, deleted_at, created_at)',
+        'CREATE INDEX IF NOT EXISTS idx_posts_thread_parent_deleted_message ON posts(thread_id, parent_id, deleted_at, message)',
+        'CREATE INDEX IF NOT EXISTS idx_posts_deleted_at ON posts(deleted_at)',
+        'CREATE INDEX IF NOT EXISTS idx_posts_user_deleted_created ON posts(user_id, deleted_at, created_at)',
+        'CREATE INDEX IF NOT EXISTS idx_user_post_claims_post_user ON user_post_claims(post_id, user_id)',
+        'CREATE INDEX IF NOT EXISTS idx_post_revisions_post_revised ON post_revisions(post_id, revised_at)',
+    ];
+
+    foreach ($indexes as $sql) {
+        $pdo->exec($sql);
     }
 }
 
@@ -316,22 +337,67 @@ function importLocalArchiveDirectory(PDO $pdo, string $archiveDir = 'data'): arr
     $files = glob($resolvedDir . DIRECTORY_SEPARATOR . 'LOG_*.cgi') ?: [];
     sort($files, SORT_NATURAL);
 
+    $records = array_map(
+        fn (string $file): array => parseLocalArchiveLogFile($file, $resolvedDir, basename($resolvedDir)),
+        $files
+    );
+
+    return importLocalArchiveRecords($pdo, $records, $resolvedDir);
+}
+
+function importLocalArchiveTreeDirectory(PDO $pdo, string $archiveRoot = 'legacy/import_data'): array
+{
+    $resolvedRoot = resolveLocalArchiveDirectory($archiveRoot);
+    $records = [];
+    $directories = [];
+    $rootFiles = glob($resolvedRoot . DIRECTORY_SEPARATOR . 'LOG_*.cgi') ?: [];
+    if ($rootFiles !== []) {
+        $directories[] = $resolvedRoot;
+    }
+
+    foreach (glob($resolvedRoot . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR) ?: [] as $directory) {
+        $directories[] = $directory;
+    }
+
+    sort($directories, SORT_NATURAL);
+    foreach ($directories as $directory) {
+        $files = glob($directory . DIRECTORY_SEPARATOR . 'LOG_*.cgi') ?: [];
+        sort($files, SORT_NATURAL);
+        foreach ($files as $file) {
+            $records[] = parseLocalArchiveLogFile($file, $directory, basename($directory));
+        }
+    }
+
+    usort($records, function (array $left, array $right): int {
+        return [$left['created_at'], $left['legacy_no'], $left['file']]
+            <=> [$right['created_at'], $right['legacy_no'], $right['file']];
+    });
+
+    return importLocalArchiveRecords($pdo, $records, $resolvedRoot);
+}
+
+function importLocalArchiveRecords(PDO $pdo, array $records, string $sourceDir): array
+{
     $summary = [
         'success' => true,
         'message' => 'ローカルアーカイブログをインポートしました。',
-        'source_dir' => $resolvedDir,
+        'source_dir' => $sourceDir,
         'imported_threads' => 0,
         'imported_replies' => 0,
         'skipped_threads' => 0,
+        'skipped_invalid_threads' => 0,
         'skipped_replies' => 0,
+        'normal_threads' => 0,
+        'gdgd_threads' => 0,
         'missing_images' => [],
-        'files' => count($files),
+        'files' => count($records),
+        'folders' => [],
     ];
 
     $pdo->beginTransaction();
     try {
-        foreach ($files as $file) {
-            importLocalArchiveLogFile($pdo, $file, $resolvedDir, $summary);
+        foreach ($records as $record) {
+            importLocalArchiveRecord($pdo, $record, $summary);
         }
         $pdo->commit();
     } catch (Throwable $exception) {
@@ -340,6 +406,39 @@ function importLocalArchiveDirectory(PDO $pdo, string $archiveDir = 'data'): arr
     }
 
     return $summary;
+}
+
+function parseLocalArchiveLogFile(string $file, string $archiveDir, string $folderName): array
+{
+    $raw = (string)file_get_contents($file);
+    $raw = archiveToUtf8($raw);
+    $lines = array_values(array_filter(preg_split('/\r\n|\n|\r/', $raw) ?: [], fn (string $line): bool => trim($line) !== ''));
+
+    $main = count($lines) > 0 ? archiveFields($lines[0], 24) : [];
+    $name = archiveText($main[1] ?? '');
+    $title = archiveText($main[3] ?? '');
+    $message = archiveMessageToText($main[6] ?? '');
+    $filename = basename(trim((string)($main[10] ?? '')));
+    $isEmptyShell = $name === ''
+        && $title === ''
+        && trim($message) === ''
+        && $filename === '';
+    $createdAt = archiveDateToTimestamp($main[2] ?? '');
+
+    return [
+        'file' => $file,
+        'archive_dir' => $archiveDir,
+        'folder_name' => $folderName,
+        'legacy_no' => (int)($main[0] ?? 0),
+        'main' => $main,
+        'importable' => !$isEmptyShell,
+        'replies' => extractLocalArchiveReplies($lines, $main),
+        'name' => $name === '' ? 'imported' : $name,
+        'created_at' => $createdAt,
+        'title' => $title === '' ? 'Imported thread' : $title,
+        'filename' => $filename,
+        'gdgd' => localArchiveGdgdFlag($folderName, $main),
+    ];
 }
 
 function resolveLocalArchiveDirectory(string $archiveDir): string
@@ -364,30 +463,30 @@ function resolveLocalArchiveDirectory(string $archiveDir): string
 
 function importLocalArchiveLogFile(PDO $pdo, string $file, string $archiveDir, array &$summary): void
 {
-    $raw = (string)file_get_contents($file);
-    $raw = archiveToUtf8($raw);
-    $lines = array_values(array_filter(preg_split('/\r\n|\n|\r/', $raw) ?: [], fn (string $line): bool => trim($line) !== ''));
+    importLocalArchiveRecord($pdo, parseLocalArchiveLogFile($file, $archiveDir, basename($archiveDir)), $summary);
+}
 
-    if (count($lines) === 0) {
+function importLocalArchiveRecord(PDO $pdo, array $record, array &$summary): void
+{
+    $main = $record['main'] ?? [];
+    if ($main === [] || empty($record['importable'])) {
+        $summary['skipped_threads'] = (int)($summary['skipped_threads'] ?? 0) + 1;
+        $summary['skipped_invalid_threads'] = (int)($summary['skipped_invalid_threads'] ?? 0) + 1;
         return;
     }
 
-    $main = archiveFields($lines[0], 24);
-    $name = archiveText($main[1] ?? '');
-    $createdAt = archiveDateToTimestamp($main[2] ?? '');
-    $title = archiveText($main[3] ?? '');
+    $name = (string)$record['name'];
+    $createdAt = (string)$record['created_at'];
+    $title = (string)$record['title'];
     $url = normalizeUrl($main[5] ?? null);
     $message = archiveMessageToText($main[6] ?? '');
-    $filename = basename(trim((string)($main[10] ?? '')));
+    $filename = (string)($record['filename'] ?? '');
     $tweetOff = toBoolFlag($main[18] ?? false);
     $tweetUrl = normalizeUrl($main[19] ?? null);
+    $gdgd = !empty($record['gdgd']);
 
-    if ($name === '') {
-        $name = 'imported';
-    }
-    if ($title === '') {
-        $title = 'Imported thread';
-    }
+    $folderName = (string)($record['folder_name'] ?? '');
+    $summary['folders'][$folderName] = ($summary['folders'][$folderName] ?? 0) + 1;
 
     $threadId = findImportedArchiveThread($pdo, $name, $title, $message, $createdAt);
     if ($threadId === null) {
@@ -396,7 +495,7 @@ function importLocalArchiveLogFile(PDO $pdo, string $file, string $archiveDir, a
                 thread_id, parent_id, name, url, title, message, image_path, password_hash, created_at, deleted_at, gdgd,
                 tweet_off, tweet_text, tweet_url, tweet_like_count, tweet_retweet_count, tweet_comment_count, tweet_impression_count
             ) VALUES (
-                0, 0, :name, :url, :title, :message, null, :password_hash, :created_at, null, 0,
+                0, 0, :name, :url, :title, :message, null, :password_hash, :created_at, null, :gdgd,
                 :tweet_off, null, :tweet_url, 0, 0, 0, 0
             )'
         );
@@ -407,19 +506,24 @@ function importLocalArchiveLogFile(PDO $pdo, string $file, string $archiveDir, a
             ':message' => $message,
             ':password_hash' => importedArchivePasswordHash(),
             ':created_at' => $createdAt,
+            ':gdgd' => $gdgd ? 1 : 0,
             ':tweet_off' => $tweetOff ? 1 : 0,
             ':tweet_url' => $tweetUrl,
         ]);
         $threadId = (int)$pdo->lastInsertId();
         $pdo->prepare('UPDATE posts SET thread_id = :thread_id WHERE id = :id')->execute([':thread_id' => $threadId, ':id' => $threadId]);
-        copyLocalArchiveImage($pdo, $archiveDir, $filename, $threadId, $summary);
+        copyLocalArchiveImage($pdo, (string)$record['archive_dir'], $filename, $threadId, $summary);
         $summary['imported_threads']++;
+        if ($gdgd) {
+            $summary['gdgd_threads']++;
+        } else {
+            $summary['normal_threads']++;
+        }
     } else {
         $summary['skipped_threads']++;
     }
 
-    for ($i = 1; $i < count($lines); $i++) {
-        $reply = archiveFields($lines[$i], 10);
+    foreach ($record['replies'] as $reply) {
         $replyName = archiveText($reply[1] ?? '');
         $replyCreatedAt = archiveDateToTimestamp($reply[2] ?? '');
         $replyMessage = archiveMessageToText($reply[3] ?? '');
@@ -457,6 +561,80 @@ function importLocalArchiveLogFile(PDO $pdo, string $file, string $archiveDir, a
         ]);
         $summary['imported_replies']++;
     }
+}
+
+function extractLocalArchiveReplies(array $lines, array $main): array
+{
+    $replies = [];
+    for ($i = 1; $i < count($lines); $i++) {
+        $replies[] = archiveFields($lines[$i], 10);
+    }
+
+    for ($offset = 24; $offset + 9 < count($main); $offset += 10) {
+        if (!archiveLooksLikeDate((string)($main[$offset + 1] ?? ''))) {
+            continue;
+        }
+        $replies[] = array_merge([''], array_slice($main, $offset, 9));
+    }
+
+    usort($replies, function (array $left, array $right): int {
+        return archiveDateToTimestamp((string)($left[2] ?? '')) <=> archiveDateToTimestamp((string)($right[2] ?? ''));
+    });
+
+    return $replies;
+}
+
+function localArchiveGdgdFlag(string $folderName, array $main): bool
+{
+    $title = archiveText($main[3] ?? '');
+    $filename = strtoupper((string)($main[10] ?? ''));
+    $folder = strtolower($folderName);
+
+    if ($folder === 'bbs10_doteitaarchive_doteita') {
+        return false;
+    }
+    if ($folder === 'bbs20_doteitaarchive_gdgd') {
+        return true;
+    }
+    if ($folder === 'bbsoo_doteitaarchive') {
+        return titleLooksGdgd($title);
+    }
+    if ($folder === 'bbs1-999') {
+        return str_starts_with($filename, 'GDDOTIMG_')
+            || titleLooksGdgd($title)
+            || archiveFieldsContainGdgdMarker($main);
+    }
+
+    return str_starts_with($filename, 'GDDOTIMG_') || titleLooksGdgd($title);
+}
+
+function titleLooksGdgd(string $title): bool
+{
+    $normalized = str_replace(['ｇ', 'ｄ', 'Ｇ', 'Ｄ'], ['g', 'd', 'g', 'd'], strtolower($title));
+    return str_contains($normalized, 'gdgd');
+}
+
+function archiveFieldsContainGdgdMarker(array $fields): bool
+{
+    foreach ($fields as $index => $value) {
+        if ($index === 3 || $index === 6) {
+            continue;
+        }
+        $normalized = str_replace(['ｇ', 'ｄ', 'Ｇ', 'Ｄ'], ['g', 'd', 'g', 'd'], strtolower((string)$value));
+        if (str_contains($normalized, 'gdgd=1')
+            || str_contains($normalized, 'gdgd:true')
+            || str_contains($normalized, 'type=gdgd')
+            || str_starts_with($normalized, '[gd')
+        ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function archiveLooksLikeDate(string $value): bool
+{
+    return preg_match('/\d{4}\/\d{1,2}\/\d{1,2}.*?\d{1,2}:\d{1,2}:\d{1,2}/', $value) === 1;
 }
 
 function archiveFields(string $line, int $count): array
@@ -636,6 +814,7 @@ function requireUser(PDO $pdo): array
 function createUserSession(PDO $pdo, int $userId): string
 {
     $token = bin2hex(random_bytes(32));
+    $now = currentTimestamp();
     $expires = (new DateTimeImmutable('now', new DateTimeZone('Asia/Tokyo')))
         ->modify('+30 days')
         ->format('Y-m-d H:i:s');
@@ -643,9 +822,11 @@ function createUserSession(PDO $pdo, int $userId): string
     $stmt->execute([
         ':token' => $token,
         ':user_id' => $userId,
-        ':created_at' => currentTimestamp(),
+        ':created_at' => $now,
         ':expires_at' => $expires,
     ]);
+    $update = $pdo->prepare('UPDATE users SET last_login_at = :last_login_at WHERE id = :id');
+    $update->execute([':last_login_at' => $now, ':id' => $userId]);
     return $token;
 }
 

@@ -47,3 +47,18 @@ tools\import_local_archive.bat legacy\data
 ```
 
 The importer reads `LOG_*.cgi` files and referenced images from the specified directory. The import is non-destructive: it does not delete existing posts, images, or settings, and re-running it skips matching imported posts and replies.
+
+## ThreadForge Archive Folder Import
+
+Import multiple archive folders, such as `legacy/import_data`, in parent-post chronological order:
+
+```powershell
+tools\import_threadforge_archives.bat legacy\import_data
+```
+
+Folder rules:
+
+- `bbs1-999`: detect normal/special posts from archive markers.
+- `bbs10_DoteitaArchive_Doteita`: import as normal posts.
+- `bbs20_DoteitaArchive_gdgd`: import as special posts.
+- `bbsOO_DoteitaArchive`: import as special only when the title contains `gdgd` or `ｇｄｇｄ`.

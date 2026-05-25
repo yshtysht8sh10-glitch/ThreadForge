@@ -30,6 +30,9 @@ function handleApiRequest(): void
         case 'listThreads':
             listThreads($pdo);
             break;
+        case 'listThreadArchiveMeta':
+            listThreadArchiveMeta($pdo);
+            break;
         case 'getThread':
             getThread($pdo);
             break;
@@ -163,26 +166,42 @@ function handleApiRequest(): void
 function listThreads(PDO $pdo): void
 {
     [$limit, $offset] = paginationParams($pdo);
+    $settings = loadSettings($pdo);
+    $listOrder = listThreadOrder($settings);
+    [$periodWhere, $periodParams] = threadPeriodFilterFromRequest();
     $targetId = filter_input(INPUT_GET, 'target_id', FILTER_VALIDATE_INT);
     if ($targetId !== false && $targetId !== null) {
         $targetStmt = $pdo->prepare('SELECT id, created_at FROM posts WHERE id = :id AND parent_id = 0 AND deleted_at IS NULL LIMIT 1');
         $targetStmt->execute([':id' => $targetId]);
         $target = $targetStmt->fetch(PDO::FETCH_ASSOC);
         if ($target) {
-            $beforeStmt = $pdo->prepare(
-                'SELECT COUNT(*) FROM posts
-                 WHERE parent_id = 0
-                   AND deleted_at IS NULL
-                   AND (created_at > :created_at OR (created_at = :created_at AND id > :id))'
-            );
-            $beforeStmt->execute([
-                ':created_at' => (string)$target['created_at'],
-                ':id' => (int)$target['id'],
-            ]);
+            if ($periodWhere !== '' || $listOrder === 'createdAt') {
+                $beforeStmt = $pdo->prepare(
+                    'SELECT COUNT(*) FROM posts
+                     WHERE parent_id = 0
+                       AND deleted_at IS NULL
+                       ' . $periodWhere . '
+                       AND (created_at > :created_at OR (created_at = :created_at AND id > :id))'
+                );
+                $beforeStmt->execute(array_merge($periodParams, [
+                    ':created_at' => (string)$target['created_at'],
+                    ':id' => (int)$target['id'],
+                ]));
+            } else {
+                $beforeStmt = $pdo->prepare(
+                    'SELECT COUNT(*) FROM posts
+                     WHERE parent_id = 0
+                       AND deleted_at IS NULL
+                       ' . $periodWhere . '
+                       AND id > :id'
+                );
+                $beforeStmt->execute(array_merge($periodParams, [':id' => (int)$target['id']]));
+            }
             $offset = $limit === null ? 0 : intdiv((int)$beforeStmt->fetchColumn(), $limit) * $limit;
         }
     }
-    $sql = 'SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.parent_id = 0 AND p.deleted_at IS NULL ORDER BY p.created_at DESC, p.id DESC';
+    $orderBy = ($periodWhere !== '' || $listOrder === 'createdAt') ? 'p.created_at DESC, p.id DESC' : 'p.id DESC';
+    $sql = 'SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.parent_id = 0 AND p.deleted_at IS NULL ' . $periodWhere . ' ORDER BY ' . $orderBy;
     if ($limit !== null) {
         $sql .= ' LIMIT :limit OFFSET :offset';
     }
@@ -190,6 +209,9 @@ function listThreads(PDO $pdo): void
     if ($limit !== null) {
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    }
+    foreach ($periodParams as $key => $value) {
+        $stmt->bindValue($key, $value);
     }
     bindBoardStatTexts($stmt, $pdo);
     $stmt->execute();
@@ -200,6 +222,31 @@ function listThreads(PDO $pdo): void
         $rows
     );
     jsonResponse($result);
+}
+
+function listThreadArchiveMeta(PDO $pdo): void
+{
+    [$periodWhere, $periodParams] = threadPeriodFilterFromRequest();
+    $periodStmt = $pdo->query(
+        "SELECT substr(created_at, 1, 4) AS year, substr(created_at, 6, 2) AS month, COUNT(*) AS count
+         FROM posts
+         WHERE parent_id = 0 AND deleted_at IS NULL AND created_at IS NOT NULL AND length(created_at) >= 7
+         GROUP BY year, month
+         ORDER BY year DESC, month DESC"
+    );
+    $periods = array_map(static fn(array $row): array => [
+        'year' => (string)$row['year'],
+        'month' => (string)$row['month'],
+        'count' => (int)$row['count'],
+    ], $periodStmt->fetchAll(PDO::FETCH_ASSOC));
+
+    $totalStmt = $pdo->prepare('SELECT COUNT(*) FROM posts p WHERE p.parent_id = 0 AND p.deleted_at IS NULL ' . $periodWhere);
+    foreach ($periodParams as $key => $value) {
+        $totalStmt->bindValue($key, $value);
+    }
+    $totalStmt->execute();
+
+    jsonResponse(['success' => true, 'periods' => $periods, 'total' => (int)$totalStmt->fetchColumn()]);
 }
 
 function buildThreadSummary(PDO $pdo, array $thread, int $replyLimit): array
@@ -301,13 +348,20 @@ function searchPosts(PDO $pdo): void
     [$limit, $offset] = paginationParams($pdo);
     $pattern = '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%';
     $scope = $_GET['scope'] ?? 'all';
+    $kinds = $_GET['kinds'] ?? 'all';
     $where = match ($scope) {
         'title' => 'p.title LIKE :q ESCAPE "\\"',
         'message' => 'p.message LIKE :q ESCAPE "\\"',
         'name' => 'p.name LIKE :q ESCAPE "\\"',
         default => '(p.title LIKE :q ESCAPE "\\" OR p.message LIKE :q ESCAPE "\\" OR p.name LIKE :q ESCAPE "\\")',
     };
-    $sql = 'SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.deleted_at IS NULL AND ' . $where . ' ORDER BY p.created_at DESC';
+    $kindWhere = match ($kinds) {
+        'posts' => ' AND p.parent_id = 0',
+        'replies' => ' AND p.parent_id != 0',
+        'none' => ' AND 1 = 0',
+        default => '',
+    };
+    $sql = 'SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.deleted_at IS NULL AND ' . $where . $kindWhere . ' ORDER BY p.created_at DESC';
     if ($limit !== null) {
         $sql .= ' LIMIT :limit OFFSET :offset';
     }
@@ -1902,7 +1956,38 @@ function listBoardAnalyticsPosts(PDO $pdo): void
 
 function listRankingPosts(PDO $pdo): void
 {
-    listBoardAnalyticsPosts($pdo);
+    $metric = (string)($_GET['metric'] ?? 'views');
+    $orderExpression = rankingMetricOrderExpression($metric);
+    $sql = 'SELECT ' . postSelectWithBoardStats('p') . '
+            FROM posts p
+            WHERE p.parent_id = 0 AND p.deleted_at IS NULL
+            ORDER BY ' . $orderExpression . ' DESC, p.id DESC
+            LIMIT 100';
+    $stmt = $pdo->prepare($sql);
+    bindBoardStatTexts($stmt, $pdo);
+    $stmt->execute();
+
+    jsonResponse(array_map(
+        fn (array $row): array => withDisplayNo($pdo, buildPost($row), (int)$row['id']),
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+    ));
+}
+
+function rankingMetricOrderExpression(string $metric): string
+{
+    return match ($metric) {
+        'comments' => 'reply_count',
+        'eejanaika' => 'eejanaika_count',
+        'omigoto' => 'omigoto_count',
+        'goodjob' => 'goodjob_count',
+        'xLikes' => 'p.tweet_like_count',
+        'xReposts' => 'p.tweet_retweet_count',
+        'xImpressions' => 'p.tweet_impression_count',
+        'blueskyLikes' => 'p.bluesky_like_count',
+        'mastodonFavs' => 'p.mastodon_fav_count',
+        'misskeyReactions' => '(p.misskey_fire_count + p.misskey_eyes_count + p.misskey_cry_count + p.misskey_thinking_count + p.misskey_party_count + p.misskey_other_count)',
+        default => 'p.view_count',
+    };
 }
 
 function restorePost(PDO $pdo): void
@@ -2046,13 +2131,16 @@ function adminDeletePosts(PDO $pdo): void
 function listAdminUsers(PDO $pdo): void
 {
     requireAdmin();
-    $stmt = $pdo->query(
+    $stmt = $pdo->prepare(
         'SELECT u.*,
                 (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
-                (SELECT COUNT(*) FROM user_post_claims c WHERE c.user_id = u.id) AS claim_count
+                (SELECT COUNT(*) FROM user_post_claims c WHERE c.user_id = u.id) AS claim_count,
+                (SELECT COUNT(*) FROM user_sessions s WHERE s.user_id = u.id AND s.expires_at > :now) AS active_session_count,
+                (SELECT MAX(s.created_at) FROM user_sessions s WHERE s.user_id = u.id) AS last_session_at
          FROM users u
          ORDER BY u.id ASC'
     );
+    $stmt->execute([':now' => currentTimestamp()]);
     $users = array_map(static fn(array $row): array => [
         'id' => (int)$row['id'],
         'login_id' => (string)$row['login_id'],
@@ -2064,6 +2152,9 @@ function listAdminUsers(PDO $pdo): void
         'updated_at' => (string)$row['updated_at'],
         'post_count' => (int)$row['post_count'],
         'claim_count' => (int)$row['claim_count'],
+        'last_login_at' => $row['last_login_at'] ?? ($row['last_session_at'] ?? null),
+        'last_session_at' => $row['last_session_at'] ?? null,
+        'active_session_count' => (int)($row['active_session_count'] ?? 0),
     ], $stmt->fetchAll(PDO::FETCH_ASSOC));
 
     jsonResponse(['success' => true, 'users' => $users]);
@@ -2952,7 +3043,7 @@ function publicSettings(PDO $pdo): void
                 'eejanaikaEejanaikaColor' => (string)($config['eejanaikaEejanaikaColor'] ?? '#fff200'),
                 'socialHashtags' => (string)($config['socialHashtags'] ?? '#art'),
                 'allowedImageTypes' => allowedImageExtensionsFromConfig($config),
-                'logView' => $config['logView'] ?? 20,
+                'listOrder' => listThreadOrder($settings),
             ],
         ],
     ]);
@@ -3052,7 +3143,7 @@ function defaultSettings(): array
             'eejanaikaEejanaikaText' => 'ええじゃないか',
             'eejanaikaEejanaikaColor' => '#fff200',
             'socialHashtags' => '#art',
-            'logView' => 20,
+            'listOrder' => 'number',
             'maxUploadBytes' => 5100000,
             'maxImageWidth' => 1280,
             'maxImageHeight' => 960,
@@ -3103,7 +3194,7 @@ function defaultManualBody(): string
         '',
         '# 【一覧】',
         '## 投稿を見る',
-        '- 投稿作品とコメントの一部を新しい順に確認できます。',
+        '- 投稿作品とコメントの一部を、サイトで設定された並び順で確認できます。',
         '- 作品画像、タイトル、本文、作者名、投稿日時、閲覧数、コメント数、簡単リアクション数、SNSリアクション数が表示されます。',
         '- タイトルや画像を選ぶと、その投稿の個別ページを開きます。',
         '- 作者アイコンにカーソルを合わせると拡大表示され、クリックするとその作者の作品一覧を表示できます。',
@@ -3230,4 +3321,46 @@ function paginationParams(PDO $pdo): array
     }
     $limit = min(1000, max(1, $configuredLimit));
     return [$limit, ($page - 1) * $limit];
+}
+
+function threadPeriodFilterFromRequest(): array
+{
+    $years = array_values(array_filter(array_unique(array_map('trim', explode(',', (string)($_GET['years'] ?? '')))), static fn(string $year): bool => preg_match('/^\d{4}$/', $year) === 1));
+    $months = array_values(array_filter(array_unique(array_map('trim', explode(',', (string)($_GET['months'] ?? '')))), static fn(string $month): bool => preg_match('/^\d{4}-\d{2}$/', $month) === 1));
+    $monthYears = array_unique(array_map(static fn(string $month): string => substr($month, 0, 4), $months));
+    $wholeYears = array_values(array_diff($years, $monthYears));
+    $conditions = [];
+    $params = [];
+
+    if ($wholeYears !== []) {
+        $yearPlaceholders = [];
+        foreach ($wholeYears as $index => $year) {
+            $key = ':filter_year_' . $index;
+            $yearPlaceholders[] = $key;
+            $params[$key] = $year;
+        }
+        $conditions[] = 'substr(created_at, 1, 4) IN (' . implode(', ', $yearPlaceholders) . ')';
+    }
+
+    if ($months !== []) {
+        $monthPlaceholders = [];
+        foreach ($months as $index => $month) {
+            $key = ':filter_month_' . $index;
+            $monthPlaceholders[] = $key;
+            $params[$key] = $month;
+        }
+        $conditions[] = 'substr(created_at, 1, 7) IN (' . implode(', ', $monthPlaceholders) . ')';
+    }
+
+    if ($conditions === []) {
+        return ['', []];
+    }
+
+    return [' AND (' . implode(' OR ', $conditions) . ')', $params];
+}
+
+function listThreadOrder(array $settings): string
+{
+    $value = (string)($settings['config']['listOrder'] ?? 'number');
+    return $value === 'createdAt' ? 'createdAt' : 'number';
 }

@@ -307,6 +307,31 @@ textarea {
   width: auto;
 }
 
+.inline-options {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--panel-label);
+  font-weight: 700;
+}
+
+.inline-options legend {
+  margin-bottom: 0.35rem;
+}
+
+.inline-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.inline-options input {
+  width: auto;
+}
+
 .tweet-preview,
 .tweet-meta {
   border: 1px solid #355777;
@@ -378,6 +403,122 @@ img.thumbnail {
   border: 1px solid #777;
   padding: 1rem;
   background: #030303;
+}
+
+.board-message.compact {
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.infinite-loader {
+  min-height: 4rem;
+  display: grid;
+  place-items: center;
+  margin-top: 1rem;
+}
+
+.period-filter-card {
+  width: min(100%, 860px);
+  margin: 0 auto 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.period-filter-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.period-filter-header h2 {
+  margin: 0 0 0.2rem;
+  font-size: 1rem;
+}
+
+.period-filter-header p {
+  margin: 0;
+  color: var(--panel-label);
+  font-size: 0.86rem;
+}
+
+.period-filter-header strong {
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.period-filter-grid {
+  display: grid;
+  gap: 0.65rem;
+  max-height: 18rem;
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.period-year-block {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.period-month-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.period-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  min-height: 2.1rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--button-border);
+  border-radius: 999px;
+  background: var(--button-subtle);
+  color: var(--button-text);
+  box-shadow: none;
+}
+
+.period-chip.month {
+  min-width: 5.2rem;
+}
+
+.period-chip span {
+  color: var(--panel-label);
+  font-size: 0.78rem;
+}
+
+.period-chip.selected {
+  border-color: var(--accent);
+  background: var(--button-bg);
+}
+
+.period-chip.selected span {
+  color: var(--button-text);
+}
+
+.period-clear-button {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .period-filter-header {
+    display: grid;
+  }
+
+  .period-filter-header strong {
+    white-space: normal;
+  }
+
+  .period-year-block {
+    grid-template-columns: 1fr;
+  }
 }
 
 .board-thread {
@@ -1374,9 +1515,30 @@ button.post-reset-button:hover {
   border-bottom: 1px solid #334155;
 }
 
-.admin-user-row div:first-child {
+.admin-user-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.admin-user-summary > div {
   display: grid;
   gap: 0.2rem;
+}
+
+.admin-user-icon {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: #05080c;
+}
+
+.admin-user-icon.large {
+  width: 64px;
+  height: 64px;
 }
 
 .admin-user-row span {
@@ -1400,6 +1562,41 @@ button.post-reset-button:hover {
 
 .admin-user-edit-form h4 {
   margin: 0;
+}
+
+.admin-user-edit-profile {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.65rem;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-user-edit-profile dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.9rem;
+  margin: 0;
+}
+
+.admin-user-edit-profile dl div {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.admin-user-edit-profile dt {
+  color: var(--panel-label);
+  font-size: 0.78rem;
+}
+
+.admin-user-edit-profile dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.88rem;
 }
 
 .admin-user-edit-form label {
@@ -1440,6 +1637,15 @@ button.post-reset-button:hover {
 }
 
 @media (max-width: 720px) {
+  .admin-user-summary,
+  .admin-user-edit-profile {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-user-edit-profile dl {
+    grid-template-columns: 1fr;
+  }
+
   .admin-user-login-password-fields {
     grid-template-columns: 1fr;
   }

@@ -169,7 +169,9 @@ describe('LoginPage', () => {
     fireEvent.change(within(claimSection).getByLabelText('検索対象'), { target: { value: 'title' } });
     fireEvent.click(within(claimSection).getByRole('button', { name: '検索' }));
 
-    await waitFor(() => expect(api.search).toHaveBeenCalledWith('needle', 'title'));
+    await waitFor(() => expect(api.search).toHaveBeenCalledWith('needle', 'title', 1, 50, 'posts'));
+    fireEvent.click(within(claimSection).getByLabelText('返信'));
+    await waitFor(() => expect(api.search).toHaveBeenCalledWith('needle', 'title', 1, 50, 'all'));
     const candidate = await screen.findByText('No.40 Candidate work');
     const candidateRow = candidate.closest('.account-claim-result') as HTMLElement;
     expect(candidateRow.querySelector('img')).toHaveAttribute('src', '/storage/data/40.png');

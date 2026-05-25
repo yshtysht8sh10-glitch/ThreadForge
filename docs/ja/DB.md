@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS settings (
 
 `security` セクションには `adminPasswordHash` と `cronApiKey` を保存します。`cronApiKey` は未設定時に自動生成され、GitHub Actions など外部スケジューラ向けの `cronRefreshSocialReactions` API で使います。
 
-DBがない初期状態では、設定テーブルが空でもアプリ側のデフォルト設定が使われます。初期値は、特殊投稿OFF、一覧表示件数20、SNS投稿ハッシュタグ `#art`、SNS連携すべてOFF、SNS認証情報空欄です。一覧表示件数が空欄または0以下のときは全件表示になります。
+DBがない初期状態では、設定テーブルが空でもアプリ側のデフォルト設定が使われます。初期値は、特殊投稿OFF、一覧の並び順はNo順、SNS投稿ハッシュタグ `#art`、SNS連携すべてOFF、SNS認証情報空欄です。一覧画面では年/月による複数期間指定で表示対象を絞り込めます。
 
 ## バックアップ
 
@@ -103,6 +103,8 @@ DBがない初期状態では、設定テーブルが空でもアプリ側のデ
 ローカルアーカイブログのインポートは、Web管理画面ではなくローカル運用バッチまたはPHPコマンドから行います。個別環境用のバッチファイルは、明示的に配布対象にすると決めない限りコミットしません。
 
 インポータは標準でルートの `data/` から`LOG_*.cgi` を読み、参照画像を `server/storage/data/` へコピーします。
+
+複数フォルダをまとめる場合は `tools\import_threadforge_archives.bat legacy\import_data` を使います。この場合は親投稿の投稿日時順にDBへ取り込み、`bbs10_DoteitaArchive_Doteita` は通常投稿、`bbs20_DoteitaArchive_gdgd` は特殊投稿、`bbsOO_DoteitaArchive` はタイトル内の `gdgd` / `ｇｄｇｄ` で特殊投稿判定、`bbs1-999` はログ内のマーカーから自動判定します。
 
 このインポートは非破壊です。
 

@@ -32,7 +32,7 @@ describe('SearchPage', () => {
     renderSearch('/search?q=dot&scope=title');
 
     expect(await screen.findByDisplayValue('dot')).toBeInTheDocument();
-    expect(api.search).toHaveBeenCalledWith('dot', 'title');
+    expect(api.search).toHaveBeenCalledWith('dot', 'title', 1, 50, 'all');
     expect(screen.getByRole('img', { name: 'Dot picture' })).toHaveAttribute('src', '/storage/data/5.png');
     for (const link of screen.getAllByRole('link', { name: 'Dot picture' })) {
       expect(link).toHaveAttribute('href', '/?target=5#post-5');
@@ -45,8 +45,21 @@ describe('SearchPage', () => {
     fireEvent.change(screen.getByLabelText('キーワード'), { target: { value: 'pixel' } });
     fireEvent.click(screen.getByRole('button', { name: '検索する' }));
 
-    await waitFor(() => expect(api.search).toHaveBeenCalledWith('pixel', 'all'));
-    expect(screen.getByTestId('location').textContent).toBe('/search?q=pixel&scope=all');
+    await waitFor(() => expect(api.search).toHaveBeenCalledWith('pixel', 'all', 1, 50, 'all'));
+    expect(screen.getByTestId('location').textContent).toBe('/search?q=pixel&scope=all&posts=1&replies=1');
+  });
+
+  it('can filter search results to replies only', async () => {
+    renderSearch('/search');
+
+    fireEvent.change(screen.getByLabelText('キーワード'), { target: { value: 'reply' } });
+    fireEvent.click(screen.getByLabelText('投稿'));
+    fireEvent.click(screen.getByRole('button', { name: '検索する' }));
+
+    await waitFor(() => expect(api.search).toHaveBeenCalledWith('reply', 'all', 1, 50, 'replies'));
+    expect(screen.getByTestId('location').textContent).toBe('/search?q=reply&scope=all&posts=0&replies=1');
+    fireEvent.click(screen.getByLabelText('投稿'));
+    await waitFor(() => expect(api.search).toHaveBeenCalledWith('reply', 'all', 1, 50, 'all'));
   });
 });
 

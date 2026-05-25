@@ -10,8 +10,23 @@ export type AdminUser = {
   icon_path?: string | null;
   created_at: string;
   updated_at: string;
+  last_login_at?: string | null;
+  last_session_at?: string | null;
+  active_session_count?: number;
   post_count: number;
   claim_count: number;
+};
+
+export type ThreadArchivePeriod = {
+  year: string;
+  month: string;
+  count: number;
+};
+
+export type ThreadArchiveMeta = {
+  success: boolean;
+  periods: ThreadArchivePeriod[];
+  total: number;
 };
 
 export type PublicSettings = {
@@ -34,7 +49,7 @@ export type PublicSettings = {
     eejanaikaEejanaikaColor: string;
     socialHashtags: string;
     allowedImageTypes: string[];
-    logView?: number | string;
+    listOrder?: 'number' | 'createdAt' | string;
   };
 };
 
@@ -57,7 +72,7 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     eejanaikaEejanaikaColor: '#fff200',
     socialHashtags: '#art',
     allowedImageTypes: ['gif', 'png', 'jpeg', 'jpg', 'bmp'],
-    logView: 20,
+    listOrder: 'number',
     manualBody: [
       'この取説は、このサイトを利用する方向けの案内です。',
       '',
@@ -67,7 +82,7 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
       '',
       '# 【一覧】',
       '## 投稿を見る',
-      '- 投稿作品とコメントの一部を新しい順に確認できます。',
+      '- 投稿作品とコメントの一部を、サイトで設定された並び順で確認できます。',
       '- 作品画像、タイトル、本文、作者名、投稿日時、閲覧数、コメント数、簡単リアクション数、SNSリアクション数が表示されます。',
       '- タイトルや画像を選ぶと、その投稿の個別ページを開けます。',
       '## コメントと簡単リアクション',
@@ -152,7 +167,7 @@ export const DEFAULT_ADMIN_SETTINGS = {
     misskeyEnabled: false,
     misskeyInstanceUrl: '',
     misskeyAccessToken: '',
-    logView: 20,
+    listOrder: 'number',
     maxUploadBytes: 5100000,
     maxImageWidth: 1280,
     maxImageHeight: 960,
@@ -326,8 +341,32 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
   }
 
   switch (action) {
-    case 'listThreads':
-      return mockPosts as T;
+    case 'listThreads': {
+      const years = splitQuerySet(params.get('years'));
+      const months = splitQuerySet(params.get('months'));
+      const filteredPosts = filterMockPostsByPeriod(mockPosts, years, months);
+      const page = Math.max(1, Number(params.get('page') || '1') || 1);
+      const limit = Math.max(1, Number(params.get('limit') || String(filteredPosts.length)) || filteredPosts.length);
+      const start = (page - 1) * limit;
+      return filteredPosts.slice(start, start + limit) as T;
+    }
+    case 'listThreadArchiveMeta': {
+      const years = splitQuerySet(params.get('years'));
+      const months = splitQuerySet(params.get('months'));
+      const periodMap = new Map<string, number>();
+      mockPosts.forEach((post) => {
+        const key = post.created_at.slice(0, 7);
+        periodMap.set(key, (periodMap.get(key) ?? 0) + 1);
+      });
+      const periods = [...periodMap.entries()]
+        .map(([key, count]) => ({ year: key.slice(0, 4), month: key.slice(5, 7), count }))
+        .sort((a, b) => `${b.year}-${b.month}`.localeCompare(`${a.year}-${a.month}`));
+      return {
+        success: true,
+        periods,
+        total: filterMockPostsByPeriod(mockPosts, years, months).length,
+      } as T;
+    }
     case 'listDeletedPosts':
       return [] as T;
     case 'listAnalyticsPosts':
@@ -390,7 +429,7 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
           adminPasswordConfigured: true,
         },
       } as T;
-    case 'search':
+    case 'search': {
       const q = params.get('q') || '';
       const scope = params.get('scope') || 'all';
       const results = mockPosts.filter(p =>
@@ -399,7 +438,11 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
             : scope === 'name' ? p.name.includes(q)
               : p.title.includes(q) || p.message.includes(q) || p.name.includes(q)
       );
-      return results as T;
+      const page = Math.max(1, Number(params.get('page') || '1') || 1);
+      const limit = Math.max(1, Number(params.get('limit') || String(results.length)) || results.length);
+      const start = (page - 1) * limit;
+      return results.slice(start, start + limit) as T;
+    }
     case 'createPost':
     case 'updatePost':
     case 'deletePost':
@@ -437,6 +480,9 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
           icon_path: null,
           created_at: '2024-01-01 00:00:00',
           updated_at: '2024-01-01 00:00:00',
+          last_login_at: null,
+          last_session_at: null,
+          active_session_count: 0,
           post_count: 1,
           claim_count: 0,
         }],
@@ -453,11 +499,40 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
   }
 }
 
+function splitQuerySet(value: string | null): Set<string> {
+  return new Set((value ?? '').split(',').map((item) => item.trim()).filter(Boolean));
+}
+
+function filterMockPostsByPeriod(posts: Post[], years: Set<string>, months: Set<string>): Post[] {
+  if (years.size === 0 && months.size === 0) {
+    return posts;
+  }
+  return posts.filter((post) => {
+    const year = post.created_at.slice(0, 4);
+    const month = post.created_at.slice(0, 7);
+    return months.has(month) || (years.has(year) && ![...months].some((selectedMonth) => selectedMonth.startsWith(`${year}-`)));
+  });
+}
+
 export const api = {
-  listThreads: async (targetId?: number | string | null, page?: number | string | null): Promise<Post[]> => {
+  listThreads: async (
+    targetId?: number | string | null,
+    page?: number | string | null,
+    limit?: number | string | null,
+    years?: string[] | null,
+    months?: string[] | null,
+  ): Promise<Post[]> => {
     const target = targetId ? `&target_id=${encodeURIComponent(String(targetId))}` : '';
     const pageParam = page ? `&page=${encodeURIComponent(String(page))}` : '';
-    return fetchJson<Post[]>(`${apiBase()}?action=listThreads${target}${pageParam}`);
+    const limitParam = limit ? `&limit=${encodeURIComponent(String(limit))}` : '';
+    const yearsParam = years && years.length > 0 ? `&years=${encodeURIComponent(years.join(','))}` : '';
+    const monthsParam = months && months.length > 0 ? `&months=${encodeURIComponent(months.join(','))}` : '';
+    return fetchJson<Post[]>(`${apiBase()}?action=listThreads${target}${pageParam}${limitParam}${yearsParam}${monthsParam}`);
+  },
+  listThreadArchiveMeta: async (years?: string[] | null, months?: string[] | null): Promise<ThreadArchiveMeta> => {
+    const yearsParam = years && years.length > 0 ? `&years=${encodeURIComponent(years.join(','))}` : '';
+    const monthsParam = months && months.length > 0 ? `&months=${encodeURIComponent(months.join(','))}` : '';
+    return fetchJson<ThreadArchiveMeta>(`${apiBase()}?action=listThreadArchiveMeta${yearsParam}${monthsParam}`);
   },
   rss: async (): Promise<string> => {
     const response = await fetch(`${apiBase()}?action=rss`);
@@ -483,8 +558,17 @@ export const api = {
     formData.append('action', 'recordAccess');
     return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
   },
-  search: async (q: string, scope = 'all'): Promise<SearchResult[]> => {
-    return fetchJson<SearchResult[]>(`${apiBase()}?action=search&q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scope)}`);
+  search: async (
+    q: string,
+    scope = 'all',
+    page?: number | string | null,
+    limit?: number | string | null,
+    kinds?: string | null,
+  ): Promise<SearchResult[]> => {
+    const pageParam = page ? `&page=${encodeURIComponent(String(page))}` : '';
+    const limitParam = limit ? `&limit=${encodeURIComponent(String(limit))}` : '';
+    const kindsParam = kinds ? `&kinds=${encodeURIComponent(kinds)}` : '';
+    return fetchJson<SearchResult[]>(`${apiBase()}?action=search&q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scope)}${pageParam}${limitParam}${kindsParam}`);
   },
   checkLoginId: async (loginId: string): Promise<{ success: boolean; available: boolean; message?: string }> => {
     return fetchJson(`${apiBase()}?action=checkLoginId&login_id=${encodeURIComponent(loginId)}`);
@@ -610,8 +694,8 @@ export const api = {
   listBoardAnalyticsPosts: async (): Promise<Post[]> => {
     return fetchJson<Post[]>(`${apiBase()}?action=listBoardAnalyticsPosts`);
   },
-  listRankingPosts: async (): Promise<Post[]> => {
-    return fetchJson<Post[]>(`${apiBase()}?action=listRankingPosts`);
+  listRankingPosts: async (metric = 'views'): Promise<Post[]> => {
+    return fetchJson<Post[]>(`${apiBase()}?action=listRankingPosts&metric=${encodeURIComponent(metric)}`);
   },
   restorePost: async (id: string, adminPassword: string): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();

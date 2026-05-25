@@ -22,6 +22,8 @@ const LoginPage = () => {
   const [claimId, setClaimId] = useState('');
   const [claimQuery, setClaimQuery] = useState('');
   const [claimScope, setClaimScope] = useState('all');
+  const [claimIncludePosts, setClaimIncludePosts] = useState(true);
+  const [claimIncludeReplies, setClaimIncludeReplies] = useState(false);
   const [claimResults, setClaimResults] = useState<Post[]>([]);
   const [claimLoading, setClaimLoading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -124,6 +126,10 @@ const LoginPage = () => {
 
   const searchClaimPosts = async (event: FormEvent) => {
     event.preventDefault();
+    await runClaimSearch();
+  };
+
+  const runClaimSearch = async (nextIncludePosts = claimIncludePosts, nextIncludeReplies = claimIncludeReplies) => {
     const query = claimQuery.trim();
     if (!query) {
       setClaimResults([]);
@@ -132,13 +138,23 @@ const LoginPage = () => {
     setClaimLoading(true);
     setError(null);
     try {
-      const results = await api.search(query, claimScope);
-      setClaimResults(results.filter((post) => post.parent_id === 0));
+      const results = await api.search(query, claimScope, 1, 50, searchKindParam(nextIncludePosts, nextIncludeReplies));
+      setClaimResults(results);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setClaimLoading(false);
     }
+  };
+
+  const changeClaimIncludePosts = (checked: boolean) => {
+    setClaimIncludePosts(checked);
+    void runClaimSearch(checked, claimIncludeReplies);
+  };
+
+  const changeClaimIncludeReplies = (checked: boolean) => {
+    setClaimIncludeReplies(checked);
+    void runClaimSearch(claimIncludePosts, checked);
   };
 
   const deleteOwnPost = async (post: Post) => {
@@ -215,6 +231,25 @@ const LoginPage = () => {
                 <option value="name">名前</option>
               </select>
             </label>
+            <fieldset className="inline-options">
+              <legend>表示対象</legend>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={claimIncludePosts}
+                  onChange={(event) => changeClaimIncludePosts(event.target.checked)}
+                />
+                投稿
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={claimIncludeReplies}
+                  onChange={(event) => changeClaimIncludeReplies(event.target.checked)}
+                />
+                返信
+              </label>
+            </fieldset>
             <button type="submit" className="secondary">検索</button>
           </form>
           <div className="account-claim-results">
@@ -414,6 +449,13 @@ function displayPostNo(post: Post): string {
 function listTargetHref(post: Post): string {
   const targetId = post.parent_id === 0 ? post.id : post.thread_id;
   return `/?target=${encodeURIComponent(String(targetId))}#post-${targetId}`;
+}
+
+function searchKindParam(includePosts: boolean, includeReplies: boolean): string {
+  if (includePosts && includeReplies) return 'all';
+  if (includePosts) return 'posts';
+  if (includeReplies) return 'replies';
+  return 'none';
 }
 
 export default LoginPage;
