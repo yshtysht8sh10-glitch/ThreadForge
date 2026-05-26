@@ -255,6 +255,21 @@ describe('API Module', () => {
       expect(result.success).toBe(true);
     });
 
+    it('should send settings as base64 encoded UTF-8 in server mode', async () => {
+      import.meta.env.VITE_USE_MOCK = 'false';
+      vi.stubGlobal('fetch', vi.fn(async (_input, init) => {
+        const body = init?.body as FormData;
+        expect(body.get('action')).toBe('updateSettings');
+        expect(body.get('settings')).toBeNull();
+        expect(body.get('settings_b64')).toBeTypeOf('string');
+        return new Response(JSON.stringify({ success: true, message: 'ok' }), { status: 200 });
+      }));
+
+      const result = await api.updateSettings({ config: { manualBody: '説明 <注意> 日本語' } }, 'admin');
+
+      expect(result.success).toBe(true);
+    });
+
     it('should return integrity details from mock API', async () => {
       const result = await api.adminCheckIntegrity('admin');
       expect(result).toEqual({

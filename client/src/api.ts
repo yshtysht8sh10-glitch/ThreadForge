@@ -853,7 +853,7 @@ export const api = {
     const formData = new FormData();
     formData.append('action', 'updateSettings');
     formData.append('admin_password', adminPassword);
-    formData.append('settings', JSON.stringify(settings));
+    formData.append('settings_b64', base64EncodeUtf8(JSON.stringify(settings)));
     return fetchJson(`${apiBase()}`, {
       method: 'POST',
       body: formData,
@@ -873,4 +873,13 @@ export const api = {
 
 function defaultStatusText(status: number): string {
   return status === 500 ? 'Internal Server Error' : '';
+}
+
+function base64EncodeUtf8(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary);
 }

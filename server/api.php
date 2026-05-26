@@ -3201,7 +3201,15 @@ function publicSettings(PDO $pdo): void
 function updateSettings(PDO $pdo): void
 {
     requireAdmin();
-    $settings = json_decode((string)($_POST['settings'] ?? ''), true);
+    $settingsJson = (string)($_POST['settings'] ?? '');
+    if (isset($_POST['settings_b64'])) {
+        $decodedSettings = base64_decode((string)$_POST['settings_b64'], true);
+        if ($decodedSettings === false) {
+            jsonResponse(['success' => false, 'message' => '設定データが正しくありません。'], 400);
+        }
+        $settingsJson = $decodedSettings;
+    }
+    $settings = json_decode($settingsJson, true);
     if (!is_array($settings)) {
         jsonResponse(['success' => false, 'message' => '設定データが正しくありません。'], 400);
     }
