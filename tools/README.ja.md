@@ -56,6 +56,15 @@ tools\import_local_archive.bat legacy\data
 tools\import_threadforge_archives.bat legacy\import_data
 ```
 
+レンタルサーバーのcronから実行する場合は、標準出力が見えないことがあるため、ログ出力つきの専用PHPを指定します。
+
+```text
+/home/users/0/main.jp-mugendoteita/web/DotoEita/01_threadforge/tools/import_threadforge_archives_cron.php
+```
+
+実行結果は ThreadForge 直下の `import_threadforge_archives.log` に出力されます。
+実行後はcronを無効化し、必要に応じて `tools/` を公開ディレクトリ外へ移動してください。
+
 フォルダごとの判定:
 
 - `bbs1-999`: ログ内の画像名、内部フィールド、タイトルから通常投稿/特殊投稿を自動判定します。
