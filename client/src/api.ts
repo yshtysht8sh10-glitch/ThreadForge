@@ -224,6 +224,16 @@ export function isMockMode(): boolean {
   return (import.meta.env.VITE_USE_MOCK ?? 'true') === 'true';
 }
 
+const DEFAULT_FETCH_TIMEOUT_MS = 60000;
+
+function summarizeResponseText(text: string): string {
+  const trimmed = text.replace(/\s+/g, ' ').trim();
+  if (!trimmed) {
+    return '';
+  }
+  return trimmed.length > 500 ? `${trimmed.slice(0, 500)}...` : trimmed;
+}
+
 export async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   if (isMockMode()) {
     return new Promise((resolve) => {
@@ -231,23 +241,44 @@ export async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Prom
     });
   }
 
-  const response = await fetch(input, init);
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), DEFAULT_FETCH_TIMEOUT_MS);
+  const signal = init?.signal ?? controller.signal;
+
+  let response: Response;
+  try {
+    response = await fetch(input, { ...init, signal });
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      throw new Error('APIの応答がタイムアウトしました。サーバー側のエラーまたは処理待ちの可能性があります。');
+    }
+    throw err;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+
+  const text = await response.text();
   if (!response.ok) {
     let message = `${response.status} ${response.statusText}`;
     try {
-      const payload = await response.clone().json();
+      const payload = JSON.parse(text);
       if (payload?.message) {
         message = `${message}: ${payload.message}`;
       }
     } catch {
-      const text = await response.text();
-      if (text.trim()) {
-        message = `${message}: ${text.trim()}`;
+      const summary = summarizeResponseText(text);
+      if (summary) {
+        message = `${message}: ${summary}`;
       }
     }
     throw new Error(message);
   }
-  return response.json();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    const summary = summarizeResponseText(text);
+    throw new Error(summary ? `APIの応答がJSONではありません: ${summary}` : 'APIの応答が空です。');
+  }
 }
 
 // モックデータ

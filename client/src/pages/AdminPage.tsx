@@ -151,7 +151,12 @@ const AdminPage = () => {
   const guarded = (callback: () => Promise<void>) => async (event?: FormEvent) => {
     event?.preventDefault();
     setError(null);
-    await callback();
+    try {
+      await callback();
+    } catch (err) {
+      setError((err as Error).message);
+      setStatus(null);
+    }
   };
 
   const submitAdminPassword = guarded(async () => {

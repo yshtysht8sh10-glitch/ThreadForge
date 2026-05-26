@@ -23,6 +23,7 @@ function handleApiRequest(): void
         exit;
     }
 
+    try {
     $action = resolveAction($_GET, $_POST);
     $pdo = getConnection();
 
@@ -165,7 +166,11 @@ function handleApiRequest(): void
         default:
             jsonResponse(['success' => false, 'message' => 'アクションが無効です。'], 400);
     }
+    } catch (Throwable $e) {
+        jsonResponse(['success' => false, 'message' => 'Server error: ' . $e->getMessage()], 500);
+    }
 }
+
 function listThreads(PDO $pdo): void
 {
     [$limit, $offset] = paginationParams($pdo);
