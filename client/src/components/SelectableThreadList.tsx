@@ -63,16 +63,33 @@ const SelectableThreadList = ({ threads, selectedIds, onToggle, multiple = false
           </header>
 
           <div className="board-thread-body">
-            <p className="board-meta">
-              {thread.user_icon_path && <img className="user-icon" src={mediaUrl(thread.user_icon_path) ?? undefined} alt="" />}
-              NAME：<strong>{thread.name}</strong>
-              {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
-              {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
-            </p>
+            <div className="selectable-thread-summary">
+              {mediaUrl(thread.image_path) && (
+                <img
+                  className="selectable-thread-thumb"
+                  src={mediaUrl(thread.image_path) ?? undefined}
+                  alt={thread.title || '投稿画像'}
+                  loading="lazy"
+                  decoding="async"
+                />
+              )}
+              <p className="board-meta">
+                {thread.user_icon_path && <img className="user-icon" src={mediaUrl(thread.user_icon_path) ?? undefined} alt="" />}
+                NAME：<strong>{thread.name}</strong>
+                {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
+                {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
+              </p>
+            </div>
 
             {mediaUrl(thread.image_path) && (
               <div className="board-image-link">
-                <img className="board-post-image" src={mediaUrl(thread.image_path) ?? undefined} alt={thread.title || '投稿画像'} />
+                <img
+                  className="board-post-image"
+                  src={mediaUrl(thread.image_path) ?? undefined}
+                  alt={thread.title || '投稿画像'}
+                  loading="lazy"
+                  decoding="async"
+                />
               </div>
             )}
 

@@ -350,6 +350,15 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
       const start = (page - 1) * limit;
       return filteredPosts.slice(start, start + limit) as T;
     }
+    case 'listAdminThreads': {
+      const years = splitQuerySet(params.get('years'));
+      const months = splitQuerySet(params.get('months'));
+      const filteredPosts = filterMockPostsByPeriod(mockPosts, years, months);
+      const page = Math.max(1, Number(params.get('page') || '1') || 1);
+      const limit = Math.max(1, Number(params.get('limit') || String(filteredPosts.length)) || filteredPosts.length);
+      const start = (page - 1) * limit;
+      return filteredPosts.slice(start, start + limit) as T;
+    }
     case 'listThreadArchiveMeta': {
       const years = splitQuerySet(params.get('years'));
       const months = splitQuerySet(params.get('months'));
@@ -528,6 +537,19 @@ export const api = {
     const yearsParam = years && years.length > 0 ? `&years=${encodeURIComponent(years.join(','))}` : '';
     const monthsParam = months && months.length > 0 ? `&months=${encodeURIComponent(months.join(','))}` : '';
     return fetchJson<Post[]>(`${apiBase()}?action=listThreads${target}${pageParam}${limitParam}${yearsParam}${monthsParam}`);
+  },
+  listAdminThreads: async (
+    adminPassword: string,
+    page?: number | string | null,
+    limit?: number | string | null,
+    years?: string[] | null,
+    months?: string[] | null,
+  ): Promise<Post[]> => {
+    const pageParam = page ? `&page=${encodeURIComponent(String(page))}` : '';
+    const limitParam = limit ? `&limit=${encodeURIComponent(String(limit))}` : '';
+    const yearsParam = years && years.length > 0 ? `&years=${encodeURIComponent(years.join(','))}` : '';
+    const monthsParam = months && months.length > 0 ? `&months=${encodeURIComponent(months.join(','))}` : '';
+    return fetchJson<Post[]>(`${apiBase()}?action=listAdminThreads&admin_password=${encodeURIComponent(adminPassword)}${pageParam}${limitParam}${yearsParam}${monthsParam}`);
   },
   listThreadArchiveMeta: async (years?: string[] | null, months?: string[] | null): Promise<ThreadArchiveMeta> => {
     const yearsParam = years && years.length > 0 ? `&years=${encodeURIComponent(years.join(','))}` : '';

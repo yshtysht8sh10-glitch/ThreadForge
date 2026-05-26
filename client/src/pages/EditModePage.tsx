@@ -5,6 +5,9 @@ import { Post } from '../types';
 import SelectableThreadList from '../components/SelectableThreadList';
 import { useAuth } from '../auth';
 import { eejanaikaOptionsFromSettings } from '../components/ThreadList';
+import PeriodFilter, { Period, filterPostsByPeriods, periodsFromPosts } from '../components/PeriodFilter';
+
+const MODE_THREAD_BATCH_SIZE = 20;
 
 const EditModePage = () => {
   const navigate = useNavigate();
@@ -12,18 +15,47 @@ const EditModePage = () => {
   const [password, setPassword] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [threads, setThreads] = useState<Post[]>([]);
+  const [selectedYears, setSelectedYears] = useState<string[]>([]);
+  const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
+  const [periods, setPeriods] = useState<Period[]>([]);
+  const [filteredTotal, setFilteredTotal] = useState(0);
   const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    Promise.all([api.listThreads(), api.publicSettings()])
-      .then(([items, settingResponse]) => {
+  const loadPeriodMeta = async (years = selectedYears, months = selectedMonths) => {
+    if (api.listThreadArchiveMeta) {
+      return api.listThreadArchiveMeta(years, months);
+    }
+    const allThreads = await api.listThreads();
+    return {
+      periods: periodsFromPosts(allThreads),
+      total: filterPostsByPeriods(allThreads, years, months).length,
+    };
+  };
+
+  const loadThreads = async (years = selectedYears, months = selectedMonths) => {
+    setLoading(true);
+    try {
+      const [meta, items, settingResponse] = await Promise.all([
+        loadPeriodMeta(years, months),
+        api.listThreads(null, 1, MODE_THREAD_BATCH_SIZE, years, months),
+        api.publicSettings(),
+      ]);
+        setPeriods(meta.periods);
+        setFilteredTotal(meta.total);
         setThreads(items);
         if (settingResponse.success) setSettings(settingResponse.settings);
-      })
-      .catch((err) => setError((err as Error).message))
-      .finally(() => setLoading(false));
+        setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadThreads();
   }, []);
 
   useEffect(() => {
@@ -74,6 +106,19 @@ const EditModePage = () => {
       {loading ? (
         <div className="board-message">読み込み中...</div>
       ) : (
+        <>
+        <PeriodFilter
+          periods={periods}
+          selectedYears={selectedYears}
+          selectedMonths={selectedMonths}
+          total={filteredTotal}
+          onChange={(years, months) => {
+            setSelectedYears(years);
+            setSelectedMonths(months);
+            setSelectedIds([]);
+            void loadThreads(years, months);
+          }}
+        />
         <SelectableThreadList
           threads={threads}
           selectedIds={selectedIds}
@@ -81,6 +126,7 @@ const EditModePage = () => {
           isDisabled={(post) => isPresetComment(post, settings)}
           disabledLabel="定型コメントは編集不可"
         />
+        </>
       )}
     </>
   );

@@ -1,7 +1,10 @@
-import { CSSProperties, FormEvent, useEffect, useRef, useState } from 'react';
+import { CSSProperties, FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { AdminUser, api, apiBase, mediaUrl } from '../api';
 import { Post } from '../types';
 import SelectableThreadList from '../components/SelectableThreadList';
+import PeriodFilter, { filterPostsByPeriods, periodsFromPosts } from '../components/PeriodFilter';
+
+const ADMIN_THREAD_BATCH_SIZE = 20;
 
 type Settings = {
   config: Record<string, SettingValue>;
@@ -30,6 +33,15 @@ const AdminPage = () => {
   const [bulkCompact, setBulkCompact] = useState(false);
   const [deletedCompact, setDeletedCompact] = useState(true);
   const [deletedSelectedIds, setDeletedSelectedIds] = useState<string[]>([]);
+  const [bulkSelectedYears, setBulkSelectedYears] = useState<string[]>([]);
+  const [bulkSelectedMonths, setBulkSelectedMonths] = useState<string[]>([]);
+  const [bulkPeriods, setBulkPeriods] = useState<{ year: string; month: string; count: number }[]>([]);
+  const [bulkFilteredTotal, setBulkFilteredTotal] = useState(0);
+  const [bulkNextPage, setBulkNextPage] = useState(2);
+  const [bulkHasMore, setBulkHasMore] = useState(false);
+  const [bulkLoadingMore, setBulkLoadingMore] = useState(false);
+  const [deletedSelectedYears, setDeletedSelectedYears] = useState<string[]>([]);
+  const [deletedSelectedMonths, setDeletedSelectedMonths] = useState<string[]>([]);
   const [deletedPurgeEnabled, setDeletedPurgeEnabled] = useState(false);
   const [userDeleteEnabled, setUserDeleteEnabled] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -51,19 +63,49 @@ const AdminPage = () => {
   const [analyticsUnit, setAnalyticsUnit] = useState<AnalyticsUnit>('monthTotal');
   const [status, setStatus] = useState<string | null>('管理データを読み込み中...');
   const [error, setError] = useState<string | null>(null);
+  const bulkLoadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  const loadAdminThreadPage = async (
+    password: string,
+    page = 1,
+    years = bulkSelectedYears,
+    months = bulkSelectedMonths,
+  ) => {
+    if (api.listAdminThreads) {
+      return api.listAdminThreads(password, page, ADMIN_THREAD_BATCH_SIZE, years, months);
+    }
+    return api.listThreads(null, page, ADMIN_THREAD_BATCH_SIZE, years, months);
+  };
+
+  const loadAdminThreadMeta = async (years = bulkSelectedYears, months = bulkSelectedMonths) => {
+    if (api.listThreadArchiveMeta) {
+      return api.listThreadArchiveMeta(years, months);
+    }
+    const allThreads = await api.listThreads();
+    const filtered = filterPostsByPeriods(allThreads, years, months);
+    return {
+      periods: periodsFromPosts(allThreads),
+      total: filtered.length,
+    };
+  };
 
   const loadAll = async (password = adminPassword) => {
     setStatus('管理データを読み込み中...');
     setError(null);
     try {
-      const [loadedThreads, deleted, analytics, settingResponse, userResponse] = await Promise.all([
-        api.listThreads(),
+      const [threadMeta, loadedThreads, deleted, analytics, settingResponse, userResponse] = await Promise.all([
+        loadAdminThreadMeta(bulkSelectedYears, bulkSelectedMonths),
+        loadAdminThreadPage(password, 1, bulkSelectedYears, bulkSelectedMonths),
         api.listDeletedPosts(password),
         api.listAnalyticsPosts(password),
         api.getSettings(password),
         api.listAdminUsers(password),
       ]);
       setThreads(loadedThreads);
+      setBulkPeriods(threadMeta.periods);
+      setBulkFilteredTotal(threadMeta.total);
+      setBulkNextPage(2);
+      setBulkHasMore(loadedThreads.length >= ADMIN_THREAD_BATCH_SIZE);
       setDeletedPosts(deleted);
       setAnalyticsPosts(analytics);
       setAdminUsers(userResponse.users);
@@ -136,7 +178,15 @@ const AdminPage = () => {
   });
 
   const reloadThreads = async () => {
-    setThreads(await api.listThreads());
+    const [threadMeta, loadedThreads] = await Promise.all([
+      loadAdminThreadMeta(bulkSelectedYears, bulkSelectedMonths),
+      loadAdminThreadPage(adminPassword, 1, bulkSelectedYears, bulkSelectedMonths),
+    ]);
+    setThreads(loadedThreads);
+    setBulkPeriods(threadMeta.periods);
+    setBulkFilteredTotal(threadMeta.total);
+    setBulkNextPage(2);
+    setBulkHasMore(loadedThreads.length >= ADMIN_THREAD_BATCH_SIZE);
   };
 
   const reloadDeletedPosts = async () => {
@@ -150,14 +200,54 @@ const AdminPage = () => {
   };
 
   const deletedThreads = groupDeletedPosts(deletedPosts);
+  const filteredThreads = threads;
+  const filteredDeletedThreads = filterPostsByPeriods(deletedThreads, deletedSelectedYears, deletedSelectedMonths);
 
   const toggleSelected = (id: string) => {
-    setSelectedIds((current) => toggleThreadSelection(current, id, threads));
+    setSelectedIds((current) => toggleThreadSelection(current, id, filteredThreads));
   };
 
   const toggleDeletedSelected = (id: string) => {
-    setDeletedSelectedIds((current) => toggleThreadSelection(current, id, deletedThreads));
+    setDeletedSelectedIds((current) => toggleThreadSelection(current, id, filteredDeletedThreads));
   };
+
+  const loadMoreBulkThreads = useCallback(async () => {
+    if (bulkLoadingMore || !bulkHasMore) return;
+    setBulkLoadingMore(true);
+    try {
+      const items = await loadAdminThreadPage(
+        adminPassword,
+        bulkNextPage,
+        bulkSelectedYears,
+        bulkSelectedMonths,
+      );
+      setThreads((current) => {
+        const seen = new Set(current.map((thread) => thread.id));
+        return [...current, ...items.filter((thread) => !seen.has(thread.id))];
+      });
+      setBulkNextPage((current) => current + 1);
+      setBulkHasMore(items.length >= ADMIN_THREAD_BATCH_SIZE);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBulkLoadingMore(false);
+    }
+  }, [adminPassword, bulkHasMore, bulkLoadingMore, bulkNextPage, bulkSelectedMonths.join(','), bulkSelectedYears.join(',')]);
+
+  useEffect(() => {
+    const element = bulkLoadMoreRef.current;
+    if (activeTab !== 'posts' || !element || !bulkHasMore || !('IntersectionObserver' in window)) {
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        void loadMoreBulkThreads();
+      }
+    }, { rootMargin: '800px 0px' });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [activeTab, bulkHasMore, loadMoreBulkThreads]);
 
   const bulkDelete = guarded(async () => {
     if (selectedIds.length === 0) {
@@ -177,7 +267,7 @@ const AdminPage = () => {
       setError('親投稿指定と返信指定は混在できません。開始と終了は同じ種類で指定してください。');
       return;
     }
-    const ids = idsFromDisplayRange(threads, bulkRangeStart, bulkRangeEnd);
+    const ids = idsFromDisplayRange(filteredThreads, bulkRangeStart, bulkRangeEnd);
     if (ids.length === 0) {
       setError('範囲に一致する投稿がありません。');
       return;
@@ -192,7 +282,7 @@ const AdminPage = () => {
       setError('親投稿指定と返信指定は混在できません。開始と終了は同じ種類で指定してください。');
       return;
     }
-    const ids = idsFromDisplayRange(deletedThreads, deletedRangeStart, deletedRangeEnd);
+    const ids = idsFromDisplayRange(filteredDeletedThreads, deletedRangeStart, deletedRangeEnd);
     if (ids.length === 0) {
       setError('範囲に一致する削除済み投稿がありません。');
       return;
@@ -533,7 +623,40 @@ const AdminPage = () => {
               <div className="button-row align-right admin-bulk-actions">
                 <button type="button" className="danger" onClick={bulkDelete}>チェックした項目を一括削除</button>
               </div>
-              <SelectableThreadList threads={threads} selectedIds={selectedIds} onToggle={toggleSelected} multiple compact={bulkCompact} />
+              <PeriodFilter
+                periods={bulkPeriods}
+                selectedYears={bulkSelectedYears}
+                selectedMonths={bulkSelectedMonths}
+                total={bulkFilteredTotal}
+                onChange={(years, months) => {
+                  setBulkSelectedYears(years);
+                  setBulkSelectedMonths(months);
+                  setSelectedIds([]);
+                  setBulkLoadingMore(true);
+                  Promise.all([
+                    loadAdminThreadMeta(years, months),
+                    loadAdminThreadPage(adminPassword, 1, years, months),
+                  ]).then(([meta, items]) => {
+                    setBulkPeriods(meta.periods);
+                    setBulkFilteredTotal(meta.total);
+                    setThreads(items);
+                    setBulkNextPage(2);
+                    setBulkHasMore(items.length >= ADMIN_THREAD_BATCH_SIZE);
+                    setError(null);
+                  }).catch((err) => {
+                    setError((err as Error).message);
+                  }).finally(() => {
+                    setBulkLoadingMore(false);
+                  });
+                }}
+              />
+              <SelectableThreadList threads={filteredThreads} selectedIds={selectedIds} onToggle={toggleSelected} multiple compact={bulkCompact} />
+              <div className="infinite-loader" ref={bulkLoadMoreRef}>
+                {bulkLoadingMore && <div className="board-message">読み込み中...</div>}
+                {!bulkLoadingMore && bulkHasMore && !('IntersectionObserver' in window) && (
+                  <button type="button" className="secondary" onClick={() => void loadMoreBulkThreads()}>さらに読み込む</button>
+                )}
+              </div>
             </section>
           )}
 
@@ -626,19 +749,24 @@ const AdminPage = () => {
                 {adminUsers.length === 0 && <p>登録ユーザーはありません。</p>}
                 {adminUsers.map((user) => (
                   <article className="admin-user-row" key={user.id}>
-                    <div className="admin-user-summary">
-                      {mediaUrl(user.icon_path) && <img className="admin-user-icon" src={mediaUrl(user.icon_path) ?? undefined} alt="" />}
-                      <div>
-                        <strong>No.{user.id} {user.display_name}</strong>
-                        <span>ID: {user.login_id} / 投稿: {user.post_count} / 自分の作品: {user.claim_count}</span>
-                        <span>作成: {formatAdminDate(user.created_at)} / 更新: {formatAdminDate(user.updated_at)}</span>
-                        <span>最終ログイン: {formatAdminDate(user.last_login_at)} / 有効セッション: {user.active_session_count ?? 0}</span>
-                      </div>
+                    <div className="admin-user-row-top">
+                      <strong>No.{user.id}</strong>
+                      <span>作成日時 {formatAdminDate(user.created_at)}</span>
+                      <span>最終ログイン {formatAdminDate(user.last_login_at)}</span>
                     </div>
-                    <div className="button-row align-right">
-                      <button type="button" className="admin-fixed-action-button" onClick={() => startEditUser(user)}>編集</button>
-                      <button type="button" className="danger admin-fixed-action-button" disabled={!userDeleteEnabled} onClick={() => void deleteAdminUser(user, 1)}>情報消去</button>
-                      <button type="button" className="danger admin-fixed-action-button" disabled={!userDeleteEnabled} onClick={() => void deleteAdminUser(user, 2)}>番号ごと消去</button>
+                    <div className="admin-user-row-main">
+                      <div className="admin-user-summary">
+                        {mediaUrl(user.icon_path) && <img className="admin-user-icon" src={mediaUrl(user.icon_path) ?? undefined} alt="" />}
+                        <div>
+                          <strong>{user.display_name}</strong>
+                          <span>{user.login_id}</span>
+                        </div>
+                      </div>
+                      <div className="button-row align-right admin-user-actions">
+                        <button type="button" className="admin-fixed-action-button" onClick={() => startEditUser(user)}>編集</button>
+                        <button type="button" className="danger admin-fixed-action-button" disabled={!userDeleteEnabled} onClick={() => void deleteAdminUser(user, 1)}>情報消去</button>
+                        <button type="button" className="danger admin-fixed-action-button" disabled={!userDeleteEnabled} onClick={() => void deleteAdminUser(user, 2)}>番号ごと消去</button>
+                      </div>
                     </div>
                   </article>
                 ))}
@@ -824,7 +952,18 @@ const AdminPage = () => {
                   <button type="button" className="danger" disabled={!deletedPurgeEnabled} onClick={() => void purgeDeletedSelected(2)}>選択した項目を番号ごと消去</button>
                 </div>
               </div>
-              <SelectableThreadList threads={deletedThreads} selectedIds={deletedSelectedIds} onToggle={toggleDeletedSelected} multiple compact={deletedCompact} standaloneRepliesAsComments />
+              <PeriodFilter
+                periods={periodsFromPosts(deletedThreads, true)}
+                selectedYears={deletedSelectedYears}
+                selectedMonths={deletedSelectedMonths}
+                total={filteredDeletedThreads.length}
+                onChange={(years, months) => {
+                  setDeletedSelectedYears(years);
+                  setDeletedSelectedMonths(months);
+                  setDeletedSelectedIds([]);
+                }}
+              />
+              <SelectableThreadList threads={filteredDeletedThreads} selectedIds={deletedSelectedIds} onToggle={toggleDeletedSelected} multiple compact={deletedCompact} standaloneRepliesAsComments />
             </section>
           )}
         </>

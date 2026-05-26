@@ -3,6 +3,7 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { Post } from '../types';
 import ThreadList from '../components/ThreadList';
+import PeriodFilter, { queryList } from '../components/PeriodFilter';
 
 const DEFAULT_BATCH_SIZE = 20;
 
@@ -109,89 +110,32 @@ const HomePage = () => {
   }
 
   const canUseAutoLoad = 'IntersectionObserver' in window;
-  const years = groupPeriods(periods);
-  const hasPeriodFilter = selectedYears.length > 0 || selectedMonths.length > 0;
   const updatePeriods = (yearsNext: string[], monthsNext: string[]) => {
     const next = new URLSearchParams(searchParams);
     next.delete('page');
     if (yearsNext.length > 0) {
-      next.set('years', yearsNext.sort((a, b) => b.localeCompare(a)).join(','));
+      next.set('years', yearsNext.join(','));
     } else {
       next.delete('years');
     }
     if (monthsNext.length > 0) {
-      next.set('months', monthsNext.sort((a, b) => b.localeCompare(a)).join(','));
+      next.set('months', monthsNext.join(','));
     } else {
       next.delete('months');
     }
     setSearchParams(next);
   };
-  const toggleYear = (year: string) => {
-    const yearSet = new Set(selectedYears);
-    const monthSet = new Set(selectedMonths.filter((month) => !month.startsWith(`${year}-`)));
-    if (yearSet.has(year)) {
-      yearSet.delete(year);
-    } else {
-      yearSet.add(year);
-    }
-    updatePeriods([...yearSet], [...monthSet]);
-  };
-  const toggleMonth = (month: string) => {
-    const year = month.slice(0, 4);
-    const yearSet = new Set(selectedYears.filter((selectedYear) => selectedYear !== year));
-    const monthSet = new Set(selectedMonths);
-    if (monthSet.has(month)) {
-      monthSet.delete(month);
-    } else {
-      monthSet.add(month);
-    }
-    updatePeriods([...yearSet], [...monthSet]);
-  };
-  const clearPeriods = () => updatePeriods([], []);
 
   return (
     <>
       {!targetId && (
-        <section className="period-filter-card" aria-label="表示期間">
-          <div className="period-filter-header">
-            <div>
-              <h2>表示期間</h2>
-              <p>年を選ぶとその年全体、月を選ぶとその月だけを表示します。</p>
-            </div>
-            <strong>総投稿数: {filteredTotal.toLocaleString('ja-JP')}</strong>
-          </div>
-          <div className="period-filter-grid">
-            {years.map((year) => (
-              <section className="period-year-block" key={year.year}>
-                <button
-                  type="button"
-                  className={selectedYears.includes(year.year) ? 'period-chip selected' : 'period-chip'}
-                  onClick={() => toggleYear(year.year)}
-                >
-                  {year.year}年 <span>{year.count}</span>
-                </button>
-                <div className="period-month-list">
-                  {year.months.map((month) => {
-                    const key = `${year.year}-${month.month}`;
-                    return (
-                      <button
-                        type="button"
-                        className={selectedMonths.includes(key) ? 'period-chip month selected' : 'period-chip month'}
-                        key={key}
-                        onClick={() => toggleMonth(key)}
-                      >
-                        {Number(month.month)}月 <span>{month.count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
-          </div>
-          {hasPeriodFilter && (
-            <button type="button" className="secondary period-clear-button" onClick={clearPeriods}>期間指定を解除</button>
-          )}
-        </section>
+        <PeriodFilter
+          periods={periods}
+          selectedYears={selectedYears}
+          selectedMonths={selectedMonths}
+          total={filteredTotal}
+          onChange={updatePeriods}
+        />
       )}
       <ThreadList threads={threads} />
       {!targetId && (
@@ -210,23 +154,3 @@ const HomePage = () => {
 };
 
 export default HomePage;
-
-function queryList(value: string | null): string[] {
-  return (value ?? '').split(',').map((item) => item.trim()).filter(Boolean);
-}
-
-function groupPeriods(periods: { year: string; month: string; count: number }[]): Array<{ year: string; count: number; months: Array<{ month: string; count: number }> }> {
-  const yearMap = new Map<string, { year: string; count: number; months: Array<{ month: string; count: number }> }>();
-  periods.forEach((period) => {
-    const year = yearMap.get(period.year) ?? { year: period.year, count: 0, months: [] };
-    year.count += period.count;
-    year.months.push({ month: period.month, count: period.count });
-    yearMap.set(period.year, year);
-  });
-  return [...yearMap.values()]
-    .sort((a, b) => b.year.localeCompare(a.year))
-    .map((year) => ({
-      ...year,
-      months: year.months.sort((a, b) => b.month.localeCompare(a.month)),
-    }));
-}

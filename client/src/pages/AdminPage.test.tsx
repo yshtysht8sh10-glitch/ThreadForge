@@ -531,8 +531,8 @@ describe('AdminPage', () => {
     fireEvent.change(within(userScreen).getByLabelText('名前'), { target: { value: 'Alice Updated' } });
     const loginPasswordInput = within(userScreen).getByLabelText('新しいログインパスワード（再設定する場合のみ）');
     const loginPasswordConfirmInput = within(userScreen).getByLabelText('新しいログインパスワード（確認）');
-    expect(within(userScreen).getByText('最終ログイン')).toBeInTheDocument();
-    expect(within(userScreen).getByText('有効セッション')).toBeInTheDocument();
+    expect(within(userScreen).getAllByText('最終ログイン').length).toBeGreaterThan(0);
+    expect(within(userScreen).getAllByText('有効セッション').length).toBeGreaterThan(0);
     expect(loginPasswordInput).toHaveAttribute('type', 'password');
     expect(within(userScreen).getByText('現在のログインパスワードは安全のため表示できません。変更する場合のみ新しいパスワードを入力してください。')).toBeInTheDocument();
     fireEvent.change(loginPasswordInput, { target: { value: 'new-login-secret' } });

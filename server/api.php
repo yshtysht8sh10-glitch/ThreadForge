@@ -30,6 +30,9 @@ function handleApiRequest(): void
         case 'listThreads':
             listThreads($pdo);
             break;
+        case 'listAdminThreads':
+            listAdminThreads($pdo);
+            break;
         case 'listThreadArchiveMeta':
             listThreadArchiveMeta($pdo);
             break;
@@ -222,6 +225,155 @@ function listThreads(PDO $pdo): void
         $rows
     );
     jsonResponse($result);
+}
+
+function listAdminThreads(PDO $pdo): void
+{
+    requireAdmin();
+    [$limit, $offset] = paginationParams($pdo);
+    $settings = loadSettings($pdo);
+    $listOrder = listThreadOrder($settings);
+    [$periodWhere, $periodParams] = threadPeriodFilterFromRequest();
+    $orderBy = $listOrder === 'createdAt' ? 'p.created_at DESC, p.id DESC' : 'p.id DESC';
+    $sql = 'SELECT ' . selectablePostSelect('p') . ' FROM posts p WHERE p.parent_id = 0 AND p.deleted_at IS NULL ' . $periodWhere . ' ORDER BY ' . $orderBy;
+    if ($limit !== null) {
+        $sql .= ' LIMIT :limit OFFSET :offset';
+    }
+    $stmt = $pdo->prepare($sql);
+    if ($limit !== null) {
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    }
+    foreach ($periodParams as $key => $value) {
+        $stmt->bindValue($key, $value);
+    }
+    $stmt->execute();
+    jsonResponse(buildAdminThreadSummaries($pdo, $stmt->fetchAll(PDO::FETCH_ASSOC)));
+}
+
+function buildAdminThreadSummaries(PDO $pdo, array $threadRows): array
+{
+    $displayMap = [];
+    $displayNumber = 1;
+    $displayStmt = $pdo->query('SELECT id FROM posts WHERE parent_id = 0 ORDER BY id ASC');
+    foreach ($displayStmt->fetchAll(PDO::FETCH_COLUMN) as $threadId) {
+        $displayMap[(int)$threadId] = $displayNumber++;
+    }
+
+    $threads = [];
+    $threadOrder = [];
+    foreach ($threadRows as $row) {
+        $post = buildSelectablePost($row);
+        $post['display_no'] = $displayMap[(int)$row['id']] ?? (int)$row['id'];
+        $post['replies'] = [];
+        $post['reply_count'] = 0;
+        $threads[(int)$row['id']] = $post;
+        $threadOrder[] = (int)$row['id'];
+    }
+
+    if ($threads === []) {
+        return [];
+    }
+
+    if (count($threads) > 500) {
+        $countStmt = $pdo->query(
+            'SELECT thread_id, COUNT(*) AS reply_count
+               FROM posts
+              WHERE id != thread_id AND deleted_at IS NULL
+              GROUP BY thread_id'
+        );
+        while ($countRow = $countStmt->fetch(PDO::FETCH_ASSOC)) {
+            $threadId = (int)$countRow['thread_id'];
+            if (isset($threads[$threadId])) {
+                $threads[$threadId]['reply_count'] = (int)$countRow['reply_count'];
+            }
+        }
+        return array_map(static fn(int $threadId): array => $threads[$threadId], $threadOrder);
+    }
+
+    $threadPlaceholders = [];
+    foreach ($threadOrder as $index => $threadId) {
+        $threadPlaceholders[] = ':thread_id_' . $index;
+    }
+    $replyStmt = $pdo->prepare(
+        'SELECT ' . selectablePostSelect('p') . ',
+                (SELECT COUNT(*) FROM posts r WHERE r.thread_id = p.thread_id AND r.id != r.thread_id AND r.id <= p.id) AS reply_no
+           FROM posts p
+           INNER JOIN posts t ON t.id = p.thread_id AND t.parent_id = 0 AND t.deleted_at IS NULL
+          WHERE p.id != p.thread_id
+            AND p.deleted_at IS NULL
+            AND p.thread_id IN (' . implode(', ', $threadPlaceholders) . ')
+          ORDER BY p.thread_id ASC, p.created_at ASC, p.id ASC'
+    );
+    foreach ($threadOrder as $index => $threadId) {
+        $replyStmt->bindValue(':thread_id_' . $index, $threadId, PDO::PARAM_INT);
+    }
+    $replyStmt->execute();
+    while ($reply = $replyStmt->fetch(PDO::FETCH_ASSOC)) {
+        $threadId = (int)$reply['thread_id'];
+        if (!isset($threads[$threadId])) {
+            continue;
+        }
+        $threads[$threadId]['reply_count']++;
+        if (count($threads[$threadId]['replies']) >= 10) {
+            continue;
+        }
+        $replyPost = buildSelectablePost($reply);
+        $replyPost['display_no'] = $threads[$threadId]['display_no'];
+        $replyPost['reply_no'] = (int)$reply['reply_no'];
+        $threads[$threadId]['replies'][] = $replyPost;
+    }
+
+    return array_map(static fn(int $threadId): array => $threads[$threadId], $threadOrder);
+}
+
+function selectablePostSelect(string $alias): string
+{
+    $prefix = $alias . '.';
+    return $prefix . 'id,
+        ' . $prefix . 'thread_id,
+        ' . $prefix . 'parent_id,
+        ' . $prefix . 'name,
+        ' . $prefix . 'url,
+        ' . $prefix . 'title,
+        ' . $prefix . 'message,
+        ' . $prefix . 'image_path,
+        ' . $prefix . 'created_at,
+        ' . $prefix . 'deleted_at,
+        ' . $prefix . 'gdgd,
+        ' . $prefix . 'tweet_off,
+        ' . $prefix . 'user_id,
+        (SELECT u.icon_path FROM users u WHERE u.id = ' . $prefix . 'user_id) AS user_icon_path,
+        (SELECT u.display_name FROM users u WHERE u.id = ' . $prefix . 'user_id) AS user_display_name';
+}
+
+function buildSelectablePost(array $row): array
+{
+    return [
+        'id' => (int)$row['id'],
+        'thread_id' => (int)$row['thread_id'],
+        'parent_id' => (int)$row['parent_id'],
+        'name' => (string)$row['name'],
+        'url' => $row['url'] ?? null,
+        'title' => (string)$row['title'],
+        'message' => adminSelectableExcerpt((string)$row['message']),
+        'image_path' => publicStoragePath($row['image_path'] ?? null),
+        'created_at' => (string)$row['created_at'],
+        'deleted_at' => $row['deleted_at'] ?? null,
+        'gdgd' => (bool)$row['gdgd'],
+        'tweet_off' => (bool)$row['tweet_off'],
+        'user_id' => isset($row['user_id']) ? (int)$row['user_id'] : null,
+        'user_icon_path' => $row['user_icon_path'] ?? null,
+        'user_display_name' => $row['user_display_name'] ?? null,
+    ];
+}
+
+function adminSelectableExcerpt(string $message): string
+{
+    if (function_exists('mb_substr')) {
+        return mb_strlen($message, 'UTF-8') > 240 ? mb_substr($message, 0, 240, 'UTF-8') . '...' : $message;
+    }
+    return strlen($message) > 720 ? substr($message, 0, 720) . '...' : $message;
 }
 
 function listThreadArchiveMeta(PDO $pdo): void
@@ -1871,16 +2023,8 @@ function deletePost(PDO $pdo): void
 function listDeletedPosts(PDO $pdo): void
 {
     requireAdmin();
-    [$limit, $offset] = paginationParams($pdo);
     $sql = 'SELECT * FROM posts WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC';
-    if ($limit !== null) {
-        $sql .= ' LIMIT :limit OFFSET :offset';
-    }
     $stmt = $pdo->prepare($sql);
-    if ($limit !== null) {
-        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-    }
     $stmt->execute();
 
     jsonResponse(array_map(

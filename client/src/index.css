@@ -420,10 +420,11 @@ img.thumbnail {
 .period-filter-card {
   width: min(100%, 860px);
   margin: 0 auto 1rem;
-  padding: 0.85rem;
+  padding: 0.75rem 0.85rem;
   border: 1px solid var(--panel-border);
   border-radius: 8px;
   background: var(--panel);
+  overflow: visible;
 }
 
 .period-filter-header {
@@ -436,7 +437,10 @@ img.thumbnail {
 
 .period-filter-header h2 {
   margin: 0 0 0.2rem;
+  padding: 0;
+  background: transparent;
   font-size: 1rem;
+  line-height: 1.2;
 }
 
 .period-filter-header p {
@@ -452,55 +456,98 @@ img.thumbnail {
 
 .period-filter-grid {
   display: grid;
-  gap: 0.65rem;
-  max-height: 18rem;
-  overflow: auto;
-  padding-right: 0.2rem;
+  gap: 0.2rem;
+  max-height: 8.5rem;
+  overflow-y: auto;
+  overflow-x: visible;
+  padding: 0.2rem 0.45rem 0.15rem 0.15rem;
 }
 
 .period-year-block {
+  position: relative;
+  min-height: 1.95rem;
   display: grid;
-  grid-template-columns: 8.5rem minmax(0, 1fr);
-  gap: 0.5rem;
-  align-items: start;
+  grid-template-columns: 4.35rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .period-month-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.2rem;
+  min-width: 0;
 }
 
 .period-chip {
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.45rem;
-  min-height: 2.1rem;
-  padding: 0.35rem 0.65rem;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: 1.65rem;
+  padding: 0.1rem 0.2rem;
   border: 1px solid var(--button-border);
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--button-subtle);
   color: var(--button-text);
   box-shadow: none;
 }
 
-.period-chip.month {
-  min-width: 5.2rem;
+.period-year-block > .period-chip {
+  width: 100%;
 }
 
-.period-chip span {
+.period-chip.month {
+  width: 100%;
+  min-width: 0;
+}
+
+.period-chip span,
+.period-chip b {
   color: var(--panel-label);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
+  line-height: 1;
+}
+
+.period-chip b {
+  color: var(--text);
+}
+
+.period-count-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .period-chip.selected {
   border-color: var(--accent);
   background: var(--button-bg);
+  color: var(--button-text);
+  box-shadow: 0 0 0 2px rgba(109, 255, 192, 0.35), 0 8px 18px rgba(55, 111, 255, 0.28);
+  transform: translateY(-1px);
 }
 
-.period-chip.selected span {
+.period-chip.selected span,
+.period-chip.selected b {
   color: var(--button-text);
+}
+
+.period-year-block.selected::before {
+  content: "";
+  position: absolute;
+  left: -0.35rem;
+  top: 0.2rem;
+  bottom: 0.2rem;
+  width: 0.22rem;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(109, 255, 192, 0.6);
 }
 
 .period-clear-button {
@@ -516,8 +563,8 @@ img.thumbnail {
     white-space: normal;
   }
 
-  .period-year-block {
-    grid-template-columns: 1fr;
+  .period-month-list {
+    gap: 0.25rem;
   }
 }
 
@@ -1180,6 +1227,37 @@ button.post-reset-button:hover {
   padding: 0.45rem 0.75rem;
 }
 
+.selectable-thread-thumb {
+  display: none;
+}
+
+.selectable-thread-summary {
+  display: contents;
+}
+
+.thread-list-compact .selectable-thread-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.thread-list-compact .selectable-thread-thumb {
+  display: block;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  margin: 0;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: #050505;
+  object-fit: contain;
+}
+
+.thread-list-compact .selectable-thread-summary .board-meta {
+  min-width: 0;
+  margin-top: 0.15rem;
+}
+
 .thread-list-compact .board-meta,
 .thread-list-compact .mode-select-checkbox {
   font-size: 0.82rem;
@@ -1508,11 +1586,32 @@ button.post-reset-button:hover {
 
 .admin-user-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 0;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 0.45rem;
+  padding: 0.7rem 0;
   border-bottom: 1px solid #334155;
+}
+
+.admin-user-row-top {
+  display: grid;
+  grid-template-columns: 8rem minmax(11rem, 1fr) minmax(11rem, 1fr);
+  gap: 0.9rem;
+  align-items: center;
+  color: var(--panel-label);
+}
+
+.admin-user-row-top strong,
+.admin-user-row-top span {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.admin-user-row-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
 }
 
 .admin-user-summary {
@@ -1520,11 +1619,13 @@ button.post-reset-button:hover {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 0.7rem;
+  min-width: 0;
 }
 
 .admin-user-summary > div {
   display: grid;
-  gap: 0.2rem;
+  gap: 0.15rem;
+  min-width: 0;
 }
 
 .admin-user-icon {
@@ -1541,9 +1642,18 @@ button.post-reset-button:hover {
   height: 64px;
 }
 
-.admin-user-row span {
+.admin-user-summary strong {
+  font-size: 0.95rem;
+}
+
+.admin-user-summary span {
   color: var(--panel-label);
   font-size: 0.86rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-user-actions {
+  flex-wrap: nowrap;
 }
 
 .admin-user-edit-form {
@@ -1640,6 +1750,16 @@ button.post-reset-button:hover {
   .admin-user-summary,
   .admin-user-edit-profile {
     grid-template-columns: 1fr;
+  }
+
+  .admin-user-row-top,
+  .admin-user-row-main {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-user-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .admin-user-edit-profile dl {
@@ -2378,15 +2498,29 @@ button.post-reset-button:hover {
 
 .account-post-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
-  gap: 0.75rem;
+  grid-template-columns: 2.75rem minmax(0, 1fr) max-content;
+  gap: 0.65rem;
   align-items: start;
   border-top: 1px solid #334155;
-  padding: 0.55rem 0;
+  padding: 0.45rem 0;
   min-width: 0;
 }
 
-.account-post-row > div:first-child {
+.account-post-thumb {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid #6f7885;
+  border-radius: 4px;
+  background: #050505;
+  object-fit: contain;
+}
+
+.account-post-thumb-placeholder {
+  border-color: transparent;
+  background: transparent;
+}
+
+.account-post-row > div {
   min-width: 0;
 }
 

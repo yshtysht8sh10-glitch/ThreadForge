@@ -4,6 +4,9 @@ import { api } from '../api';
 import { Post } from '../types';
 import SelectableThreadList from '../components/SelectableThreadList';
 import { useAuth } from '../auth';
+import PeriodFilter, { Period, filterPostsByPeriods, periodsFromPosts } from '../components/PeriodFilter';
+
+const MODE_THREAD_BATCH_SIZE = 20;
 
 const DeleteModePage = () => {
   const navigate = useNavigate();
@@ -11,14 +14,35 @@ const DeleteModePage = () => {
   const [password, setPassword] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [threads, setThreads] = useState<Post[]>([]);
+  const [selectedYears, setSelectedYears] = useState<string[]>([]);
+  const [selectedMonths, setSelectedMonths] = useState<string[]>([]);
+  const [periods, setPeriods] = useState<Period[]>([]);
+  const [filteredTotal, setFilteredTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadThreads = async () => {
+  const loadPeriodMeta = async (years = selectedYears, months = selectedMonths) => {
+    if (api.listThreadArchiveMeta) {
+      return api.listThreadArchiveMeta(years, months);
+    }
+    const allThreads = await api.listThreads();
+    return {
+      periods: periodsFromPosts(allThreads),
+      total: filterPostsByPeriods(allThreads, years, months).length,
+    };
+  };
+
+  const loadThreads = async (years = selectedYears, months = selectedMonths) => {
     setLoading(true);
     try {
-      setThreads(await api.listThreads());
+      const [meta, items] = await Promise.all([
+        loadPeriodMeta(years, months),
+        api.listThreads(null, 1, MODE_THREAD_BATCH_SIZE, years, months),
+      ]);
+      setPeriods(meta.periods);
+      setFilteredTotal(meta.total);
+      setThreads(items);
       setError(null);
     } catch (err) {
       setError((err as Error).message);
@@ -93,7 +117,21 @@ const DeleteModePage = () => {
       {loading ? (
         <div className="board-message">読み込み中...</div>
       ) : (
-        <SelectableThreadList threads={threads} selectedIds={selectedIds} onToggle={toggleSelected} />
+        <>
+          <PeriodFilter
+            periods={periods}
+            selectedYears={selectedYears}
+            selectedMonths={selectedMonths}
+            total={filteredTotal}
+            onChange={(years, months) => {
+              setSelectedYears(years);
+              setSelectedMonths(months);
+              setSelectedIds([]);
+              void loadThreads(years, months);
+            }}
+          />
+          <SelectableThreadList threads={threads} selectedIds={selectedIds} onToggle={toggleSelected} />
+        </>
       )}
     </>
   );
