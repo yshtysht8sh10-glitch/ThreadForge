@@ -2538,7 +2538,7 @@ function deleteStorageFile(mixed $path): void
     if (!is_string($path) || $path === '') {
         return;
     }
-    $basename = basename($path);
+    $basename = backupImageBasename($path);
     $storagePath = STORAGE_DIR . '/' . $basename;
     if (is_file($storagePath)) {
         @unlink($storagePath);
@@ -2833,26 +2833,11 @@ function socialIdFromUrl(string $url): string
 function exportBackup(PDO $pdo): void
 {
     requireAdmin();
-    $posts = $pdo->query('SELECT * FROM posts ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
-    $revisions = $pdo->query('SELECT * FROM post_revisions ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
-    $users = $pdo->query('SELECT * FROM users ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
-    $claims = $pdo->query('SELECT * FROM user_post_claims ORDER BY user_id ASC, post_id ASC')->fetchAll(PDO::FETCH_ASSOC);
-    $accessCounts = $pdo->query('SELECT * FROM access_counts ORDER BY access_date ASC')->fetchAll(PDO::FETCH_ASSOC);
-    $images = collectBackupImageFiles($posts, $users);
+    exportSqliteBackup($pdo);
+}
 
-    $payload = [
-        'backup_version' => 2,
-        'backup_format' => 'zip',
-        'exported_at' => currentTimestamp(),
-        'posts' => $posts,
-        'post_revisions' => $revisions,
-        'users' => $users,
-        'user_post_claims' => $claims,
-        'access_counts' => $accessCounts,
-        'images' => array_keys($images),
-        'settings' => loadSettings($pdo),
-    ];
-
+function exportSqliteBackup(PDO $pdo): void
+{
     $zipPath = tempnam(sys_get_temp_dir(), 'threadforge-backup-');
     if ($zipPath === false) {
         jsonResponse(['success' => false, 'message' => 'バックアップZIPを作成できませんでした。'], 500);
@@ -2864,10 +2849,26 @@ function exportBackup(PDO $pdo): void
     if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
         jsonResponse(['success' => false, 'message' => 'バックアップZIPを作成できませんでした。'], 500);
     }
-    $zip->addFromString('backup.json', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
-    foreach ($images as $filename => $path) {
-        $zip->addFile($path, 'images/' . $filename);
+
+    $manifest = [
+        'backup_version' => 3,
+        'backup_format' => 'sqlite-zip',
+        'exported_at' => currentTimestamp(),
+    ];
+    $zip->addFromString('backup.json', json_encode($manifest, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+    if (is_file(DB_FILE)) {
+        $zip->addFile(DB_FILE, 'database.sqlite');
     }
+    $addedImages = [];
+    if (is_dir(STORAGE_DIR)) {
+        foreach (new DirectoryIterator(STORAGE_DIR) as $file) {
+            if (!$file->isFile()) {
+                continue;
+            }
+            addBackupZipImageFile($zip, $file->getPathname(), $addedImages);
+        }
+    }
+    addReferencedBackupImages($pdo, $zip, $addedImages);
     $zip->close();
 
     header('Content-Type: application/zip');
@@ -2878,6 +2879,41 @@ function exportBackup(PDO $pdo): void
     exit;
 }
 
+function addReferencedBackupImages(PDO $pdo, ZipArchive $zip, array &$addedImages): void
+{
+    $queries = [
+        'SELECT image_path AS path FROM posts WHERE image_path IS NOT NULL AND image_path <> ""',
+        'SELECT icon_path AS path FROM users WHERE icon_path IS NOT NULL AND icon_path <> ""',
+    ];
+    foreach ($queries as $sql) {
+        $stmt = $pdo->query($sql);
+        while (($row = $stmt->fetch(PDO::FETCH_ASSOC)) !== false) {
+            $path = (string)($row['path'] ?? '');
+            if ($path === '') {
+                continue;
+            }
+            if (is_file($path)) {
+                addBackupZipImageFile($zip, $path, $addedImages);
+                continue;
+            }
+            $storagePath = STORAGE_DIR . '/' . backupImageBasename($path);
+            if (is_file($storagePath)) {
+                addBackupZipImageFile($zip, $storagePath, $addedImages);
+            }
+        }
+    }
+}
+
+function addBackupZipImageFile(ZipArchive $zip, string $path, array &$addedImages): void
+{
+    $basename = backupImageBasename($path);
+    if ($basename === '' || isset($addedImages[$basename]) || !is_file($path)) {
+        return;
+    }
+    $zip->addFile($path, 'images/' . $basename);
+    $addedImages[$basename] = true;
+}
+
 function importBackup(PDO $pdo): void
 {
     requireAdmin();
@@ -2885,7 +2921,14 @@ function importBackup(PDO $pdo): void
         jsonResponse(['success' => false, 'message' => 'バックアップファイルを選択してください。'], 400);
     }
 
-    [$payload, $backupImageContents] = readBackupUpload((string)$_FILES['backup']['tmp_name']);
+    $backupPath = (string)$_FILES['backup']['tmp_name'];
+    if (isSqliteBackupUpload($backupPath)) {
+        $pdo = null;
+        restoreSqliteBackup($backupPath);
+        jsonResponse(['success' => true, 'message' => 'バックアップをインポートしました。']);
+    }
+
+    [$payload, $backupImageContents] = readBackupUpload($backupPath);
     if (!is_array($payload) || !in_array(($payload['backup_version'] ?? null), [1, 2], true) || !isset($payload['posts']) || !is_array($payload['posts'])) {
         jsonResponse(['success' => false, 'message' => 'バックアップ形式が正しくありません。'], 400);
     }
@@ -3005,51 +3048,135 @@ function readBackupUpload(string $path): array
     return [is_array($payload) ? $payload : null, $images];
 }
 
-function collectBackupImageFiles(array $posts, array $users): array
+function isSqliteBackupUpload(string $path): bool
 {
-    $images = [];
-    if (is_dir(STORAGE_DIR)) {
-        foreach (glob(STORAGE_DIR . '/*') ?: [] as $path) {
-            addBackupImageFile($images, (string)$path);
+    $zip = new ZipArchive();
+    if ($zip->open($path) !== true) {
+        return false;
+    }
+    $payloadJson = $zip->getFromName('backup.json');
+    $hasDatabase = $zip->locateName('database.sqlite') !== false;
+    $zip->close();
+    if (!is_string($payloadJson) || !$hasDatabase) {
+        return false;
+    }
+    $payload = json_decode($payloadJson, true);
+    return is_array($payload) && (int)($payload['backup_version'] ?? 0) === 3;
+}
+
+function restoreSqliteBackup(string $path): void
+{
+    $zip = new ZipArchive();
+    if ($zip->open($path) !== true) {
+        jsonResponse(['success' => false, 'message' => 'バックアップZIPを開けませんでした。'], 400);
+    }
+
+    $databaseStream = $zip->getStream('database.sqlite');
+    if ($databaseStream === false) {
+        $zip->close();
+        jsonResponse(['success' => false, 'message' => 'バックアップ内にDBがありません。'], 400);
+    }
+
+    $tempDb = tempnam(sys_get_temp_dir(), 'threadforge-db-');
+    if ($tempDb === false) {
+        fclose($databaseStream);
+        $zip->close();
+        jsonResponse(['success' => false, 'message' => '一時DBを作成できませんでした。'], 500);
+    }
+    $tempOut = fopen($tempDb, 'wb');
+    if ($tempOut === false) {
+        fclose($databaseStream);
+        $zip->close();
+        @unlink($tempDb);
+        jsonResponse(['success' => false, 'message' => '一時DBを書き込めませんでした。'], 500);
+    }
+    stream_copy_to_stream($databaseStream, $tempOut);
+    fclose($databaseStream);
+    fclose($tempOut);
+
+    try {
+        $test = new PDO('sqlite:' . $tempDb);
+        $test->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $test->query('SELECT COUNT(*) FROM posts')->fetchColumn();
+        $test = null;
+    } catch (Throwable) {
+        $zip->close();
+        @unlink($tempDb);
+        jsonResponse(['success' => false, 'message' => 'バックアップDBの形式が正しくありません。'], 400);
+    }
+
+    if (!is_dir(dirname(DB_FILE))) {
+        mkdir(dirname(DB_FILE), 0775, true);
+    }
+    if (!copy($tempDb, DB_FILE)) {
+        $zip->close();
+        @unlink($tempDb);
+        jsonResponse(['success' => false, 'message' => 'DBを復元できませんでした。'], 500);
+    }
+    @unlink($tempDb);
+
+    if (!is_dir(STORAGE_DIR)) {
+        mkdir(STORAGE_DIR, 0775, true);
+    }
+    foreach (glob(STORAGE_DIR . '/*') ?: [] as $current) {
+        if (is_file($current)) {
+            @unlink($current);
         }
     }
-    foreach ($posts as $post) {
-        addBackupImageFile($images, resolveBackupImagePath($post['image_path'] ?? null));
+
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $stat = $zip->statIndex($i);
+        $name = is_array($stat) ? (string)($stat['name'] ?? '') : '';
+        if ($name === '' || str_ends_with($name, '/') || !str_starts_with($name, 'images/')) {
+            continue;
+        }
+        $basename = backupImageBasename($name);
+        if ($basename === '') {
+            continue;
+        }
+        $imageStream = $zip->getStream($name);
+        if ($imageStream === false) {
+            continue;
+        }
+        $imageOut = fopen(STORAGE_DIR . '/' . $basename, 'wb');
+        if ($imageOut !== false) {
+            stream_copy_to_stream($imageStream, $imageOut);
+            fclose($imageOut);
+        }
+        fclose($imageStream);
     }
-    foreach ($users as $user) {
-        addBackupImageFile($images, resolveBackupImagePath($user['icon_path'] ?? null));
-    }
-    return $images;
+    $zip->close();
+    normalizeRestoredSqliteImagePaths();
 }
 
-function addBackupImageFile(array &$images, ?string $path): void
+function normalizeRestoredSqliteImagePaths(): void
 {
-    if ($path === null || !is_file($path)) {
-        return;
+    $pdo = new PDO('sqlite:' . DB_FILE);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $targets = [
+        ['table' => 'posts', 'column' => 'image_path'],
+        ['table' => 'users', 'column' => 'icon_path'],
+    ];
+    foreach ($targets as $target) {
+        $table = $target['table'];
+        $column = $target['column'];
+        $select = $pdo->query("SELECT id, {$column} AS path FROM {$table} WHERE {$column} IS NOT NULL AND {$column} <> ''");
+        $update = $pdo->prepare("UPDATE {$table} SET {$column} = :path WHERE id = :id");
+        while (($row = $select->fetch(PDO::FETCH_ASSOC)) !== false) {
+            $basename = backupImageBasename((string)($row['path'] ?? ''));
+            if ($basename === '' || !is_file(STORAGE_DIR . '/' . $basename)) {
+                continue;
+            }
+            $storagePath = STORAGE_DIR . '/' . $basename;
+            if ((string)$row['path'] === $storagePath) {
+                continue;
+            }
+            $update->execute([
+                ':path' => $storagePath,
+                ':id' => (int)$row['id'],
+            ]);
+        }
     }
-    $basename = backupImageBasename($path);
-    if ($basename === '') {
-        return;
-    }
-    $images[$basename] = $path;
-}
-
-function resolveBackupImagePath(mixed $imagePath): ?string
-{
-    $path = trim((string)$imagePath);
-    if ($path === '') {
-        return null;
-    }
-    if (is_file($path)) {
-        return $path;
-    }
-
-    $basename = backupImageBasename($path);
-    if ($basename === '') {
-        return null;
-    }
-    $storagePath = STORAGE_DIR . '/' . $basename;
-    return is_file($storagePath) ? $storagePath : null;
 }
 
 function importedBackupImagePath(mixed $imagePath, array $images): ?string

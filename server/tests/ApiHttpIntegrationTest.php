@@ -7,6 +7,7 @@ use PHPUnit\Framework\TestCase;
 final class ApiHttpIntegrationTest extends TestCase
 {
     private $serverProcess = null;
+    private int $serverProcessId = 0;
     private string $baseUrl = '';
 
     protected function setUp(): void
@@ -372,14 +373,11 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->assertIsString($backupJson);
         $payload = json_decode($backupJson, true);
         $this->assertIsArray($payload);
-        $this->assertSame(2, $payload['backup_version']);
-        $this->assertContains($imageName, $payload['images']);
-        $this->assertContains($iconName, $payload['images']);
+        $this->assertSame(3, $payload['backup_version']);
+        $this->assertSame('sqlite-zip', $payload['backup_format']);
+        $this->assertNotFalse($zip->locateName('database.sqlite'));
         $this->assertSame('backup-image-body', $zip->getFromName('images/' . $imageName));
         $this->assertSame('backup-icon-body', $zip->getFromName('images/' . $iconName));
-        $this->assertCount(1, $payload['users']);
-        $this->assertCount(1, $payload['user_post_claims']);
-        $this->assertCount(1, $payload['access_counts']);
         $zip->close();
 
         @unlink($externalImage);
@@ -404,13 +402,13 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->assertSame($userId, (int)$row['user_id']);
         $this->assertFileExists(STORAGE_DIR . '/' . $imageName);
         $this->assertSame('backup-image-body', file_get_contents(STORAGE_DIR . '/' . $imageName));
-        $user = $pdo->query('SELECT * FROM users WHERE id = ' . $userId)->fetch(PDO::FETCH_ASSOC);
+        $user = getConnection()->query('SELECT * FROM users WHERE id = ' . $userId)->fetch(PDO::FETCH_ASSOC);
         $this->assertIsArray($user);
         $this->assertSame(STORAGE_DIR . '/' . $iconName, $user['icon_path']);
         $this->assertFileExists(STORAGE_DIR . '/' . $iconName);
         $this->assertSame('backup-icon-body', file_get_contents(STORAGE_DIR . '/' . $iconName));
-        $this->assertSame(1, (int)$pdo->query('SELECT COUNT(*) FROM user_post_claims WHERE user_id = ' . $userId . ' AND post_id = ' . $postId)->fetchColumn());
-        $this->assertSame(77, (int)$pdo->query("SELECT count FROM access_counts WHERE access_date = '2026-05-10'")->fetchColumn());
+        $this->assertSame(1, (int)getConnection()->query('SELECT COUNT(*) FROM user_post_claims WHERE user_id = ' . $userId . ' AND post_id = ' . $postId)->fetchColumn());
+        $this->assertSame(77, (int)getConnection()->query("SELECT count FROM access_counts WHERE access_date = '2026-05-10'")->fetchColumn());
     }
 
     public function testSearchApiHonorsEmptyQueryLimitPageScopeAndEscapedWildcards(): void
@@ -856,12 +854,18 @@ final class ApiHttpIntegrationTest extends TestCase
         $port = $this->findFreePort();
         $this->baseUrl = 'http://127.0.0.1:' . $port . '/api.php';
         $serverRoot = dirname(__DIR__);
+        $bootstrap = __DIR__ . '/bootstrap.php';
         $command = sprintf(
-            '"%s" -S 127.0.0.1:%d -t "%s"',
+            '"%s" -d auto_prepend_file="%s" -S 127.0.0.1:%d -t "%s"',
             PHP_BINARY,
+            $bootstrap,
             $port,
             $serverRoot
         );
+        $env = array_merge(getenv(), [
+            'THREADFORGE_DB_FILE' => DB_FILE,
+            'THREADFORGE_STORAGE_DIR' => STORAGE_DIR,
+        ]);
 
         $this->serverProcess = proc_open(
             $command,
@@ -871,12 +875,15 @@ final class ApiHttpIntegrationTest extends TestCase
                 2 => ['pipe', 'w'],
             ],
             $pipes,
-            $serverRoot
+            $serverRoot,
+            $env
         );
 
         if (!is_resource($this->serverProcess)) {
             $this->fail('Failed to start PHP built-in server.');
         }
+        $status = proc_get_status($this->serverProcess);
+        $this->serverProcessId = (int)($status['pid'] ?? 0);
 
         $deadline = microtime(true) + 5.0;
         do {
@@ -895,11 +902,15 @@ final class ApiHttpIntegrationTest extends TestCase
 
     private function stopServer(): void
     {
+        if ($this->serverProcessId > 0 && PHP_OS_FAMILY === 'Windows') {
+            exec('taskkill /F /T /PID ' . $this->serverProcessId . ' >NUL 2>NUL');
+        }
         if (is_resource($this->serverProcess)) {
             proc_terminate($this->serverProcess);
             proc_close($this->serverProcess);
             $this->serverProcess = null;
         }
+        $this->serverProcessId = 0;
     }
 
     private function getJson(array $query): array
