@@ -2033,10 +2033,73 @@ function listDeletedPosts(PDO $pdo): void
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
 
-    jsonResponse(array_map(
+    $posts = array_map(
         fn (array $row): array => buildDeletedPost($pdo, $row),
         $stmt->fetchAll(PDO::FETCH_ASSOC)
-    ));
+    );
+
+    jsonResponse(array_merge(deletedNumberGapPosts($pdo, $posts), $posts));
+}
+
+function deletedNumberGapPosts(PDO $pdo, array $deletedPosts): array
+{
+    $firstActive = $pdo->query('SELECT id FROM posts WHERE parent_id = 0 AND deleted_at IS NULL ORDER BY id ASC LIMIT 1')->fetchColumn();
+    if ($firstActive === false) {
+        return [];
+    }
+
+    $firstActiveDisplayNo = threadDisplayNo($pdo, (int)$firstActive);
+    if ($firstActiveDisplayNo <= 1) {
+        return [];
+    }
+
+    $knownDeletedRootNumbers = [];
+    foreach ($deletedPosts as $post) {
+        if ((int)($post['parent_id'] ?? 0) === 0) {
+            $knownDeletedRootNumbers[(int)($post['display_no'] ?? 0)] = true;
+        }
+    }
+
+    $placeholders = [];
+    for ($displayNo = 1; $displayNo < $firstActiveDisplayNo; $displayNo++) {
+        if (isset($knownDeletedRootNumbers[$displayNo])) {
+            continue;
+        }
+        $placeholders[] = deletedNumberGapPost($displayNo);
+    }
+
+    return $placeholders;
+}
+
+function deletedNumberGapPost(int $displayNo): array
+{
+    return [
+        'id' => -$displayNo,
+        'thread_id' => -$displayNo,
+        'parent_id' => 0,
+        'name' => 'system',
+        'url' => null,
+        'title' => '番号だけ残っている削除データ',
+        'message' => '投稿データは残っていません。番号ごと消去すると、後続の投稿番号が前詰めされます。',
+        'image_path' => null,
+        'created_at' => '',
+        'deleted_at' => '',
+        'gdgd' => false,
+        'tweet_off' => true,
+        'tweet_text' => null,
+        'tweet_url' => null,
+        'user_id' => null,
+        'user_icon_path' => null,
+        'user_display_name' => null,
+        'view_count' => 0,
+        'revision_count' => 0,
+        'revision_dates' => [],
+        'board_reactions' => ['views' => 0, 'eejanaika' => 0, 'omigoto' => 0, 'goodjob' => 0],
+        'social_links' => [],
+        'social_reactions' => [],
+        'display_no' => $displayNo,
+        'number_gap' => true,
+    ];
 }
 
 function listAnalyticsPosts(PDO $pdo): void
@@ -2201,6 +2264,11 @@ function destroyPostNumber(PDO $pdo): void
         jsonResponse(['success' => false, 'message' => '投稿IDが不正です。'], 400);
     }
 
+    if ($id < 0) {
+        destroyDisplayNumberGap($pdo, abs($id));
+        jsonResponse(['success' => true, 'message' => 'Post number purged.']);
+    }
+
     $post = findPostById($pdo, $id);
     if (!$post) {
         jsonResponse(['success' => false, 'message' => '投稿が見つかりません。'], 404);
@@ -2220,6 +2288,32 @@ function destroyPostNumber(PDO $pdo): void
     }
 
     jsonResponse(['success' => true, 'message' => '投稿番号ごと完全削除しました。']);
+}
+
+function destroyDisplayNumberGap(PDO $pdo, int $displayNo): void
+{
+    $targetId = postIdFromDisplayNo($pdo, $displayNo);
+    if ($targetId === null) {
+        return;
+    }
+
+    $post = findPostById($pdo, $targetId);
+    if (!$post || (int)$post['parent_id'] !== 0) {
+        return;
+    }
+
+    if (($post['deleted_at'] ?? null) === null) {
+        jsonResponse(['success' => false, 'message' => '表示中の投稿は番号だけ消去できません。先に一括削除してください。'], 409);
+    }
+
+    $pdo->beginTransaction();
+    try {
+        permanentlyDeleteThread($pdo, $targetId);
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
 }
 
 function requireAdmin(): void

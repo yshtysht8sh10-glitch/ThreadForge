@@ -30,6 +30,7 @@ export type Post = {
   social_reactions?: SocialReactions;
   replies?: Post[];
   reply_count?: number;
+  number_gap?: boolean;
 };
 
 export type UserProfile = {

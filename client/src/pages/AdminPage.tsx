@@ -303,12 +303,17 @@ const AdminPage = () => {
       return;
     }
     const operationIds = effectiveThreadOperationIds(deletedSelectedIds, filteredDeletedThreads);
+    const restorableIds = operationIds.filter((id) => Number(id) > 0);
+    if (restorableIds.length === 0) {
+      setError('番号だけ残っている削除データは復元できません。番号ごと消去してください。');
+      return;
+    }
     setError(null);
     setStatus('復元中...');
-    for (const id of operationIds) {
+    for (const id of restorableIds) {
       await api.restorePost(id, adminPassword);
     }
-    setStatus(`${operationIds.length}件を復元しました。`);
+    setStatus(`${restorableIds.length}件を復元しました。`);
     await reloadThreads();
     await reloadDeletedPosts();
   };
@@ -322,7 +327,14 @@ const AdminPage = () => {
       setError('消去する投稿または返信を選択してください。');
       return;
     }
-    const operationIds = effectiveThreadOperationIds(deletedSelectedIds, filteredDeletedThreads);
+    let operationIds = effectiveThreadOperationIds(deletedSelectedIds, filteredDeletedThreads);
+    if (stage === 1) {
+      operationIds = operationIds.filter((id) => Number(id) > 0);
+      if (operationIds.length === 0) {
+        setError('番号だけ残っている削除データはデータ消去できません。番号ごと消去してください。');
+        return;
+      }
+    }
     const message = stage === 1
       ? `${operationIds.length}件のデータを消去します。表示番号は残ります。`
       : `${operationIds.length}件を番号ごと完全削除します。表示番号が前詰めされます。`;

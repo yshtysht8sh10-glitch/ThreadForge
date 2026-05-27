@@ -674,6 +674,40 @@ describe('AdminPage', () => {
     confirmSpy.mockRestore();
   });
 
+  it('shows number-only gaps and purges them only by number', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.mocked(api.listDeletedPosts).mockResolvedValue([{
+      id: -1,
+      display_no: 1,
+      thread_id: -1,
+      parent_id: 0,
+      name: 'system',
+      title: '番号だけ残っている削除データ',
+      message: '投稿データは残っていません。',
+      image_path: null,
+      created_at: '',
+      deleted_at: '',
+      number_gap: true,
+    } as any]);
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '復元/消去' }));
+    fireEvent.click(screen.getByLabelText('No.1 を選択'));
+    fireEvent.click(screen.getByLabelText('消去を有効にする'));
+    fireEvent.click(screen.getByRole('button', { name: '選択した項目を消去' }));
+    expect(api.purgePostData).not.toHaveBeenCalled();
+    expect(await screen.findByText(/番号だけ残っている削除データはデータ消去できません/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '選択した項目を番号ごと消去' }));
+    await waitFor(() => expect(api.destroyPostNumber).toHaveBeenCalledWith('-1', 'admin-secret'));
+    confirmSpy.mockRestore();
+  });
+
   it('collapses replies into parent operation when deleted parent is selected', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     vi.mocked(api.listDeletedPosts).mockResolvedValue([
