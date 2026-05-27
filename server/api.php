@@ -3235,8 +3235,13 @@ function initializeAdminPassword(PDO $pdo): void
     }
 
     $newPassword = trim((string)($_POST['new_admin_password'] ?? ''));
+    $confirmPassword = trim((string)($_POST['new_admin_password_confirm'] ?? $newPassword));
     if ($newPassword === '') {
         jsonResponse(['success' => false, 'message' => '管理者パスワードを入力してください。'], 400);
+    }
+
+    if ($newPassword !== $confirmPassword) {
+        jsonResponse(['success' => false, 'message' => '確認用パスワードが一致しません。'], 400);
     }
 
     $settings = loadSettings($pdo);
@@ -3252,6 +3257,10 @@ function changeAdminPassword(PDO $pdo): void
 {
     requireAdmin();
     $newPassword = trim((string)($_POST['new_admin_password'] ?? ''));
+    $confirmPassword = trim((string)($_POST['new_admin_password_confirm'] ?? $newPassword));
+    if ($newPassword !== $confirmPassword) {
+        jsonResponse(['success' => false, 'message' => '確認用パスワードが一致しません。'], 400);
+    }
     if ($newPassword === '') {
         jsonResponse(['success' => false, 'message' => '新しい管理パスワードを入力してください。'], 400);
     }

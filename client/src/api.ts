@@ -859,11 +859,12 @@ export const api = {
       body: formData,
     });
   },
-  changeAdminPassword: async (currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+  changeAdminPassword: async (currentPassword: string, newPassword: string, confirmPassword = newPassword): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();
     formData.append('action', 'changeAdminPassword');
     formData.append('admin_password', currentPassword);
     formData.append('new_admin_password', newPassword);
+    formData.append('new_admin_password_confirm', confirmPassword);
     return fetchJson(`${apiBase()}`, {
       method: 'POST',
       body: formData,

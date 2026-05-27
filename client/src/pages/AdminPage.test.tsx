@@ -604,8 +604,9 @@ describe('AdminPage', () => {
     fireEvent.change(within(changePasswordSection).getByLabelText('確認'), { target: { value: 'next-secret' } });
     fireEvent.click(within(changePasswordSection).getByRole('button', { name: '変更' }));
 
-    await waitFor(() => expect(api.changeAdminPassword).toHaveBeenCalledWith('admin-secret', 'next-secret'));
+    await waitFor(() => expect(api.changeAdminPassword).toHaveBeenCalledWith('admin-secret', 'next-secret', 'next-secret'));
     expect(window.localStorage.getItem('threadforgeAdminPassword')).toBe('next-secret');
+    await waitFor(() => expect(api.getSettings).toHaveBeenLastCalledWith('next-secret'));
   });
 
   it('shows analytics chart and aggregates selected metrics by unit', async () => {

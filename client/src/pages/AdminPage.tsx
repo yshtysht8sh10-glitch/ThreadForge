@@ -500,13 +500,18 @@ const AdminPage = () => {
       setError('確認用パスワードが一致しません。');
       return;
     }
-    const response = await api.changeAdminPassword(adminPassword, newAdminPassword);
+    const response = await api.changeAdminPassword(adminPassword, newAdminPassword, newAdminPasswordConfirm);
+    if (!response.success) {
+      setError(response.message);
+      return;
+    }
     setStatus(response.message);
     setAdminPassword(newAdminPassword);
     setAdminPasswordConfigured(true);
     window.localStorage.setItem('threadforgeAdminPassword', newAdminPassword);
     setNewAdminPassword('');
     setNewAdminPasswordConfirm('');
+    await loadAll(newAdminPassword);
   });
 
   const updateSetting = (section: keyof Settings, key: string, value: SettingValue) => {
