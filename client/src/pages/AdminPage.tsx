@@ -1417,36 +1417,14 @@ function SettingsJsonTools({
   );
 }
 
-type WindowWithFilePicker = Window & {
-  showSaveFilePicker?: (options: {
-    suggestedName?: string;
-    types?: Array<{ description: string; accept: Record<string, string[]> }>;
-  }) => Promise<{
-    createWritable: () => Promise<{
-      write: (blob: Blob) => Promise<void>;
-      close: () => Promise<void>;
-    }>;
-  }>;
-};
-
 async function saveBlobWithPicker(blob: Blob, suggestedName: string): Promise<void> {
-  const picker = (window as WindowWithFilePicker).showSaveFilePicker;
-  if (picker) {
-    const handle = await picker({
-      suggestedName,
-      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
-    });
-    const writable = await handle.createWritable();
-    await writable.write(blob);
-    await writable.close();
-    return;
-  }
-
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = suggestedName;
+  document.body.appendChild(anchor);
   anchor.click();
+  anchor.remove();
   URL.revokeObjectURL(url);
 }
 
