@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, UIEvent, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, mediaUrl } from '../api';
 import { useAuth } from '../auth';
@@ -6,13 +6,20 @@ import { metricOptions, MetricId, metricValue } from '../metrics';
 import { Post } from '../types';
 import { MAX_NAME_LENGTH } from '../name';
 
+const CLAIM_SEARCH_BATCH_SIZE = 50;
+const CLAIM_SEARCH_MAX_PAGES = 100;
+
 const LoginPage = () => {
   const auth = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [loginId, setLoginId] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [loginPasswordConfirm, setLoginPasswordConfirm] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [displayName, setDisplayName] = useState('Blank');
   const [postPassword, setPostPassword] = useState('');
+  const [postPasswordConfirm, setPostPasswordConfirm] = useState('');
+  const [showPostPassword, setShowPostPassword] = useState(false);
   const [homeUrl, setHomeUrl] = useState('');
   const [icon, setIcon] = useState<File | null>(null);
   const [idStatus, setIdStatus] = useState<string | null>(null);
@@ -22,8 +29,12 @@ const LoginPage = () => {
   const [claimId, setClaimId] = useState('');
   const [claimQuery, setClaimQuery] = useState('');
   const [claimScope, setClaimScope] = useState('all');
+  const [claimOrder, setClaimOrder] = useState<'oldest' | 'newest'>('oldest');
   const [claimResults, setClaimResults] = useState<Post[]>([]);
+  const [claimNextPage, setClaimNextPage] = useState(2);
+  const [claimHasMore, setClaimHasMore] = useState(false);
   const [claimLoading, setClaimLoading] = useState(false);
+  const [claimLoadingMore, setClaimLoadingMore] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +70,14 @@ const LoginPage = () => {
       if (mode === 'login') {
         await auth.login(loginId, loginPassword);
       } else {
+        if (loginPassword !== loginPasswordConfirm) {
+          setError('ログインパスワードと確認入力が一致しません。');
+          return;
+        }
+        if (postPassword !== postPasswordConfirm) {
+          setError('投稿パスワードと確認入力が一致しません。');
+          return;
+        }
         const availability = await api.checkLoginId(loginId);
         if (!availability.available) {
           setError(availability.message ?? 'このIDは既に使われています。');
@@ -131,17 +150,63 @@ const LoginPage = () => {
     const query = claimQuery.trim();
     if (!query) {
       setClaimResults([]);
+      setClaimHasMore(false);
+      setClaimNextPage(2);
       return;
     }
     setClaimLoading(true);
+    setClaimHasMore(false);
     setError(null);
     try {
-      const results = await api.search(query, claimScope, 1, 50, 'posts');
-      setClaimResults(results);
+      const allResults: Post[] = [];
+      const seen = new Set<number>();
+      let page = 1;
+      let hasMore = true;
+      while (hasMore && page <= CLAIM_SEARCH_MAX_PAGES) {
+        const results = await api.search(query, claimScope, page, CLAIM_SEARCH_BATCH_SIZE, 'posts', claimOrder);
+        results.forEach((post) => {
+          if (!seen.has(post.id)) {
+            seen.add(post.id);
+            allResults.push(post);
+          }
+        });
+        hasMore = results.length >= CLAIM_SEARCH_BATCH_SIZE;
+        page += 1;
+      }
+      setClaimResults(allResults);
+      setClaimNextPage(page);
+      setClaimHasMore(hasMore);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setClaimLoading(false);
+    }
+  };
+
+  const loadMoreClaimResults = async () => {
+    const query = claimQuery.trim();
+    if (!query || !claimHasMore || claimLoadingMore) return;
+    setClaimLoadingMore(true);
+    setError(null);
+    try {
+      const results = await api.search(query, claimScope, claimNextPage, CLAIM_SEARCH_BATCH_SIZE, 'posts', claimOrder);
+      setClaimResults((current) => {
+        const seen = new Set(current.map((post) => post.id));
+        return [...current, ...results.filter((post) => !seen.has(post.id))];
+      });
+      setClaimNextPage((current) => current + 1);
+      setClaimHasMore(results.length >= CLAIM_SEARCH_BATCH_SIZE);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setClaimLoadingMore(false);
+    }
+  };
+
+  const handleClaimResultsScroll = (event: UIEvent<HTMLDivElement>) => {
+    const element = event.currentTarget;
+    if (element.scrollTop + element.clientHeight >= element.scrollHeight - 80) {
+      void loadMoreClaimResults();
     }
   };
 
@@ -219,9 +284,16 @@ const LoginPage = () => {
                 <option value="name">名前</option>
               </select>
             </label>
+            <label>
+              表示順
+              <select value={claimOrder} onChange={(event) => setClaimOrder(event.target.value as 'oldest' | 'newest')}>
+                <option value="oldest">古い順</option>
+                <option value="newest">新しい順</option>
+              </select>
+            </label>
             <button type="submit" className="secondary">検索</button>
           </form>
-          <div className="account-claim-results">
+          <div className="account-claim-results" onScroll={handleClaimResultsScroll}>
             {claimLoading && <p>検索中...</p>}
             {!claimLoading && claimQuery.trim() !== '' && claimResults.length === 0 && <p>候補はありません。</p>}
             {claimResults.map((post) => {
@@ -242,6 +314,12 @@ const LoginPage = () => {
                 </article>
               );
             })}
+            {claimLoadingMore && <p>さらに読み込み中...</p>}
+            {!claimLoadingMore && claimHasMore && (
+              <button type="button" className="secondary" onClick={() => void loadMoreClaimResults()}>
+                さらに読み込む
+              </button>
+            )}
           </div>
         </section>
         <section className="account-posts">
@@ -289,23 +367,39 @@ const LoginPage = () => {
       </div>
       <form className="form-card" onSubmit={submitLogin}>
         <label>
-          ID
+          <span>ID<span className="required" aria-hidden="true">*</span></span>
           <input value={loginId} onBlur={checkId} onChange={(event) => setLoginId(event.target.value)} required />
         </label>
         {mode === 'register' && idStatus && <p className="status">{idStatus}</p>}
         <label>
-          ログインパスワード
-          <input type="password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} required />
+          <span>ログインパスワード<span className="required" aria-hidden="true">*</span></span>
+          <input type={showLoginPassword ? 'text' : 'password'} value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} required />
         </label>
         {mode === 'register' && (
           <>
             <label>
-              名前（/30文字）
+              <span>ログインパスワード（確認）<span className="required" aria-hidden="true">*</span></span>
+              <input type={showLoginPassword ? 'text' : 'password'} value={loginPasswordConfirm} onChange={(event) => setLoginPasswordConfirm(event.target.value)} required />
+            </label>
+            <label className="checkbox-field">
+              <input type="checkbox" checked={showLoginPassword} onChange={(event) => setShowLoginPassword(event.target.checked)} />
+              ログインパスワードを表示
+            </label>
+            <label>
+              <span>名前（/30文字）<span className="required" aria-hidden="true">*</span></span>
               <input value={displayName} maxLength={MAX_NAME_LENGTH} onChange={(event) => updateDisplayName(event.target.value)} required />
             </label>
             <label>
-              投稿パスワード
-              <input value={postPassword} maxLength={8} onChange={(event) => setPostPassword(event.target.value)} required />
+              <span>投稿パスワード<span className="required" aria-hidden="true">*</span></span>
+              <input type={showPostPassword ? 'text' : 'password'} value={postPassword} maxLength={8} onChange={(event) => setPostPassword(event.target.value)} required />
+            </label>
+            <label>
+              <span>投稿パスワード（確認）<span className="required" aria-hidden="true">*</span></span>
+              <input type={showPostPassword ? 'text' : 'password'} value={postPasswordConfirm} maxLength={8} onChange={(event) => setPostPasswordConfirm(event.target.value)} required />
+            </label>
+            <label className="checkbox-field">
+              <input type="checkbox" checked={showPostPassword} onChange={(event) => setShowPostPassword(event.target.checked)} />
+              投稿パスワードを表示
             </label>
             <label>
               URL / HOME

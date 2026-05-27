@@ -506,6 +506,7 @@ function searchPosts(PDO $pdo): void
     $pattern = '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%';
     $scope = $_GET['scope'] ?? 'all';
     $kinds = $_GET['kinds'] ?? 'all';
+    $order = ($_GET['order'] ?? 'newest') === 'oldest' ? 'ASC' : 'DESC';
     $where = match ($scope) {
         'title' => 'p.title LIKE :q ESCAPE "\\"',
         'message' => 'p.message LIKE :q ESCAPE "\\"',
@@ -518,7 +519,7 @@ function searchPosts(PDO $pdo): void
         'none' => ' AND 1 = 0',
         default => '',
     };
-    $sql = 'SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.deleted_at IS NULL AND ' . $where . $kindWhere . ' ORDER BY p.created_at DESC';
+    $sql = 'SELECT ' . postSelectWithBoardStats('p') . ' FROM posts p WHERE p.deleted_at IS NULL AND ' . $where . $kindWhere . ' ORDER BY p.created_at ' . $order . ', p.id ' . $order;
     if ($limit !== null) {
         $sql .= ' LIMIT :limit OFFSET :offset';
     }
@@ -3606,7 +3607,7 @@ function paginationParams(PDO $pdo): array
     $configuredLimit = filter_var($settings['config']['logView'] ?? null, FILTER_VALIDATE_INT);
     $page = max(1, $page);
     if ($requestLimit !== false && $requestLimit !== null) {
-        $limit = min(100, max(1, $requestLimit));
+        $limit = min(1000, max(1, $requestLimit));
         return [$limit, ($page - 1) * $limit];
     }
     if ($configuredLimit === false || $configuredLimit === null || $configuredLimit <= 0) {

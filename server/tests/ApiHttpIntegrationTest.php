@@ -590,6 +590,44 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->assertFalse($updated['json']['success']);
     }
 
+    public function testUpdatingUserIconUsesFreshFilePathToAvoidBrowserCache(): void
+    {
+        $firstIcon = $this->temporaryImage('user-icon-first-', 'first-icon');
+        $secondIcon = $this->temporaryImage('user-icon-second-', 'second-icon');
+
+        $registered = $this->postForm([
+            'action' => 'registerUser',
+            'login_id' => 'iconuser',
+            'password' => 'password123',
+            'display_name' => 'Icon User',
+            'post_password' => 'secret',
+            'icon' => curl_file_create($firstIcon, 'image/png', 'icon.png'),
+        ]);
+        $this->assertSame(200, $registered['status']);
+        $firstPath = getConnection()
+            ->query("SELECT icon_path FROM users WHERE login_id = 'iconuser'")
+            ->fetchColumn();
+        $this->assertIsString($firstPath);
+        $this->assertFileExists($firstPath);
+        $this->assertSame('first-icon', file_get_contents($firstPath));
+
+        $updated = $this->postForm([
+            'action' => 'updateUserProfile',
+            'auth_token' => $registered['json']['token'],
+            'display_name' => 'Icon User',
+            'post_password' => 'secret',
+            'icon' => curl_file_create($secondIcon, 'image/png', 'icon.png'),
+        ]);
+        $this->assertSame(200, $updated['status']);
+        $secondPath = getConnection()
+            ->query("SELECT icon_path FROM users WHERE login_id = 'iconuser'")
+            ->fetchColumn();
+        $this->assertIsString($secondPath);
+        $this->assertNotSame($firstPath, $secondPath);
+        $this->assertFileExists($secondPath);
+        $this->assertSame('second-icon', file_get_contents($secondPath));
+    }
+
     public function testListThreadsCanLoadPageContainingTargetPost(): void
     {
         $firstId = $this->insertPost('A', 'First', 'Body', '2026-05-01 10:00:00');

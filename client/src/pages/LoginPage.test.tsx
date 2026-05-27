@@ -91,13 +91,25 @@ describe('LoginPage', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '新規作成' }));
-    fireEvent.change(screen.getByLabelText('ID'), { target: { value: 'alice' } });
-    fireEvent.blur(screen.getByLabelText('ID'));
+    fireEvent.change(screen.getByLabelText(/^ID/), { target: { value: 'alice' } });
+    fireEvent.blur(screen.getByLabelText(/^ID/));
 
     expect(await screen.findByText('このIDは使用できます。')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('ログインパスワード'), { target: { value: 'login-secret' } });
-    fireEvent.change(screen.getByLabelText('名前（/30文字）'), { target: { value: 'Alice' } });
-    fireEvent.change(screen.getByLabelText('投稿パスワード'), { target: { value: 'postpass' } });
+    const loginPasswordInput = screen.getByLabelText(/^ログインパスワード\*/);
+    const loginPasswordConfirmInput = screen.getByLabelText(/^ログインパスワード（確認）/);
+    const postPasswordInput = screen.getByLabelText(/^投稿パスワード\*/);
+    const postPasswordConfirmInput = screen.getByLabelText(/^投稿パスワード（確認）/);
+    expect(loginPasswordInput).toHaveAttribute('type', 'password');
+    expect(postPasswordInput).toHaveAttribute('type', 'password');
+    fireEvent.change(loginPasswordInput, { target: { value: 'login-secret' } });
+    fireEvent.change(loginPasswordConfirmInput, { target: { value: 'login-secret' } });
+    fireEvent.click(screen.getByLabelText('ログインパスワードを表示'));
+    expect(loginPasswordInput).toHaveAttribute('type', 'text');
+    fireEvent.change(screen.getByLabelText(/^名前（\/30文字）/), { target: { value: 'Alice' } });
+    fireEvent.change(postPasswordInput, { target: { value: 'postpass' } });
+    fireEvent.change(postPasswordConfirmInput, { target: { value: 'postpass' } });
+    fireEvent.click(screen.getByLabelText('投稿パスワードを表示'));
+    expect(postPasswordInput).toHaveAttribute('type', 'text');
     fireEvent.change(screen.getByLabelText('URL / HOME'), { target: { value: 'https://example.com' } });
     fireEvent.click(screen.getByRole('button', { name: '作成してログイン' }));
 
@@ -132,7 +144,20 @@ describe('LoginPage', () => {
       posts: [ownPost, claimedPost] as any,
       analytics_posts: [ownPost, claimedPost] as any,
     });
-    vi.mocked(api.search).mockResolvedValue([
+    const firstPage = Array.from({ length: 50 }, (_, index) => ({
+      id: 1000 + index,
+      display_no: 1000 + index,
+      thread_id: 1000 + index,
+      parent_id: 0,
+      name: 'Candidate',
+      title: `Candidate work ${index}`,
+      message: 'needle body',
+      image_path: null,
+      created_at: '2026-05-03 10:00:00',
+    }));
+    vi.mocked(api.search)
+      .mockResolvedValueOnce(firstPage as any)
+      .mockResolvedValueOnce([
       {
         id: 40,
         display_no: 40,
@@ -144,7 +169,8 @@ describe('LoginPage', () => {
         image_path: '/storage/data/40.png',
         created_at: '2026-05-03 10:00:00',
       },
-    ] as any);
+    ] as any)
+      .mockResolvedValueOnce([] as any);
 
     render(
       <MemoryRouter>
@@ -169,7 +195,8 @@ describe('LoginPage', () => {
     fireEvent.change(within(claimSection).getByLabelText('検索対象'), { target: { value: 'title' } });
     fireEvent.click(within(claimSection).getByRole('button', { name: '検索' }));
 
-    await waitFor(() => expect(api.search).toHaveBeenCalledWith('needle', 'title', 1, 50, 'posts'));
+    await waitFor(() => expect(api.search).toHaveBeenCalledWith('needle', 'title', 1, 50, 'posts', 'oldest'));
+    await waitFor(() => expect(api.search).toHaveBeenCalledWith('needle', 'title', 2, 50, 'posts', 'oldest'));
     expect(within(claimSection).queryByLabelText('返信')).not.toBeInTheDocument();
     const candidate = await screen.findByText('No.40 Candidate work');
     const candidateRow = candidate.closest('.account-claim-result') as HTMLElement;

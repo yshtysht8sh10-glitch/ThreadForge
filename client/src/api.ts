@@ -617,11 +617,13 @@ export const api = {
     page?: number | string | null,
     limit?: number | string | null,
     kinds?: string | null,
+    order?: 'newest' | 'oldest' | string | null,
   ): Promise<SearchResult[]> => {
     const pageParam = page ? `&page=${encodeURIComponent(String(page))}` : '';
     const limitParam = limit ? `&limit=${encodeURIComponent(String(limit))}` : '';
     const kindsParam = kinds ? `&kinds=${encodeURIComponent(kinds)}` : '';
-    return fetchJson<SearchResult[]>(`${apiBase()}?action=search&q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scope)}${pageParam}${limitParam}${kindsParam}`);
+    const orderParam = order ? `&order=${encodeURIComponent(order)}` : '';
+    return fetchJson<SearchResult[]>(`${apiBase()}?action=search&q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scope)}${pageParam}${limitParam}${kindsParam}${orderParam}`);
   },
   checkLoginId: async (loginId: string): Promise<{ success: boolean; available: boolean; message?: string }> => {
     return fetchJson(`${apiBase()}?action=checkLoginId&login_id=${encodeURIComponent(loginId)}`);
@@ -647,7 +649,7 @@ export const api = {
     return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
   },
   currentUser: async (token: string): Promise<{ success: boolean; user: UserProfile }> => {
-    return fetchJson(`${apiBase()}?action=currentUser`, {
+    return fetchJson(`${apiBase()}?action=currentUser&auth_token=${encodeURIComponent(token)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
   },
@@ -664,7 +666,7 @@ export const api = {
     return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
   },
   listUserDashboard: async (token: string): Promise<{ success: boolean; posts: Post[]; analytics_posts: Post[] }> => {
-    return fetchJson(`${apiBase()}?action=listUserDashboard`, {
+    return fetchJson(`${apiBase()}?action=listUserDashboard&auth_token=${encodeURIComponent(token)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
   },

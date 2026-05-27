@@ -787,7 +787,7 @@ function authToken(): string
     if (is_string($header) && preg_match('/Bearer\s+(.+)/i', $header, $matches)) {
         return trim($matches[1]);
     }
-    return trim((string)($_POST['auth_token'] ?? ''));
+    return trim((string)($_POST['auth_token'] ?? $_GET['auth_token'] ?? ''));
 }
 
 function optionalUser(PDO $pdo): ?array
@@ -1078,14 +1078,9 @@ function saveUploadedUserIcon(array $file, int $userId): ?string
     if ($extension === null) {
         return null;
     }
-    if ($allowedExtensions !== null && !in_array($extension, $allowedExtensions, true)) {
-        return null;
-    }
 
-    $destination = STORAGE_DIR . '/user_' . $userId . '.' . $extension;
-    if (file_exists($destination) && archiveExistingImage($destination) === null) {
-        return null;
-    }
+    $suffix = (new DateTimeImmutable('now', new DateTimeZone('Asia/Tokyo')))->format('YmdHis') . '_' . bin2hex(random_bytes(4));
+    $destination = STORAGE_DIR . '/user_' . $userId . '_' . $suffix . '.' . $extension;
 
     if (!move_uploaded_file($file['tmp_name'], $destination)) {
         return null;

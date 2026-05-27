@@ -2440,7 +2440,7 @@ button.post-reset-button:hover {
 }
 
 .account-claim-search-form {
-  grid-template-columns: minmax(0, 1fr) minmax(8rem, 12rem) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, 12rem) minmax(7rem, 10rem) auto;
   align-items: end;
 }
 
