@@ -302,12 +302,13 @@ const AdminPage = () => {
       setError('復元する投稿または返信を選択してください。');
       return;
     }
+    const operationIds = effectiveThreadOperationIds(deletedSelectedIds, filteredDeletedThreads);
     setError(null);
     setStatus('復元中...');
-    for (const id of deletedSelectedIds) {
+    for (const id of operationIds) {
       await api.restorePost(id, adminPassword);
     }
-    setStatus(`${deletedSelectedIds.length}件を復元しました。`);
+    setStatus(`${operationIds.length}件を復元しました。`);
     await reloadThreads();
     await reloadDeletedPosts();
   };
@@ -321,22 +322,23 @@ const AdminPage = () => {
       setError('消去する投稿または返信を選択してください。');
       return;
     }
+    const operationIds = effectiveThreadOperationIds(deletedSelectedIds, filteredDeletedThreads);
     const message = stage === 1
-      ? `${deletedSelectedIds.length}件のデータを消去します。表示番号は残ります。`
-      : `${deletedSelectedIds.length}件を番号ごと完全削除します。表示番号が前詰めされます。`;
+      ? `${operationIds.length}件のデータを消去します。表示番号は残ります。`
+      : `${operationIds.length}件を番号ごと完全削除します。表示番号が前詰めされます。`;
     if (!window.confirm(`${message} 実行しますか？`)) {
       return;
     }
     setError(null);
     setStatus(stage === 1 ? '投稿データを消去中...' : '投稿番号を消去中...');
-    for (const id of deletedSelectedIds) {
+    for (const id of operationIds) {
       if (stage === 1) {
         await api.purgePostData(id, adminPassword);
       } else {
         await api.destroyPostNumber(id, adminPassword);
       }
     }
-    setStatus(stage === 1 ? `${deletedSelectedIds.length}件の投稿データを消去しました。` : `${deletedSelectedIds.length}件を番号ごと完全削除しました。`);
+    setStatus(stage === 1 ? `${operationIds.length}件の投稿データを消去しました。` : `${operationIds.length}件を番号ごと完全削除しました。`);
     await reloadThreads();
     await reloadDeletedPosts();
   };
@@ -1649,6 +1651,18 @@ function toggleThreadSelection(current: string[], id: string, threads: Post[]): 
     return current;
   }
   return current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
+}
+
+function effectiveThreadOperationIds(selectedIds: string[], threads: Post[]): string[] {
+  const selected = new Set(selectedIds);
+  const childIdsWithSelectedParent = new Set<string>();
+  threads.forEach((thread) => {
+    if (!selected.has(String(thread.id))) {
+      return;
+    }
+    (thread.replies ?? []).forEach((reply) => childIdsWithSelectedParent.add(String(reply.id)));
+  });
+  return selectedIds.filter((id) => !childIdsWithSelectedParent.has(id));
 }
 
 function groupDeletedPosts(posts: Post[]): Post[] {

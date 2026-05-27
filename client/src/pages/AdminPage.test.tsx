@@ -673,4 +673,50 @@ describe('AdminPage', () => {
     await waitFor(() => expect(api.destroyPostNumber).toHaveBeenCalledWith('514', 'admin-secret'));
     confirmSpy.mockRestore();
   });
+
+  it('collapses replies into parent operation when deleted parent is selected', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.mocked(api.listDeletedPosts).mockResolvedValue([
+      {
+        id: 90,
+        display_no: 90,
+        thread_id: 90,
+        parent_id: 0,
+        name: 'Deleted Alice',
+        title: 'Deleted Root',
+        message: 'Deleted Body',
+        image_path: null,
+        created_at: '2026-05-05 10:00:00',
+        deleted_at: '2026-05-06 22:26:16',
+      },
+      {
+        id: 901,
+        display_no: 90,
+        reply_no: 1,
+        thread_id: 90,
+        parent_id: 90,
+        name: 'Deleted Bob',
+        title: 'Re: Deleted Root',
+        message: 'Deleted Reply',
+        image_path: null,
+        created_at: '2026-05-05 10:02:00',
+        deleted_at: '2026-05-06 22:26:16',
+      },
+    ] as any);
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '復元/消去' }));
+    fireEvent.click(screen.getByLabelText('No.90 を選択'));
+    fireEvent.click(screen.getByLabelText('消去を有効にする'));
+    fireEvent.click(screen.getByRole('button', { name: '選択した項目を番号ごと消去' }));
+
+    await waitFor(() => expect(api.destroyPostNumber).toHaveBeenCalledWith('90', 'admin-secret'));
+    expect(api.destroyPostNumber).not.toHaveBeenCalledWith('901', 'admin-secret');
+    confirmSpy.mockRestore();
+  });
 });
