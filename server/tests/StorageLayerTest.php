@@ -99,6 +99,26 @@ final class StorageLayerTest extends TestCase
         $this->assertArrayNotHasKey('tweet_impression_count', $post);
     }
 
+    public function testBuildPostNormalizesWindowsImagePathForPublicUrl(): void
+    {
+        $post = buildPost([
+            'id' => 124,
+            'thread_id' => 124,
+            'parent_id' => 0,
+            'name' => 'User',
+            'url' => null,
+            'title' => 'Windows path',
+            'message' => 'Message',
+            'image_path' => 'D:\\working\\ThreadForge\\server\\storage\\data\\124.gif',
+            'created_at' => '2026-05-03 12:00:00',
+            'deleted_at' => null,
+            'gdgd' => 0,
+            'tweet_off' => 0,
+        ]);
+
+        $this->assertSame('/storage/data/124.gif', $post['image_path']);
+    }
+
     public function testUserPostClaimsAllowMultipleUsersForOnePost(): void
     {
         $pdo = getConnection();

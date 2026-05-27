@@ -203,7 +203,7 @@ function buildPost(array $row): array
         'url' => $row['url'] ?? null,
         'title' => $row['title'],
         'message' => $row['message'],
-        'image_path' => $row['image_path'] ? '/storage/data/' . basename($row['image_path']) : null,
+        'image_path' => publicStoragePath($row['image_path'] ?? null),
         'created_at' => $row['created_at'],
         'deleted_at' => $row['deleted_at'] ?? null,
         'gdgd' => (bool)($row['gdgd'] ?? false),
@@ -246,7 +246,11 @@ function publicStoragePath(?string $path): ?string
     if ($path === null || $path === '') {
         return null;
     }
-    return '/storage/data/' . basename($path);
+    $basename = basename(str_replace('\\', '/', $path));
+    if ($basename === '' || $basename === '.' || $basename === '..') {
+        return null;
+    }
+    return '/storage/data/' . $basename;
 }
 
 function buildBoardReactions(array $row): array
