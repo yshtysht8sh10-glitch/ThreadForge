@@ -114,7 +114,7 @@ const DeleteModePage = () => {
         {error && <p className="error">エラー: {error}</p>}
       </section>
 
-      {loading ? (
+      {loading && threads.length === 0 ? (
         <div className="board-message">読み込み中...</div>
       ) : (
         <>
@@ -130,6 +130,7 @@ const DeleteModePage = () => {
               void loadThreads(years, months);
             }}
           />
+          {loading && threads.length > 0 && <div className="board-message compact">表示期間を更新中...</div>}
           <SelectableThreadList threads={threads} selectedIds={selectedIds} onToggle={toggleSelected} />
         </>
       )}

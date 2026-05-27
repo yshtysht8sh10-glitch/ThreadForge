@@ -27,7 +27,6 @@ const HomePage = () => {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    setThreads([]);
     setHasMore(false);
     setError(null);
 
@@ -101,11 +100,11 @@ const HomePage = () => {
     return () => observer.disconnect();
   }, [hasMore, loadMore, targetId]);
 
-  if (loading) {
+  if (loading && threads.length === 0) {
     return <div className="board-message">読み込み中...</div>;
   }
 
-  if (error) {
+  if (error && threads.length === 0) {
     return <div className="board-message">エラー: {error}</div>;
   }
 
@@ -137,6 +136,8 @@ const HomePage = () => {
           onChange={updatePeriods}
         />
       )}
+      {loading && threads.length > 0 && <div className="board-message compact">表示期間を更新中...</div>}
+      {error && threads.length > 0 && <div className="board-message">繧ｨ繝ｩ繝ｼ: {error}</div>}
       <ThreadList threads={threads} />
       {!targetId && (
         <div className="infinite-loader" ref={loadMoreRef}>
