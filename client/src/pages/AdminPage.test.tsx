@@ -25,6 +25,7 @@ vi.mock('../api', () => ({
     adminDeleteUser: vi.fn(),
     changeAdminPassword: vi.fn(),
     refreshSocialReactions: vi.fn(),
+    renumberPostsByCreatedAt: vi.fn(),
   },
 }));
 
@@ -146,6 +147,12 @@ describe('AdminPage', () => {
       message: 'SNSリアクションを更新しました。',
       updated: 0,
       errors: [],
+    });
+    vi.mocked(api.renumberPostsByCreatedAt).mockResolvedValue({
+      success: true,
+      message: '投稿番号を投稿日順に採番しなおしました。',
+      renumbered_posts: 3,
+      renumbered_threads: 2,
     });
   });
 
@@ -607,6 +614,23 @@ describe('AdminPage', () => {
     await waitFor(() => expect(api.changeAdminPassword).toHaveBeenCalledWith('admin-secret', 'next-secret', 'next-secret'));
     expect(window.localStorage.getItem('threadforgeAdminPassword')).toBe('next-secret');
     await waitFor(() => expect(api.getSettings).toHaveBeenLastCalledWith('next-secret'));
+  });
+
+  it('renumbers posts by created date from maintenance', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '保守' }));
+    fireEvent.click(screen.getByRole('button', { name: '採番しなおす' }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('投稿番号を投稿日順に採番しなおします。投稿URLやNo表記が変わります。実行しますか？');
+    await waitFor(() => expect(api.renumberPostsByCreatedAt).toHaveBeenCalledWith('admin-secret'));
+    expect(await screen.findByText(/投稿: 3件 \/ 親投稿: 2件/)).toBeInTheDocument();
+    confirmSpy.mockRestore();
   });
 
   it('shows analytics chart and aggregates selected metrics by unit', async () => {

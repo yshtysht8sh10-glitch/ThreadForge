@@ -502,6 +502,7 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
     case 'importBackup':
       return { success: true, message: '操作が完了しました（モック）' } as T;
     case 'adminCheckIntegrity':
+    case 'renumberPostsByCreatedAt':
       return {
         success: true,
         message: 'DBを確認しました（モック）',
@@ -822,6 +823,15 @@ export const api = {
   },
   adminCheckIntegrity: async (adminPassword: string): Promise<{ success: boolean; message: string; orphan_replies: number; missing_image_post_ids: number[] }> => {
     return fetchJson(`${apiBase()}?action=adminCheckIntegrity&admin_password=${encodeURIComponent(adminPassword)}`);
+  },
+  renumberPostsByCreatedAt: async (adminPassword: string): Promise<{ success: boolean; message: string; renumbered_posts: number; renumbered_threads: number }> => {
+    const formData = new FormData();
+    formData.append('action', 'renumberPostsByCreatedAt');
+    formData.append('admin_password', adminPassword);
+    return fetchJson(`${apiBase()}`, {
+      method: 'POST',
+      body: formData,
+    });
   },
   refreshSocialReactions: async (adminPassword: string): Promise<{ success: boolean; message: string; updated: number; errors: string[] }> => {
     return fetchJson(`${apiBase()}?action=refreshSocialReactions&admin_password=${encodeURIComponent(adminPassword)}`);

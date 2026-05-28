@@ -383,6 +383,16 @@ const AdminPage = () => {
     await reloadThreads();
   });
 
+  const renumberPostsByCreatedAt = guarded(async () => {
+    if (!window.confirm('投稿番号を投稿日順に採番しなおします。投稿URLやNo表記が変わります。実行しますか？')) {
+      return;
+    }
+    setStatus('投稿番号を採番しなおしています...');
+    const response = await api.renumberPostsByCreatedAt(adminPassword);
+    await loadAll();
+    setStatus(`${response.message} 投稿: ${response.renumbered_posts}件 / 親投稿: ${response.renumbered_threads}件`);
+  });
+
   const saveSettings = guarded(async () => {
     if (!settings) {
       setError('設定を読み込んでください。');
@@ -715,6 +725,17 @@ const AdminPage = () => {
                   <p>SNS側のリアクション数を手動で取得し直します。cronを待たずに最新化したい場合に使います。</p>
                   <div className="button-row align-right">
                     <button type="button" onClick={refreshSocialReactions}>更新</button>
+                  </div>
+                </div>
+              </section>
+
+              <section className="admin-maintenance-section">
+                <h3>投稿番号の採番しなおし</h3>
+                <div className="admin-maintenance-section-body">
+                  <p>親投稿を投稿日が古い順に並べ、No.1から採番しなおします。返信、編集履歴、作品登録、画像参照もあわせて付け替えます。</p>
+                  <p className="warning-text">※ 投稿URLや画面上のNo表記が変わります。実行前にフルバックアップを作成してください。</p>
+                  <div className="button-row align-right">
+                    <button type="button" className="secondary" onClick={renumberPostsByCreatedAt}>採番しなおす</button>
                   </div>
                 </div>
               </section>

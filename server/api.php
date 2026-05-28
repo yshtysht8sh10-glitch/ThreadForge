@@ -139,6 +139,9 @@ function handleApiRequest(): void
         case 'adminCheckIntegrity':
             adminCheckIntegrity($pdo);
             break;
+        case 'renumberPostsByCreatedAt':
+            renumberPostsByCreatedAt($pdo);
+            break;
         case 'refreshSocialReactions':
             refreshSocialReactions($pdo);
             break;
@@ -2685,6 +2688,162 @@ function adminCheckIntegrity(PDO $pdo): void
         'orphan_replies' => $orphanReplies,
         'missing_image_post_ids' => $missingImages,
     ]);
+}
+
+function renumberPostsByCreatedAt(PDO $pdo): void
+{
+    requireAdmin();
+
+    $pdo->beginTransaction();
+    try {
+        $result = renumberPostIdsByCreatedAt($pdo);
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
+
+    jsonResponse([
+        'success' => true,
+        'message' => '投稿番号を投稿日順に採番しなおしました。',
+        'renumbered_posts' => $result['renumbered_posts'],
+        'renumbered_threads' => $result['renumbered_threads'],
+    ]);
+}
+
+function renumberPostIdsByCreatedAt(PDO $pdo): array
+{
+    $roots = $pdo->query('SELECT id FROM posts WHERE parent_id = 0 ORDER BY created_at ASC, id ASC')->fetchAll(PDO::FETCH_COLUMN);
+    if ($roots === []) {
+        return ['renumbered_posts' => 0, 'renumbered_threads' => 0];
+    }
+
+    $replyStmt = $pdo->prepare('SELECT id FROM posts WHERE parent_id != 0 AND thread_id = :thread_id ORDER BY created_at ASC, id ASC');
+    $orderedIds = [];
+    foreach ($roots as $rootId) {
+        $rootId = (int)$rootId;
+        $orderedIds[] = $rootId;
+        $replyStmt->execute([':thread_id' => $rootId]);
+        foreach ($replyStmt->fetchAll(PDO::FETCH_COLUMN) as $replyId) {
+            $orderedIds[] = (int)$replyId;
+        }
+    }
+    $knownIds = array_fill_keys($orderedIds, true);
+    $allIds = $pdo->query('SELECT id FROM posts ORDER BY created_at ASC, id ASC')->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($allIds as $postId) {
+        $postId = (int)$postId;
+        if (!isset($knownIds[$postId])) {
+            $orderedIds[] = $postId;
+        }
+    }
+
+    $idMap = [];
+    $nextId = 1;
+    foreach ($orderedIds as $oldId) {
+        $idMap[$oldId] = $nextId++;
+    }
+
+    $postRows = $pdo->query('SELECT id, thread_id, parent_id, image_path FROM posts ORDER BY id ASC')->fetchAll(PDO::FETCH_ASSOC);
+    $imageMap = prepareRenumberedPostImages($postRows, $idMap);
+
+    foreach ($postRows as $row) {
+        $oldId = (int)$row['id'];
+        $tempId = -$oldId;
+        $tempThreadId = -((int)$row['thread_id']);
+        $parentId = (int)$row['parent_id'];
+        $tempParentId = $parentId === 0 ? 0 : -$parentId;
+        $pdo->prepare('UPDATE posts SET id = :new_id, thread_id = :thread_id, parent_id = :parent_id WHERE id = :old_id')
+            ->execute([
+                ':new_id' => $tempId,
+                ':thread_id' => $tempThreadId,
+                ':parent_id' => $tempParentId,
+                ':old_id' => $oldId,
+            ]);
+    }
+
+    $pdo->exec('UPDATE post_revisions SET post_id = -post_id');
+    $pdo->exec('UPDATE user_post_claims SET post_id = -post_id');
+
+    foreach ($postRows as $row) {
+        $oldId = (int)$row['id'];
+        $newId = $idMap[$oldId] ?? $oldId;
+        $newThreadId = $idMap[(int)$row['thread_id']] ?? (int)$row['thread_id'];
+        $oldParentId = (int)$row['parent_id'];
+        $newParentId = $oldParentId === 0 ? 0 : ($idMap[$oldParentId] ?? $oldParentId);
+        $imagePath = $imageMap[$oldId] ?? ($row['image_path'] ?? null);
+
+        $pdo->prepare('UPDATE posts SET id = :new_id, thread_id = :thread_id, parent_id = :parent_id, image_path = :image_path WHERE id = :old_id')
+            ->execute([
+                ':new_id' => $newId,
+                ':thread_id' => $newThreadId,
+                ':parent_id' => $newParentId,
+                ':image_path' => $imagePath,
+                ':old_id' => -$oldId,
+            ]);
+    }
+
+    foreach ($idMap as $oldId => $newId) {
+        $temporary = -$oldId;
+        $pdo->prepare('UPDATE post_revisions SET post_id = :new_id WHERE post_id = :old_id')->execute([':new_id' => $newId, ':old_id' => $temporary]);
+        $pdo->prepare('UPDATE user_post_claims SET post_id = :new_id WHERE post_id = :old_id')->execute([':new_id' => $newId, ':old_id' => $temporary]);
+    }
+
+    $maxId = count($idMap);
+    $updated = $pdo->prepare("UPDATE sqlite_sequence SET seq = :seq WHERE name = 'posts'");
+    $updated->execute([':seq' => $maxId]);
+    if ($updated->rowCount() === 0) {
+        $pdo->prepare("INSERT INTO sqlite_sequence (name, seq) VALUES ('posts', :seq)")->execute([':seq' => $maxId]);
+    }
+
+    return [
+        'renumbered_posts' => count($idMap),
+        'renumbered_threads' => count($roots),
+    ];
+}
+
+function prepareRenumberedPostImages(array $postRows, array $idMap): array
+{
+    $moves = [];
+    foreach ($postRows as $row) {
+        $oldId = (int)$row['id'];
+        $newId = (int)($idMap[$oldId] ?? $oldId);
+        $path = $row['image_path'] ?? null;
+        if (!is_string($path) || $path === '') {
+            continue;
+        }
+        $basename = backupImageBasename($path);
+        if ($basename === '') {
+            continue;
+        }
+        $current = STORAGE_DIR . '/' . $basename;
+        if (!is_file($current)) {
+            continue;
+        }
+        $extension = pathinfo($basename, PATHINFO_EXTENSION);
+        if ($extension === '') {
+            continue;
+        }
+        $stem = pathinfo($basename, PATHINFO_FILENAME);
+        if ($stem !== (string)$oldId) {
+            continue;
+        }
+        $temporary = STORAGE_DIR . '/renumber_' . $oldId . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+        if (@rename($current, $temporary)) {
+            $moves[] = ['old_id' => $oldId, 'new_id' => $newId, 'temporary' => $temporary, 'extension' => $extension];
+        }
+    }
+
+    $imageMap = [];
+    foreach ($moves as $move) {
+        $target = STORAGE_DIR . '/' . $move['new_id'] . '.' . $move['extension'];
+        if (is_file($target)) {
+            $target = STORAGE_DIR . '/' . $move['new_id'] . '_' . bin2hex(random_bytes(4)) . '.' . $move['extension'];
+        }
+        if (@rename($move['temporary'], $target)) {
+            $imageMap[(int)$move['old_id']] = $target;
+        }
+    }
+    return $imageMap;
 }
 
 function refreshSocialReactions(PDO $pdo): void
