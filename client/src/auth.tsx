@@ -7,6 +7,7 @@ type AuthContextValue = {
   user: UserProfile | null;
   loading: boolean;
   login: (loginId: string, password: string) => Promise<void>;
+  ssoLogin: (ssoToken: string) => Promise<void>;
   register: (payload: { login_id: string; password: string; display_name?: string; post_password?: string; home_url?: string; icon?: File | null }) => Promise<void>;
   updateProfile: (payload: { display_name: string; post_password: string; home_url?: string; icon?: File | null }) => Promise<void>;
   logout: () => Promise<void>;
@@ -57,6 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(response.user);
       window.localStorage.setItem(TOKEN_KEY, response.token);
     },
+    ssoLogin: async (ssoToken) => {
+      const response = await api.ssoLogin(ssoToken);
+      setToken(response.token);
+      setUser(response.user);
+      window.localStorage.setItem(TOKEN_KEY, response.token);
+    },
     register: async (payload) => {
       const response = await api.registerUser(payload);
       setToken(response.token);
@@ -89,6 +96,7 @@ export function useAuth(): AuthContextValue {
       user: null,
       loading: false,
       login: async () => undefined,
+      ssoLogin: async () => undefined,
       register: async () => undefined,
       updateProfile: async () => undefined,
       logout: async () => undefined,

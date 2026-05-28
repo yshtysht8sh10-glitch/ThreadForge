@@ -625,7 +625,7 @@ describe('AdminPage', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: '保守' }));
-    fireEvent.click(screen.getByRole('button', { name: '採番しなおす' }));
+    fireEvent.click(screen.getByRole('button', { name: '実行' }));
 
     expect(confirmSpy).toHaveBeenCalledWith('投稿番号を投稿日順に採番しなおします。投稿URLやNo表記が変わります。実行しますか？');
     await waitFor(() => expect(api.renumberPostsByCreatedAt).toHaveBeenCalledWith('admin-secret'));

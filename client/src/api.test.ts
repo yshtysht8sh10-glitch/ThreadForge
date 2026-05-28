@@ -216,6 +216,40 @@ describe('API Module', () => {
     });
   });
 
+  describe('login APIs', () => {
+    it('should return a session from SSO login in mock API', async () => {
+      const result = await api.ssoLogin('payload.signature');
+      expect(result.success).toBe(true);
+      expect(result.token).toBe('mock-token');
+      expect(result.user.login_id).toBe('blank');
+    });
+
+    it('should send an SSO token as FormData in server mode', async () => {
+      import.meta.env.VITE_USE_MOCK = 'false';
+      vi.stubGlobal('fetch', vi.fn(async (_input, init) => {
+        const body = init?.body as FormData;
+        expect(init?.method).toBe('POST');
+        expect(body.get('action')).toBe('ssoLogin');
+        expect(body.get('token')).toBe('payload.signature');
+        return new Response(JSON.stringify({
+          success: true,
+          token: 'server-token',
+          user: {
+            id: 1,
+            login_id: 'blank',
+            display_name: 'Blank',
+            post_password: '',
+            home_url: '',
+            icon_path: null,
+          },
+        }), { status: 200 });
+      }));
+
+      const result = await api.ssoLogin('payload.signature');
+      expect(result.token).toBe('server-token');
+    });
+  });
+
   describe('mediaUrl', () => {
     it('should resolve server-relative media paths against the API origin', () => {
       import.meta.env.VITE_API_BASE_URL = 'http://127.0.0.1:8000/api.php';

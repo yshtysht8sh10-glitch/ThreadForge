@@ -101,6 +101,12 @@ threadforge-<version>/
 
 DBがない初回起動時は、掲示板デザインは標準の黒基調、特殊投稿OFF、一覧の並び順はNo順、SNS投稿ハッシュタグ `#art`、SNS連携すべてOFFかつ認証情報空欄で開始します。一覧画面では年/月を複数選択して表示対象を絞り込めます。
 
+## 親サイトSSO
+
+親サイト側のログイン状態をThreadForgeへ引き継ぐ場合は、管理画面の掲示板設定で「SSOログイン」をONにし、「SSO共有秘密鍵」を設定します。親サイトは `login_id` または `sub`、`exp` を含むJSONをBase64URL化し、その文字列を共有秘密鍵でHMAC-SHA256署名した `base64url(payload).base64url(signature)` 形式のトークンを作成して、`index.html#/login?sso=<token>` へ遷移させます。
+
+任意項目として `display_name`、`post_password`、`home_url`、`iat` を渡せます。ThreadForgeは署名と有効期限を検証し、既存ユーザーならログイン、未登録IDならユーザーを自動作成します。URLに載るトークンなので、有効期限は短くしてください。
+
 ## SNS転記の運用
 
 X、Bluesky、Mastodon、Misskey 連携はデフォルト OFF です。この状態では外部 API を呼ばず、投稿は掲示板内だけに保存されます。各 SNS は管理画面で個別の設定グループを持ち、OFF の間は認証情報の入力欄も無効化されます。

@@ -12,6 +12,40 @@
 - 許可メソッド: `GET`, `POST`, `OPTIONS`
 - エラー時は HTTP 400/403/404 と `{ "success": false, "message": "..." }` を返します
 
+## POST `?action=ssoLogin`
+
+親サイトSSOトークンを検証し、ユーザーセッションを発行します。
+
+前提:
+
+- 管理画面の掲示板設定で `SSOログイン` がON
+- `SSO共有秘密鍵` または `THREADFORGE_SSO_SECRET` が設定済み
+
+フィールド:
+
+- `token`: 必須。`base64url(payload).base64url(signature)` 形式
+
+ペイロード:
+
+- `login_id` または `sub`: 必須。3-40文字の半角英数字、`_`、`.`、`-`
+- `exp`: 必須。Unix時刻。有効期限
+- `iat`: 任意。Unix時刻。未来すぎる値は拒否
+- `display_name`: 任意。ユーザー表示名
+- `post_password`: 任意。投稿パスワード
+- `home_url`: 任意。URL/HOME
+
+成功時、既存ユーザーならそのユーザーでログインし、未登録IDならユーザーを自動作成します。
+
+レスポンス:
+
+```json
+{
+  "success": true,
+  "token": "...",
+  "user": {}
+}
+```
+
 ## GET `?action=listThreads`
 
 親投稿一覧を返します。

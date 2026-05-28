@@ -167,6 +167,8 @@ export const DEFAULT_ADMIN_SETTINGS = {
     misskeyEnabled: false,
     misskeyInstanceUrl: '',
     misskeyAccessToken: '',
+    ssoEnabled: false,
+    ssoSharedSecret: '',
     listOrder: 'number',
     maxUploadBytes: 5100000,
     maxImageWidth: 1280,
@@ -439,6 +441,7 @@ function mockApiResponse<T>(input: RequestInfo, init?: RequestInit): T {
     case 'publicSettings':
       return { success: true, settings: DEFAULT_PUBLIC_SETTINGS } as T;
     case 'loginUser':
+    case 'ssoLogin':
     case 'registerUser':
     case 'currentUser':
     case 'updateUserProfile':
@@ -634,6 +637,12 @@ export const api = {
     formData.append('action', 'loginUser');
     formData.append('login_id', loginId);
     formData.append('password', password);
+    return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
+  },
+  ssoLogin: async (token: string): Promise<{ success: boolean; token: string; user: UserProfile; message?: string }> => {
+    const formData = new FormData();
+    formData.append('action', 'ssoLogin');
+    formData.append('token', token);
     return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
   },
   registerUser: async (payload: { login_id: string; password: string; display_name?: string; post_password?: string; home_url?: string; icon?: File | null }): Promise<{ success: boolean; token: string; user: UserProfile; message?: string }> => {

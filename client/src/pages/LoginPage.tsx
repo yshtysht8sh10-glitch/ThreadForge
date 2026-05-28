@@ -1,4 +1,4 @@
-import { FormEvent, UIEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, UIEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, mediaUrl } from '../api';
 import { useAuth } from '../auth';
@@ -37,6 +37,7 @@ const LoginPage = () => {
   const [claimLoadingMore, setClaimLoadingMore] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const ssoHandledRef = useRef(false);
 
   const loadDashboard = async () => {
     if (!auth.token) return;
@@ -52,6 +53,27 @@ const LoginPage = () => {
     setHomeUrl(auth.user.home_url ?? '');
     loadDashboard().catch((err) => setError((err as Error).message));
   }, [auth.user, auth.token]);
+
+  useEffect(() => {
+    if (ssoHandledRef.current || auth.user || auth.loading) {
+      return;
+    }
+    const ssoToken = ssoTokenFromLocation();
+    if (!ssoToken) {
+      return;
+    }
+    ssoHandledRef.current = true;
+    setStatus('SSOログイン中...');
+    setError(null);
+    auth.ssoLogin(ssoToken)
+      .then(() => {
+        setStatus('ログインしました。');
+        removeSsoTokenFromLocation();
+      })
+      .catch((err) => {
+        setError((err as Error).message);
+      });
+  }, [auth]);
 
   const checkId = async () => {
     if (mode !== 'register' || loginId.trim() === '') {
@@ -518,3 +540,25 @@ function listTargetHref(post: Post): string {
 }
 
 export default LoginPage;
+
+function ssoTokenFromLocation(): string {
+  const searchToken = new URLSearchParams(window.location.search).get('sso');
+  if (searchToken) {
+    return searchToken;
+  }
+  const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+  return new URLSearchParams(hashQuery).get('sso') ?? '';
+}
+
+function removeSsoTokenFromLocation(): void {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('sso');
+  if (url.hash.includes('?')) {
+    const [path, query] = url.hash.split('?');
+    const params = new URLSearchParams(query);
+    params.delete('sso');
+    const nextQuery = params.toString();
+    url.hash = nextQuery ? `${path}?${nextQuery}` : path;
+  }
+  window.history.replaceState(null, '', url.toString());
+}

@@ -70,6 +70,9 @@ function handleApiRequest(): void
         case 'loginUser':
             loginUser($pdo);
             break;
+        case 'ssoLogin':
+            ssoLogin($pdo);
+            break;
         case 'logoutUser':
             logoutUser($pdo);
             break;
@@ -674,6 +677,121 @@ function loginUser(PDO $pdo): void
     }
 
     jsonResponse(['success' => true, 'token' => createUserSession($pdo, (int)$user['id']), 'user' => buildUser($user)]);
+}
+
+function ssoLogin(PDO $pdo): void
+{
+    $settings = loadSettings($pdo);
+    $config = $settings['config'] ?? [];
+    $enabled = toBoolFlag($config['ssoEnabled'] ?? false);
+    $secret = trim((string)($config['ssoSharedSecret'] ?? ''));
+    if ($secret === '') {
+        $secret = trim((string)(getenv('THREADFORGE_SSO_SECRET') ?: ''));
+    }
+    if (!$enabled || $secret === '') {
+        jsonResponse(['success' => false, 'message' => 'SSOログインは有効化されていません。'], 403);
+    }
+
+    $token = trim((string)($_POST['token'] ?? $_GET['token'] ?? $_POST['sso'] ?? $_GET['sso'] ?? ''));
+    $payload = verifySsoToken($token, $secret);
+    $loginId = normalizeLoginId((string)($payload['login_id'] ?? $payload['sub'] ?? ''));
+    $displayName = normalizeString((string)($payload['display_name'] ?? $payload['name'] ?? $loginId));
+    $postPassword = normalizeString((string)($payload['post_password'] ?? ''));
+    $homeUrl = normalizeUrl(isset($payload['home_url']) ? (string)$payload['home_url'] : null);
+
+    if ($loginId === '') {
+        jsonResponse(['success' => false, 'message' => 'SSOトークンのIDが正しくありません。'], 400);
+    }
+    if ($displayName === '') {
+        $displayName = $loginId;
+    }
+    if (utf8Length($displayName) > 30) {
+        $displayName = function_exists('mb_substr') ? mb_substr($displayName, 0, 30, 'UTF-8') : substr($displayName, 0, 30);
+    }
+    if (utf8Length($postPassword) > 8) {
+        $postPassword = function_exists('mb_substr') ? mb_substr($postPassword, 0, 8, 'UTF-8') : substr($postPassword, 0, 8);
+    }
+
+    $now = currentTimestamp();
+    $user = findUserByLoginId($pdo, $loginId);
+    if (!$user) {
+        $stmt = $pdo->prepare(
+            'INSERT INTO users (login_id, password_hash, display_name, post_password, home_url, icon_path, created_at, updated_at)
+             VALUES (:login_id, :password_hash, :display_name, :post_password, :home_url, null, :created_at, :updated_at)'
+        );
+        $stmt->execute([
+            ':login_id' => $loginId,
+            ':password_hash' => password_hash(bin2hex(random_bytes(24)), PASSWORD_DEFAULT),
+            ':display_name' => $displayName,
+            ':post_password' => $postPassword,
+            ':home_url' => $homeUrl,
+            ':created_at' => $now,
+            ':updated_at' => $now,
+        ]);
+        $user = findUserById($pdo, (int)$pdo->lastInsertId());
+    } else {
+        $nextPostPassword = $postPassword !== '' ? $postPassword : (string)($user['post_password'] ?? '');
+        $nextHomeUrl = array_key_exists('home_url', $payload) ? $homeUrl : ($user['home_url'] ?? null);
+        $update = $pdo->prepare(
+            'UPDATE users
+             SET display_name = :display_name,
+                 post_password = :post_password,
+                 home_url = :home_url,
+                 updated_at = :updated_at
+             WHERE id = :id'
+        );
+        $update->execute([
+            ':display_name' => $displayName,
+            ':post_password' => $nextPostPassword,
+            ':home_url' => $nextHomeUrl,
+            ':updated_at' => $now,
+            ':id' => (int)$user['id'],
+        ]);
+        $user = findUserById($pdo, (int)$user['id']);
+    }
+
+    jsonResponse(['success' => true, 'token' => createUserSession($pdo, (int)$user['id']), 'user' => buildUser($user)]);
+}
+
+function verifySsoToken(string $token, string $secret): array
+{
+    if ($token === '' || !str_contains($token, '.')) {
+        jsonResponse(['success' => false, 'message' => 'SSOトークンが正しくありません。'], 400);
+    }
+    [$payloadPart, $signaturePart] = explode('.', $token, 2);
+    $expected = base64UrlEncode(hash_hmac('sha256', $payloadPart, $secret, true));
+    if (!hash_equals($expected, $signaturePart)) {
+        jsonResponse(['success' => false, 'message' => 'SSOトークンの署名が正しくありません。'], 403);
+    }
+    $decoded = base64UrlDecode($payloadPart);
+    $payload = json_decode($decoded, true);
+    if (!is_array($payload)) {
+        jsonResponse(['success' => false, 'message' => 'SSOトークンの内容が正しくありません。'], 400);
+    }
+    $now = time();
+    $expiresAt = isset($payload['exp']) ? (int)$payload['exp'] : 0;
+    if ($expiresAt <= $now) {
+        jsonResponse(['success' => false, 'message' => 'SSOトークンの有効期限が切れています。'], 403);
+    }
+    if (isset($payload['iat']) && (int)$payload['iat'] > $now + 300) {
+        jsonResponse(['success' => false, 'message' => 'SSOトークンの発行日時が正しくありません。'], 403);
+    }
+    return $payload;
+}
+
+function base64UrlEncode(string $value): string
+{
+    return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+}
+
+function base64UrlDecode(string $value): string
+{
+    $padded = str_pad(strtr($value, '-_', '+/'), strlen($value) % 4 === 0 ? strlen($value) : strlen($value) + 4 - strlen($value) % 4, '=', STR_PAD_RIGHT);
+    $decoded = base64_decode($padded, true);
+    if ($decoded === false) {
+        jsonResponse(['success' => false, 'message' => 'SSOトークンのBase64が正しくありません。'], 400);
+    }
+    return $decoded;
 }
 
 function logoutUser(PDO $pdo): void
@@ -3690,6 +3808,8 @@ function defaultSettings(): array
             'eejanaikaEejanaikaText' => 'ええじゃないか',
             'eejanaikaEejanaikaColor' => '#fff200',
             'socialHashtags' => '#art',
+            'ssoEnabled' => false,
+            'ssoSharedSecret' => '',
             'listOrder' => 'number',
             'maxUploadBytes' => 5100000,
             'maxImageWidth' => 1280,

@@ -735,7 +735,7 @@ const AdminPage = () => {
                   <p>親投稿を投稿日が古い順に並べ、No.1から採番しなおします。返信、編集履歴、作品登録、画像参照もあわせて付け替えます。</p>
                   <p className="warning-text">※ 投稿URLや画面上のNo表記が変わります。実行前にフルバックアップを作成してください。</p>
                   <div className="button-row align-right">
-                    <button type="button" className="secondary" onClick={renumberPostsByCreatedAt}>採番しなおす</button>
+                    <button type="button" onClick={renumberPostsByCreatedAt}>実行</button>
                   </div>
                 </div>
               </section>
@@ -1204,7 +1204,7 @@ function isBooleanSetting(key: string): boolean {
 }
 
 function isSecretSetting(key: string): boolean {
-  return key.endsWith('Secret') || key.endsWith('Token') || key === 'blueskyAppPassword';
+  return key.endsWith('Secret') || key.endsWith('Token') || key === 'blueskyAppPassword' || key === 'ssoSharedSecret';
 }
 
 function isDisabledPlatformSetting(values: Record<string, SettingValue>, key: string): boolean {
@@ -1319,6 +1319,7 @@ function designPreviewStyle(skin: Record<string, SettingValue>): CSSProperties {
 
 const configSettingGroups: SettingGroup[] = [
   { title: '基本', keys: ['bbsTitle', 'homePageUrl', 'manualBody', 'gdgdEnabled', 'gdgdLabel', 'listOrder', 'maxUploadBytes', 'maxImageWidth', 'maxImageHeight', 'allowedImageTypes'] },
+  { title: '親サイトSSO', keys: ['ssoEnabled', 'ssoSharedSecret'] },
   { title: 'SNS共通', keys: ['socialHashtags'] },
   { title: 'X', keys: ['tweetEnabled', 'tweetBaseUrl', 'tweetConsumerKey', 'tweetConsumerSecret', 'tweetAccessToken', 'tweetAccessTokenSecret'] },
   { title: 'Bluesky', keys: ['blueskyEnabled', 'blueskyServiceUrl', 'blueskyPublicApiUrl', 'blueskyHandle', 'blueskyAppPassword'] },
@@ -1629,6 +1630,8 @@ const settingLabels: Record<string, string> = {
   eejanaikaEejanaikaText: 'リアクション3',
   eejanaikaEejanaikaColor: 'リアクション3の文字色',
   socialHashtags: 'SNS投稿ハッシュタグ',
+  ssoEnabled: 'SSOログイン',
+  ssoSharedSecret: 'SSO共有秘密鍵',
   gdgdEnabled: '特殊投稿機能',
   gdgdLabel: '特殊投稿の表示名',
   listOrder: '一覧の並び順',
