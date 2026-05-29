@@ -468,6 +468,10 @@ function UserAnalytics({ posts, metric, onMetricChange }: { posts: Post[]; metri
     const y = cumulativeMax === 0 ? 38 : 38 - (row.value / cumulativeMax) * 34;
     return { ...row, x, y, label: row.post.created_at.slice(0, 10) };
   });
+  const labelStride = Math.max(1, Math.ceil(chartPoints.length / 18));
+  const visibleChartLabels = chartPoints.filter((_, index) => (
+    index === 0 || index === chartPoints.length - 1 || index % labelStride === 0
+  ));
   const points = chartPoints.map((point) => `${point.x},${point.y}`).join(' ');
 
   return (
@@ -480,10 +484,16 @@ function UserAnalytics({ posts, metric, onMetricChange }: { posts: Post[]; metri
         </select>
       </label>
 
-      <section className="account-analytics-block analytics-total-panel">
-        <h3>総計</h3>
-        <strong>{total.toLocaleString('ja-JP')}</strong>
-      </section>
+      <div className="analytics-total-grid">
+        <section className="account-analytics-block analytics-total-panel">
+          <h3>登録作品数</h3>
+          <strong>{posts.length.toLocaleString('ja-JP')}</strong>
+        </section>
+        <section className="account-analytics-block analytics-total-panel">
+          <h3>総計</h3>
+          <strong>{total.toLocaleString('ja-JP')}</strong>
+        </section>
+      </div>
 
       <section className="account-analytics-block">
         <h3>各投稿内訳</h3>
@@ -509,13 +519,21 @@ function UserAnalytics({ posts, metric, onMetricChange }: { posts: Post[]; metri
               <line x1="0" y1="38" x2="100" y2="38" />
               {points && <polyline points={points} />}
               {chartPoints.map((point) => (
-                <circle key={`${point.post.id}-${point.value}`} cx={point.x} cy={point.y} r="1.1" />
+                <circle key={`${point.post.id}-${point.value}`} cx={point.x} cy={point.y} r="1.1">
+                  <title>{`${point.label}: ${point.value.toLocaleString('ja-JP')}`}</title>
+                </circle>
               ))}
             </svg>
           </div>
           <div className="analytics-point-labels" aria-hidden="true">
-            {chartPoints.map((point, index) => (
-              <span key={`${point.post.id}-${index}`} style={{ left: `${point.x}%` }}>{point.label}</span>
+            {visibleChartLabels.map((point, index) => (
+              <span
+                key={`${point.post.id}-${index}`}
+                className={index === 0 ? 'edge-start' : index === visibleChartLabels.length - 1 ? 'edge-end' : undefined}
+                style={{ left: `${point.x}%` }}
+              >
+                {point.label}
+              </span>
             ))}
           </div>
         </div>

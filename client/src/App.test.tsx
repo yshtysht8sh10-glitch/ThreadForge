@@ -47,6 +47,6 @@ describe('App navigation', () => {
       </BrowserRouter>,
     );
 
-    expect(screen.getByText(/ThreadForge v0\.1\.0/)).toBeInTheDocument();
+    expect(screen.getByText(/ThreadForge v0\.9\.0/)).toBeInTheDocument();
   });
 });

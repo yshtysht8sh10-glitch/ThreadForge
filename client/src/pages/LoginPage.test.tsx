@@ -182,6 +182,7 @@ describe('LoginPage', () => {
     expect(api.listUserDashboard).toHaveBeenCalledWith('user-token');
     expect(screen.getByDisplayValue('Alice')).toHaveAttribute('maxlength', '30');
     expect(screen.getByRole('heading', { name: 'アナリティクス' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '登録作品数' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '総計' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '各投稿内訳' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '推移（累積）' })).toBeInTheDocument();

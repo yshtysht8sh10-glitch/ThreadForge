@@ -1161,6 +1161,7 @@ function SettingsForm({
               const labelClassName = [
                 key === 'manualBody' ? 'admin-setting-wide' : '',
                 key === 'socialHashtags' ? 'admin-setting-wide' : '',
+                key === 'ssoSharedSecret' ? 'admin-setting-wide' : '',
                 key.endsWith('Color') ? 'admin-color-row' : '',
                 disabled ? 'admin-setting-disabled' : '',
               ].filter(Boolean).join(' ') || undefined;

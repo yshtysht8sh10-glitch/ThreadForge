@@ -2302,6 +2302,14 @@ button.post-reset-button:hover {
   gap: 0.75rem;
 }
 
+.analytics-total-grid {
+  align-items: flex-start;
+}
+
+.analytics-total-grid .analytics-total-panel {
+  min-width: 9rem;
+}
+
 .account-analytics-block {
   display: grid;
   gap: 0.55rem;
@@ -2424,6 +2432,14 @@ button.post-reset-button:hover {
   text-orientation: mixed;
   white-space: nowrap;
   writing-mode: vertical-rl;
+}
+
+.analytics-point-labels span.edge-start {
+  transform: translateX(0);
+}
+
+.analytics-point-labels span.edge-end {
+  transform: translateX(-100%);
 }
 
 .account-icon-preview {
