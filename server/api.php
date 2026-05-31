@@ -1580,34 +1580,81 @@ function publishMastodonPost(array $config, string $text, ?string $imagePath = n
 {
     $instance = rtrim(trim((string)($config['mastodonInstanceUrl'] ?? '')), '/');
     $token = trim((string)($config['mastodonAccessToken'] ?? ''));
+
     if ($instance === '' || $token === '') {
-        return ['success' => false, 'message' => 'MastodonのインスタンスURLまたはAccess Tokenが未設定です。'];
+        socialDebugLog('mastodon config missing');
+        return ['success' => false, 'message' => 'Mastodon instance URL or Access Token is not configured.'];
     }
 
     $payload = [
         'status' => $text,
         'visibility' => (string)($config['mastodonVisibility'] ?? 'public'),
     ];
+
+    socialDebugLog('mastodon post start', [
+        'instance' => $instance,
+        'visibility' => $payload['visibility'],
+        'status_length' => mb_strlen($text, 'UTF-8'),
+        'has_image' => $imagePath !== null,
+        'image_path' => $imagePath,
+        'image_exists' => $imagePath !== null ? is_file($imagePath) : null,
+    ]);
+
     $mediaId = mastodonUploadMedia($instance, $token, $imagePath);
+
+    socialDebugLog('mastodon media upload result', [
+        'result' => $mediaId,
+    ]);
+
     if (!$mediaId['success']) {
         return $mediaId;
     }
+
     if (isset($mediaId['id'])) {
         $payload['media_ids'] = [$mediaId['id']];
     }
 
-    $response = httpJsonRequest('POST', $instance . '/api/v1/statuses', [
-        'Authorization: Bearer ' . $token,
-    ], $payload, false);
+    socialDebugLog('mastodon status request', [
+        'url' => $instance . '/api/v1/statuses',
+        'payload' => [
+            'status_length' => mb_strlen($payload['status'], 'UTF-8'),
+            'visibility' => $payload['visibility'],
+            'media_ids' => $payload['media_ids'] ?? [],
+        ],
+    ]);
+
+    $response = httpJsonRequest(
+        'POST',
+        $instance . '/api/v1/statuses',
+        [
+            'Authorization: Bearer ' . $token,
+        ],
+        $payload,
+        false
+    );
+
+    socialDebugLog('mastodon status post response', [
+        'response' => $response,
+    ]);
+
     if (!$response['success']) {
         return $response;
     }
 
     $id = (string)($response['body']['id'] ?? '');
     $url = (string)($response['body']['url'] ?? '');
+
     if ($id === '') {
-        return ['success' => false, 'message' => 'Mastodonの投稿応答にIDがありません。'];
+        socialDebugLog('mastodon response has no id', [
+            'response' => $response,
+        ]);
+        return ['success' => false, 'message' => 'Mastodon status response has no ID.'];
     }
+
+    socialDebugLog('mastodon post success', [
+        'id' => $id,
+        'url' => $url,
+    ]);
 
     return ['success' => true, 'id' => $id, 'url' => $url];
 }
@@ -1763,7 +1810,7 @@ function mastodonUploadMedia(string $instance, string $token, ?string $imagePath
         return ['success' => false, 'message' => 'Mastodon image type is not supported.'];
     }
 
-    $response = httpMultipartRequest('POST', $instance . '/api/v2/media', [
+    $response = httpMultipartRequest('POST', $instance . '/api/v1/media', [
         'Authorization: Bearer ' . $token,
     ], [
         'file' => new CURLFile($imagePath, $mimeType, basename($imagePath)),
@@ -1873,6 +1920,24 @@ function httpMultipartRequest(string $method, string $url, array $headers, array
         return ['success' => false, 'message' => 'PHP cURL extension is not enabled.'];
     }
 
+    $payloadInfo = [];
+    foreach ($payload as $key => $value) {
+        if ($value instanceof CURLFile) {
+            $payloadInfo[$key] = [
+                'file' => $value->getPostFilename(),
+                'mime' => $value->getMimeType(),
+            ];
+        } else {
+            $payloadInfo[$key] = gettype($value);
+        }
+    }
+
+    socialDebugLog('multipart request start', [
+        'method' => $method,
+        'url' => $url,
+        'payload' => $payloadInfo,
+    ]);
+
     $curl = curl_init($url);
     curl_setopt_array($curl, [
         CURLOPT_CUSTOMREQUEST => strtoupper($method),
@@ -1885,7 +1950,15 @@ function httpMultipartRequest(string $method, string $url, array $headers, array
     $raw = curl_exec($curl);
     $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     $error = curl_error($curl);
+    $errno = curl_errno($curl);
     curl_close($curl);
+
+    socialDebugLog('multipart response', [
+        'status' => $status,
+        'errno' => $errno,
+        'error' => $error,
+        'raw' => is_string($raw) ? mb_substr($raw, 0, 1000, 'UTF-8') : null,
+    ]);
 
     if ($raw === false) {
         return ['success' => false, 'message' => 'API request failed: ' . $error];
@@ -4030,4 +4103,15 @@ function listThreadOrder(array $settings): string
 {
     $value = (string)($settings['config']['listOrder'] ?? 'number');
     return $value === 'createdAt' ? 'createdAt' : 'number';
+}
+
+function socialDebugLog(string $message, array $data = []): void
+{
+    $logFile = __DIR__ . '/mastodon_debug.log';
+    $line = '[' . date('Y-m-d H:i:s') . '] ' . $message;
+    if ($data !== []) {
+        $line .= ' ' . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+    $line .= PHP_EOL;
+    file_put_contents($logFile, $line, FILE_APPEND);
 }

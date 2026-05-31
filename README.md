@@ -4,6 +4,8 @@
 
 ThreadForge is a lightweight, customizable thread board engine for posts, media, and community archives. It is designed as a fresh self-hosted board for posts, media, and community archives.
 
+The first production operation release is `0.9.0`.
+
 ## Repository Contents
 
 - `client/`: React, TypeScript, Vite frontend
@@ -79,6 +81,8 @@ The backend creates runtime files locally:
 
 These files are intentionally ignored by Git. Use the admin full backup ZIP import/export feature to move live data between environments.
 
+Before updating a live site, export a full backup ZIP from the admin maintenance screen and separately keep a copy of `database.sqlite` and `storage/data/`.
+
 ## Rental Server Deployment
 
 Extract the release ZIP and upload the contents of the `threadforge-<version>` directory to your rental server's public web directory.
@@ -99,6 +103,17 @@ The frontend calls `./api.php` on the same site. Runtime DB files and uploaded i
 `storage/data/` stores uploaded images. Set write permission for it on the rental server when necessary.
 
 Fresh installations start with the standard dark board design, gdgd/special posting OFF, list page size 20, SNS hashtag `#art`, all SNS integrations OFF, and SNS credential fields empty. Leaving the list page size empty shows all posts on one page.
+
+## Operator Tools
+
+Release packaging and maintenance scripts live in `tools/`. They are not included in the public release ZIP.
+
+- `build_release.ps1`: builds `release/threadforge-<version>.zip`
+- `import_threadforge_archives.*`: imports BBSNote/local archive folders
+- `repair_imported_images.*`: reattaches correct images from legacy logs without re-importing posts
+- `update_imported_recent.*`: updates the newest imported archive entries and can insert unmatched latest posts with `--add` / `add=1`
+
+See `tools/README.md` and `tools/README.ja.md` for details.
 
 ## Social Posting Operation
 

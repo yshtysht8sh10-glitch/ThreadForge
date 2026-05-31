@@ -380,6 +380,44 @@ function importLocalArchiveTreeDirectory(PDO $pdo, string $archiveRoot = 'legacy
     return importLocalArchiveRecords($pdo, $records, $resolvedRoot);
 }
 
+function collectLocalArchiveTreeRecords(string $archiveRoot = 'legacy/import_data'): array
+{
+    $resolvedRoot = resolveLocalArchiveDirectory($archiveRoot);
+    $records = [];
+    foreach (collectLocalArchiveLogEntries($resolvedRoot) as $entry) {
+        $records[] = parseLocalArchiveLogFile((string)$entry['file'], (string)$entry['directory'], (string)$entry['folder']);
+    }
+    usort($records, function (array $left, array $right): int {
+        return [$left['created_at'], $left['legacy_no'], $left['file']]
+            <=> [$right['created_at'], $right['legacy_no'], $right['file']];
+    });
+    return $records;
+}
+
+function collectLocalArchiveLogEntries(string $resolvedRoot): array
+{
+    $entries = [];
+    $directories = [];
+    $rootFiles = glob($resolvedRoot . DIRECTORY_SEPARATOR . 'LOG_*.cgi') ?: [];
+    if ($rootFiles !== []) {
+        $directories[] = $resolvedRoot;
+    }
+
+    foreach (glob($resolvedRoot . DIRECTORY_SEPARATOR . '*', GLOB_ONLYDIR) ?: [] as $directory) {
+        $directories[] = $directory;
+    }
+
+    sort($directories, SORT_NATURAL);
+    foreach ($directories as $directory) {
+        $files = glob($directory . DIRECTORY_SEPARATOR . 'LOG_*.cgi') ?: [];
+        sort($files, SORT_NATURAL);
+        foreach ($files as $file) {
+            $entries[] = ['file' => $file, 'directory' => $directory, 'folder' => basename($directory)];
+        }
+    }
+    return $entries;
+}
+
 function importLocalArchiveRecords(PDO $pdo, array $records, string $sourceDir): array
 {
     $summary = [
@@ -452,7 +490,7 @@ function resolveLocalArchiveDirectory(string $archiveDir): string
         $archiveDir = 'data';
     }
 
-    $projectRoot = dirname(__DIR__);
+    $projectRoot = basename(__DIR__) === 'server' ? dirname(__DIR__) : __DIR__;
     $candidate = preg_match('/^[A-Za-z]:[\/\\\\]|^[\/\\\\]/', $archiveDir)
         ? $archiveDir
         : $projectRoot . DIRECTORY_SEPARATOR . $archiveDir;
@@ -565,6 +603,211 @@ function importLocalArchiveRecord(PDO $pdo, array $record, array &$summary): voi
         ]);
         $summary['imported_replies']++;
     }
+}
+
+function updateImportedArchiveRecent(PDO $pdo, string $archiveRoot = 'legacy/import_data', int $limit = 10, bool $apply = false, bool $add = false): array
+{
+    $records = array_values(array_filter(
+        collectLocalArchiveTreeRecords($archiveRoot),
+        static fn(array $record): bool => !empty($record['importable'])
+    ));
+    usort($records, function (array $left, array $right): int {
+        return [$right['created_at'], $right['legacy_no'], $right['file']]
+            <=> [$left['created_at'], $left['legacy_no'], $left['file']];
+    });
+    $records = array_slice($records, 0, max(1, $limit));
+
+    usort($records, function (array $left, array $right): int {
+        return [$left['created_at'], $left['legacy_no'], $left['file']]
+            <=> [$right['created_at'], $right['legacy_no'], $right['file']];
+    });
+
+    $summary = [
+        'dry_run' => !$apply,
+        'limit' => $limit,
+        'checked_threads' => 0,
+        'matched_threads' => 0,
+        'updated_threads' => 0,
+        'added_replies' => 0,
+        'skipped_existing_replies' => 0,
+        'missing_images' => [],
+        'new_candidates' => [],
+        'inserted_threads' => [],
+        'changes' => [],
+    ];
+
+    foreach ($records as $record) {
+        $summary['checked_threads']++;
+        $main = $record['main'] ?? [];
+        $name = (string)$record['name'];
+        $title = (string)$record['title'];
+        $createdAt = (string)$record['created_at'];
+        $message = archiveMessageToText((string)($main[6] ?? ''));
+        $threadId = findImportedArchiveThreadByHeader($pdo, $name, $title, $createdAt);
+        $url = normalizeUrl($main[5] ?? null);
+        $tweetOff = toBoolFlag($main[18] ?? false);
+        $tweetUrl = normalizeUrl($main[19] ?? null);
+        $gdgd = !empty($record['gdgd']);
+
+        if ($threadId === null) {
+            $summary['new_candidates'][] = [
+                'file' => (string)$record['file'],
+                'title' => $title,
+                'created_at' => $createdAt,
+                'name' => $name,
+            ];
+            if ($apply && $add) {
+                $importSummary = [
+                    'imported_threads' => 0,
+                    'imported_replies' => 0,
+                    'skipped_threads' => 0,
+                    'skipped_invalid_threads' => 0,
+                    'skipped_replies' => 0,
+                    'normal_threads' => 0,
+                    'gdgd_threads' => 0,
+                    'missing_images' => [],
+                    'folders' => [],
+                ];
+                importLocalArchiveRecord($pdo, $record, $importSummary);
+                $newThreadId = findImportedArchiveThreadByHeader($pdo, $name, $title, $createdAt);
+                if ($newThreadId !== null) {
+                    $summary['inserted_threads'][] = [
+                        'post_id' => $newThreadId,
+                        'title' => $title,
+                        'created_at' => $createdAt,
+                        'source_file' => (string)$record['file'],
+                    ];
+                }
+            }
+            continue;
+        }
+
+        $summary['matched_threads']++;
+        $before = $pdo->prepare('SELECT title, name, url, message, gdgd, tweet_off, tweet_url, image_path FROM posts WHERE id = :id');
+        $before->execute([':id' => $threadId]);
+        $current = $before->fetch(PDO::FETCH_ASSOC) ?: [];
+        $threadChanges = [];
+
+        foreach ([
+            'title' => $title,
+            'name' => $name,
+            'url' => $url,
+            'message' => $message,
+            'gdgd' => $gdgd ? 1 : 0,
+            'tweet_off' => $tweetOff ? 1 : 0,
+            'tweet_url' => $tweetUrl,
+        ] as $key => $value) {
+            if (($current[$key] ?? null) !== $value) {
+                $threadChanges[$key] = ['before' => $current[$key] ?? null, 'after' => $value];
+            }
+        }
+
+        $imageResult = localArchiveImageDestination((string)$record['archive_dir'], (string)($record['filename'] ?? ''), $threadId);
+        if ($imageResult['missing'] !== null) {
+            $summary['missing_images'][] = $imageResult['missing'];
+        } elseif ($imageResult['destination'] !== null && $imageResult['source'] !== null) {
+            if (($current['image_path'] ?? null) !== $imageResult['destination']) {
+                $threadChanges['image_path'] = ['before' => $current['image_path'] ?? null, 'after' => $imageResult['destination']];
+            } else {
+                $threadChanges['image_content'] = [
+                    'before' => basename((string)($current['image_path'] ?? '')),
+                    'after' => basename((string)$imageResult['source']),
+                ];
+            }
+            if ($apply) {
+                if (!is_dir(STORAGE_DIR)) {
+                    mkdir(STORAGE_DIR, 0775, true);
+                }
+                copy((string)$imageResult['source'], (string)$imageResult['destination']);
+                $pdo->prepare('UPDATE posts SET image_path = :image_path WHERE id = :id')->execute([
+                    ':image_path' => $imageResult['destination'],
+                    ':id' => $threadId,
+                ]);
+            }
+        }
+
+        if ($apply) {
+            $stmt = $pdo->prepare(
+                'UPDATE posts SET
+                    title = :title,
+                    name = :name,
+                    url = :url,
+                    message = :message,
+                    gdgd = :gdgd,
+                    tweet_off = :tweet_off,
+                    tweet_url = :tweet_url
+                 WHERE id = :id'
+            );
+            $stmt->execute([
+                ':title' => $title,
+                ':name' => $name,
+                ':url' => $url,
+                ':message' => $message,
+                ':gdgd' => $gdgd ? 1 : 0,
+                ':tweet_off' => $tweetOff ? 1 : 0,
+                ':tweet_url' => $tweetUrl,
+                ':id' => $threadId,
+            ]);
+        }
+
+        $addedReplies = updateImportedArchiveReplies($pdo, $threadId, $title, $record, $summary, $apply);
+        $summary['updated_threads']++;
+        $summary['changes'][] = [
+            'post_id' => $threadId,
+            'title' => $title,
+            'created_at' => $createdAt,
+            'fields' => array_keys($threadChanges),
+            'added_replies' => $addedReplies,
+            'source_file' => (string)$record['file'],
+        ];
+    }
+
+    return $summary;
+}
+
+function updateImportedArchiveReplies(PDO $pdo, int $threadId, string $title, array $record, array &$summary, bool $apply): int
+{
+    $added = 0;
+    foreach (($record['replies'] ?? []) as $reply) {
+        $replyName = archiveText($reply[1] ?? '');
+        $replyCreatedAt = archiveDateToTimestamp($reply[2] ?? '');
+        $replyMessage = archiveMessageToText($reply[3] ?? '');
+        $replyUrl = normalizeUrl($reply[7] ?? null);
+        if ($replyName === '') {
+            $replyName = 'imported';
+        }
+        if ($replyMessage === '') {
+            continue;
+        }
+        if (importedArchiveReplyExists($pdo, $threadId, $replyName, $replyMessage, $replyCreatedAt)) {
+            $summary['skipped_existing_replies']++;
+            continue;
+        }
+        if ($apply) {
+            $stmt = $pdo->prepare(
+                'INSERT INTO posts (
+                    thread_id, parent_id, name, url, title, message, image_path, password_hash, created_at, deleted_at, gdgd,
+                    tweet_off, tweet_text, tweet_url, tweet_like_count, tweet_retweet_count, tweet_comment_count, tweet_impression_count
+                ) VALUES (
+                    :thread_id, :parent_id, :name, :url, :title, :message, null, :password_hash, :created_at, null, 0,
+                    1, null, null, 0, 0, 0, 0
+                )'
+            );
+            $stmt->execute([
+                ':thread_id' => $threadId,
+                ':parent_id' => $threadId,
+                ':name' => $replyName,
+                ':url' => $replyUrl,
+                ':title' => 'Re: ' . $title,
+                ':message' => $replyMessage,
+                ':password_hash' => importedArchivePasswordHash(),
+                ':created_at' => $replyCreatedAt,
+            ]);
+        }
+        $added++;
+        $summary['added_replies']++;
+    }
+    return $added;
 }
 
 function extractLocalArchiveReplies(array $lines, array $main): array
@@ -710,6 +953,22 @@ function findImportedArchiveThread(PDO $pdo, string $name, string $title, string
     return $id === false ? null : (int)$id;
 }
 
+function findImportedArchiveThreadByHeader(PDO $pdo, string $name, string $title, string $createdAt): ?int
+{
+    $stmt = $pdo->prepare(
+        'SELECT id FROM posts
+         WHERE parent_id = 0 AND name = :name AND title = :title AND created_at = :created_at
+         LIMIT 2'
+    );
+    $stmt->execute([
+        ':name' => $name,
+        ':title' => $title,
+        ':created_at' => $createdAt,
+    ]);
+    $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    return count($ids) === 1 ? (int)$ids[0] : null;
+}
+
 function importedArchiveReplyExists(PDO $pdo, int $threadId, string $name, string $message, string $createdAt): bool
 {
     $stmt = $pdo->prepare(
@@ -759,6 +1018,114 @@ function copyLocalArchiveImage(PDO $pdo, string $archiveDir, string $filename, i
         ':image_path' => $destination,
         ':id' => $postId,
     ]);
+}
+
+function localArchiveImageDestination(string $archiveDir, string $filename, int $postId): array
+{
+    if ($filename === '') {
+        return ['source' => null, 'destination' => null, 'missing' => null];
+    }
+
+    $source = $archiveDir . DIRECTORY_SEPARATOR . basename($filename);
+    if (!is_file($source)) {
+        return ['source' => null, 'destination' => null, 'missing' => $filename];
+    }
+
+    $extension = strtolower((string)pathinfo($source, PATHINFO_EXTENSION));
+    if (!in_array($extension, ['png', 'jpg', 'jpeg', 'gif'], true)) {
+        return ['source' => null, 'destination' => null, 'missing' => $filename];
+    }
+    if ($extension === 'jpeg') {
+        $extension = 'jpg';
+    }
+
+    return [
+        'source' => $source,
+        'destination' => STORAGE_DIR . DIRECTORY_SEPARATOR . $postId . '.' . $extension,
+        'missing' => null,
+    ];
+}
+
+function repairLocalArchiveImages(PDO $pdo, string $archiveRoot = 'legacy/import_data', bool $apply = false, int $offset = 0, ?int $limit = null): array
+{
+    $records = array_values(array_filter(
+        collectLocalArchiveTreeRecords($archiveRoot),
+        static fn(array $record): bool => !empty($record['importable'])
+    ));
+    $total = count($records);
+    $offset = max(0, $offset);
+    $selected = array_slice($records, $offset, $limit ?? null);
+
+    $summary = [
+        'dry_run' => !$apply,
+        'total_files' => $total,
+        'offset' => $offset,
+        'limit' => $limit,
+        'next_offset' => min($total, $offset + count($selected)),
+        'done' => $offset + count($selected) >= $total,
+        'checked_threads' => 0,
+        'matched_threads' => 0,
+        'fallback_matched_threads' => 0,
+        'repaired_images' => 0,
+        'skipped_no_image' => 0,
+        'missing_source_images' => [],
+        'unmatched_threads' => [],
+        'changed_images' => [],
+    ];
+
+    foreach ($selected as $record) {
+        $summary['checked_threads']++;
+        $main = $record['main'] ?? [];
+        $name = (string)$record['name'];
+        $title = (string)$record['title'];
+        $createdAt = (string)$record['created_at'];
+        $message = archiveMessageToText((string)($main[6] ?? ''));
+
+        $postId = findImportedArchiveThreadByHeader($pdo, $name, $title, $createdAt);
+        if ($postId === null) {
+            $postId = findImportedArchiveThread($pdo, $name, $title, $message, $createdAt);
+            if ($postId !== null) {
+                $summary['fallback_matched_threads']++;
+            }
+        }
+        if ($postId === null) {
+            $summary['unmatched_threads'][] = (string)$record['file'];
+            continue;
+        }
+
+        $summary['matched_threads']++;
+        $image = localArchiveImageDestination((string)$record['archive_dir'], (string)($record['filename'] ?? ''), $postId);
+        if ($image['missing'] !== null) {
+            $summary['missing_source_images'][] = $image['missing'];
+            continue;
+        }
+        if ($image['source'] === null || $image['destination'] === null) {
+            $summary['skipped_no_image']++;
+            continue;
+        }
+
+        $summary['changed_images'][] = [
+            'post_id' => $postId,
+            'title' => $title,
+            'created_at' => $createdAt,
+            'source' => $image['source'],
+            'destination' => $image['destination'],
+        ];
+
+        if ($apply) {
+            if (!is_dir(STORAGE_DIR)) {
+                mkdir(STORAGE_DIR, 0775, true);
+            }
+            copy((string)$image['source'], (string)$image['destination']);
+            $pdo->prepare('UPDATE posts SET image_path = :image_path WHERE id = :id')->execute([
+                ':image_path' => $image['destination'],
+                ':id' => $postId,
+            ]);
+        }
+        $summary['repaired_images']++;
+    }
+
+    return $summary;
 }
 
 function normalizeString(string $value): string

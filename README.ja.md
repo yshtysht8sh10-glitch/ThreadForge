@@ -2,18 +2,24 @@
 
 [English README](README.md)
 
-ThreadForge は、投稿、画像、返信、モデレーション、コミュニティアーカイブを扱う軽量なスレッド掲示板エンジンです。投稿、画像、返信、モデレーション、コミュニティアーカイブを扱う新しいセルフホスト型掲示板として設計しています。
+ThreadForge は、作品投稿、画像、返信、簡単リアクション、ユーザー設定、管理、バックアップ、SNS 連携をまとめて扱う、レンタルサーバー向けのスレッド式掲示板エンジンです。
 
-## リポジトリ構成
+## 運用版
 
-- `client/`: React、TypeScript、Vite のフロントエンド
-- `server/`: PHP API、SQLite ストレージ、PHPUnit テスト
-- `docs/`: アーキテクチャ、API、DB、移行、テスト関連ドキュメント
-- `docs/SPEC.md`: 現在の製品仕様
-- `docs/ja/SPEC.md`: 日本語版の製品仕様
-- `tools/`: 配布と運用のスクリプト
+現在の運用開始版は `0.9.0` です。
 
-ローカルアーカイブファイルや過去ログ画像は、標準では Git 管理外です。必要な場合だけローカルで取り込めますが、アプリの通常動作には不要です。
+- 配布 Zip を展開して、レンタルサーバーの公開ディレクトリへアップロードして使います。
+- 初回アクセス時に、書き込み権限があれば SQLite DB が自動作成されます。
+- 投稿データ、設定、ユーザー情報、画像は DB と `storage/data/` に保存されます。
+- 更新前には、管理画面の「フルバックアップ インポート/エクスポート」からバックアップ Zip を取得してください。
+
+## ディレクトリ構成
+
+- `client/`: React / TypeScript / Vite フロントエンド
+- `server/`: PHP API、SQLite、サーバー側処理
+- `docs/`: 仕様、API、DB、運用、テスト関連ドキュメント
+- `tools/`: 配布 Zip 作成、BBSNote/ローカルアーカイブ取り込み、修復などの運用ツール
+- `release/`: 配布 Zip の出力先
 
 ## ローカル起動
 
@@ -26,7 +32,6 @@ npm install
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-
 バックエンド:
 
 ```powershell
@@ -35,12 +40,69 @@ composer install
 php -S 127.0.0.1:8000 -t .
 ```
 
-初回はブラウザの管理画面で管理者パスワードを設定してください。復旧や自動セットアップ用には `THREADFORGE_ADMIN_PASSWORD` も使えます。
-
-起動後、次の URL を開きます。
+ブラウザで次を開きます。
 
 ```text
 http://127.0.0.1:5173
+```
+
+## レンタルサーバーへの設置
+
+配布 Zip を展開し、`threadforge-<version>` ディレクトリの中身を公開ディレクトリへアップロードします。
+
+```text
+threadforge-<version>/
+  index.html
+  assets/
+  api.php
+  db.php
+  cron.php
+  storage/data/
+  docs/
+```
+
+`storage/data/` は画像保存先です。必要に応じてレンタルサーバー側で書き込み権限を付けてください。
+
+## 更新手順
+
+1. 管理画面のフルバックアップを取得します。
+2. 現在の `database.sqlite` と `storage/data/` を別途退避します。
+3. 新しい配布 Zip のファイルをアップロードします。
+4. `database.sqlite` と `storage/data/` は消さずに残します。
+5. 画面を開き、投稿一覧、画像、管理画面、バックアップを確認します。
+
+上書き時に DB と画像を消すと、投稿、返信、設定、ユーザー情報が失われます。
+
+## 主な機能
+
+- 投稿、返信、画像アップロード、画像差し替え
+- 簡単リアクション、コメント、閲覧数、順位
+- ユーザーログイン、アイコン、ユーザー設定、自分の作品登録
+- 投稿一覧の年/月フィルタ、検索、サムネイル表示、スクロール読み込み
+- 投稿編集、削除、管理者による一括削除、復元、消去、採番しなおし
+- 掲示板設定、掲示板デザイン、色設定見本、インポート/エクスポート
+- フルバックアップ Zip のインポート/エクスポート
+- BBSNote/ローカルアーカイブの非破壊インポート、画像修復、直近差分更新
+- X、Bluesky、Mastodon、Misskey 連携設定
+- 親サイト SSO
+
+## 運用ツール
+
+配布 Zip と運用スクリプトは `tools/` にあります。詳しくは次を参照してください。
+
+- `tools/README.md`
+- `tools/README.ja.md`
+
+配布 Zip は次で作成します。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
+```
+
+出力先:
+
+```text
+release/threadforge-<version>.zip
 ```
 
 ## テスト
@@ -60,76 +122,11 @@ cd server
 vendor/bin/phpunit
 ```
 
-## バージョン管理
-
-バージョンは次のファイルで管理します。
-
-- `VERSION`
-- `CHANGELOG.md`
-- `client/package.json`
-- `client/src/version.ts`
-
-セマンティックバージョニングを使い、バージョン番号と変更履歴は同じコミットで更新します。
-
-## ランタイムデータ
-
-バックエンドは次のローカルファイルを作成します。
-
-- `server/database.sqlite`
-- `server/storage/data/*`
-
-これらは Git 管理外です。環境間でデータを移す場合は、保守画面のフルバックアップZIP インポート/エクスポート機能を使います。フルバックアップZIPにはSQLite DB本体と画像が含まれます。
-
-## レンタルサーバーへの設置
-
-配布Zipを展開し、`threadforge-<version>` ディレクトリの中身をレンタルサーバーの公開ディレクトリへアップロードします。
-
-```text
-threadforge-<version>/
-  index.html
-  assets/
-  api.php
-  db.php
-  cron.php
-  storage/data/
-  docs/
-```
-
-フロントエンドは同じサイト上の `./api.php` を呼び出します。実行時DBとアップロード画像はZipに含めません。初回アクセス時、PHPから配置先へ書き込める状態であればSQLite DBが自動作成されます。
-
-`storage/data/` は画像アップロード先です。必要に応じて、レンタルサーバー側で書き込み権限を設定してください。
-
-DBがない初回起動時は、掲示板デザインは標準の黒基調、特殊投稿OFF、一覧の並び順はNo順、SNS投稿ハッシュタグ `#art`、SNS連携すべてOFFかつ認証情報空欄で開始します。一覧画面では年/月を複数選択して表示対象を絞り込めます。
-
-## 親サイトSSO
-
-親サイト側のログイン状態をThreadForgeへ引き継ぐ場合は、管理画面の掲示板設定で「SSOログイン」をONにし、「SSO共有秘密鍵」を設定します。親サイトは `login_id` または `sub`、`exp` を含むJSONをBase64URL化し、その文字列を共有秘密鍵でHMAC-SHA256署名した `base64url(payload).base64url(signature)` 形式のトークンを作成して、`index.html#/login?sso=<token>` へ遷移させます。
-
-任意項目として `display_name`、`post_password`、`home_url`、`iat` を渡せます。ThreadForgeは署名と有効期限を検証し、既存ユーザーならログイン、未登録IDならユーザーを自動作成します。URLに載るトークンなので、有効期限は短くしてください。
-
-## SNS転記の運用
-
-X、Bluesky、Mastodon、Misskey 連携はデフォルト OFF です。この状態では外部 API を呼ばず、投稿は掲示板内だけに保存されます。各 SNS は管理画面で個別の設定グループを持ち、OFF の間は認証情報の入力欄も無効化されます。
-
-SNS転記が有効な場合、新規の親投稿作成時に ON の SNS へ転記します。画像が添付されている場合、X、Bluesky、Mastodon、Misskey へ画像も送信します。SNS本文には「最新はこちら」と掲示板一覧の当該投稿アンカー URL を含め、文字数上限を超える場合は送信を止めず `..` で省略します。
-
-投稿編集は掲示板内だけに反映し、SNS側の既存投稿は編集・再投稿しません。SNSリアクション数は管理画面から手動更新できるほか、`server/cron.php` または管理画面に表示される APIキー付きURLから自動更新できます。自動更新の対象は、SNS投稿IDを持つ未削除の親投稿すべてです。
-
 ## ドキュメント
 
-- `docs/SPEC.md`: 英語版の現在仕様
-- `docs/ja/SPEC.md`: 日本語版の現在仕様
-- `CHANGELOG.md`: 英語版 変更履歴
-- `CHANGELOG.ja.md`: 日本語版 変更履歴
-- `docs/README.md`: 英語版ドキュメント索引
-- `docs/ja/README.md`: 日本語版ドキュメント索引
-- `docs/API.md`: 英語版 API リファレンス
-- `docs/ja/API.md`: 日本語版 API リファレンス
-- `docs/DB.md`: 英語版 DB/ランタイムデータメモ
-- `docs/ja/DB.md`: 日本語版 DB/ランタイムデータメモ
-- `docs/MIGRATION.md`: 英語版 移行メモ
-- `docs/ja/MIGRATION.md`: 日本語版 移行メモ
-- `docs/ARCHITECTURE.md`: 英語版 アーキテクチャメモ
-- `docs/ja/ARCHITECTURE.md`: 日本語版 アーキテクチャメモ
-- `docs/TESTING.md`: 英語版 テスト方針
-- `docs/ja/TESTING.md`: 日本語版 テスト方針
+- `docs/ja/SPEC.md`: 日本語仕様
+- `docs/ja/API.md`: API
+- `docs/ja/DB.md`: DB とランタイムデータ
+- `docs/ja/MIGRATION.md`: 移行メモ
+- `docs/ja/TESTING.md`: テスト方針
+- `CHANGELOG.ja.md`: 変更履歴

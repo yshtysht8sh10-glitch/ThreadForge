@@ -1,75 +1,107 @@
-# ThreadForge ツール
+# ThreadForge 運用ツール
 
 [English tools guide](README.md)
 
-このディレクトリには、配布物の作成やサイト運営者向けの運用スクリプトをまとめています。
+配布、インポート、修復など、サイト運用者向けのスクリプトをまとめています。
 
-## 配布用Zip
+## 配布 Zip
 
-配布用アーカイブを作成します。
+配布用 Zip を作成します。
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
 ```
 
-作成されたZipは `release/threadforge-<version>.zip` に出力されます。
-
-配布用Zipは、レンタルサーバーへそのまま配置しやすい形で作成します。展開した `threadforge-<version>` ディレクトリの中身を公開ディレクトリへアップロードしてください。
+出力先:
 
 ```text
-threadforge-<version>/
-  index.html
-  assets/
-  api.php
-  db.php
-  cron.php
-  storage/data/
-  docs/
+release/threadforge-<version>.zip
 ```
 
-フロントエンドは同じサイト上の `./api.php` を呼び出す前提でビルドされます。配布用Zipには、ビルド済みフロントエンド、PHPバックエンド、ドキュメントを含めます。運用スクリプト自体は配布用Zipに含めません。次の実行時データは意図的に含めません。
+Zip を展開し、`threadforge-<version>` ディレクトリの中身をレンタルサーバーの公開ディレクトリへアップロードします。
 
-- `server/database.sqlite`
-- `server/storage/data/` 配下のアップロード画像
-- ローカルPHPバイナリ
-- 依存パッケージディレクトリ
-- ログ
-- 旧環境からのインポート元データ
+配布 Zip には、ビルド済みフロントエンド、PHP バックエンド、ドキュメントを含めます。DB、画像、ログ、ローカル運用ツール、旧ログデータは含めません。
 
-初回アクセス時、PHPから配置先ディレクトリへ書き込める状態であればSQLite DBが自動作成されます。画像アップロードのため、`storage/data/` にも書き込み権限を付けてください。
+## ローカルアーカイブログのインポート
 
-## ローカルアーカイブインポート
-
-ローカルアーカイブログを現在のSQLite DBへ取り込みます。
+単一フォルダの `LOG_*.cgi` と画像を現在の SQLite DB に取り込みます。
 
 ```powershell
 tools\import_local_archive.bat legacy\data
 ```
 
-指定したディレクトリから `LOG_*.cgi` と参照画像を読み込みます。このインポートは非破壊です。既存の投稿、画像、設定を削除せず、再実行時は名前、本文、日時が一致する取り込み済み投稿と返信をスキップします。
+インポートは非破壊です。既存の投稿、画像、設定は削除しません。
 
 ## 複数アーカイブフォルダの一括インポート
 
-`legacy/import_data` のような複数フォルダ構成の過去ログを、親投稿の投稿日時順に取り込みます。
+`legacy/import_data` のような複数フォルダ構成を、親投稿の投稿日時順に取り込みます。
 
 ```powershell
 tools\import_threadforge_archives.bat legacy\import_data
 ```
 
-レンタルサーバーのcronから実行する場合は、標準出力が見えないことがあるため、ログ出力つきの専用PHPを指定します。
-
-```text
-/home/users/0/main.jp-mugendoteita/web/DotoEita/01_threadforge/tools/import_threadforge_archives_cron.php
-```
-
-実行結果は ThreadForge 直下の `import_threadforge_archives.log` に出力されます。
-実行後はcronを無効化し、必要に応じて `tools/` を公開ディレクトリ外へ移動してください。
-
 フォルダごとの判定:
 
-- `bbs1-999`: ログ内の画像名、内部フィールド、タイトルから通常投稿/特殊投稿を自動判定します。
+- `bbs1-999`: ログ内の情報から通常投稿/特殊投稿を判定します。
 - `bbs10_DoteitaArchive_Doteita`: 通常投稿として取り込みます。
 - `bbs20_DoteitaArchive_gdgd`: 特殊投稿として取り込みます。
-- `bbsOO_DoteitaArchive`: 投稿タイトルに `gdgd` または `ｇｄｇｄ` が含まれる場合だけ特殊投稿として取り込みます。
+- `bbsOO_DoteitaArchive`: タイトルに `gdgd` または旧 gdgd 表記がある場合だけ特殊投稿として取り込みます。
 
-実行前には、管理画面の保守からフルバックアップZIPをエクスポートしてください。
+レンタルサーバーの cron から実行する場合は次を指定します。
+
+```text
+/path/to/threadforge/tools/import_threadforge_archives_cron.php
+```
+
+結果は ThreadForge 直下の `import_threadforge_archives.log` に出力されます。
+
+## インポート画像修復
+
+採番しなおしなどで本文やコメントと画像がずれた場合、旧ログを照合して画像だけを貼り直します。投稿本文やコメントは再インポートしません。
+
+```powershell
+tools\repair_imported_images.bat legacy\import_data
+tools\repair_imported_images.bat legacy\import_data --apply --offset=0 --limit=200
+```
+
+1 行目はドライランです。実際に画像をコピーし、DB の `image_path` を更新する場合は `--apply` を付けます。
+
+レンタルサーバーでは次をブラウザまたは cron から実行できます。
+
+```text
+https://example.com/threadforge/tools/repair_imported_images_cron.php
+https://example.com/threadforge/tools/repair_imported_images_cron.php?reset=1&limit=100
+https://example.com/threadforge/tools/repair_imported_images_cron.php?archive=legacy/import_data
+```
+
+結果と変更内容は ThreadForge 直下の `repair_imported_images.log` に残ります。
+
+## 最新インポート投稿の差分更新
+
+BBSNote 側で最新の投稿だけ更新された場合、ThreadForge の投稿番号を変えずに、最新 N 件だけ本文、タイトル、画像、未登録返信を反映できます。
+
+```powershell
+tools\update_imported_recent.bat legacy\import_data --limit=10
+tools\update_imported_recent.bat legacy\import_data --limit=10 --apply
+tools\update_imported_recent.bat legacy\import_data --limit=10 --apply --add
+```
+
+1 行目はドライランです。`--apply` で一致した既存投稿を更新します。`--add` を付けると、未一致の最新アーカイブ投稿を新規投稿として追加します。
+
+レンタルサーバーでは次を使います。
+
+```text
+https://example.com/threadforge/tools/update_imported_recent_cron.php?limit=10
+https://example.com/threadforge/tools/update_imported_recent_cron.php?limit=10&apply=1
+https://example.com/threadforge/tools/update_imported_recent_cron.php?limit=10&apply=1&add=1
+```
+
+`apply=1` がない場合は確認のみです。`add=1` がない場合、未一致の投稿は `new_candidates` としてログに出るだけで追加されません。
+
+結果は ThreadForge 直下の `update_imported_recent.log` に残ります。
+
+## 注意
+
+- 実行前に管理画面のフルバックアップを取得してください。
+- レンタルサーバーで長時間処理になる場合は、`limit` と `offset` を使って分割実行してください。
+- 画像修復と差分更新は旧ログとの照合に依存します。旧ログを上書きする場合は、必要な画像と `LOG_*.cgi` が揃っていることを確認してください。

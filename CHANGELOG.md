@@ -4,18 +4,22 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
-## 0.9.0 - 2026-05-29
+## 0.9.0 - 2026-05-31
 
-Near-complete pre-public-operation release.
+First production operation release.
 
 - Added rental-server release ZIP packaging, first-run DB creation, and full backup ZIP support
-- Added non-destructive BBSNote/local archive import and created-at based post renumbering
+- Added non-destructive BBSNote/local archive import, multi-folder import, image repair, and recent imported post update tools
+- Added `--add` / `add=1` support for inserting unmatched latest archive entries during recent imported post updates
+- Refreshed existing imported post image files during recent update runs so changed BBSNote images can be reflected without re-importing everything
+- Kept post renumbering from renaming image files unexpectedly, with image repair available when old archive images need to be reattached
 - Added login, user settings, icons, user work lists, claimed works, and parent-site SSO
 - Added year/month filters and incremental loading to list, search, bulk delete, restore/purge, and edit flows
 - Reworked admin bulk delete, restore/purge, user administration, maintenance, board settings, and board design screens
 - Improved board design with live preview, color sample coverage, and quick reaction settings
 - Added analytics, ranking, access counter, view counts, quick reaction counts, and SNS reaction aggregation
 - Added X/Bluesky/Mastodon/Misskey settings, SNS reaction refresh, and Cron/API refresh URLs
+- Switched Mastodon media upload to `/api/v1/media` and added debug logging for production investigation
 - Improved revision display, image replacement previews, search result thumbnails, and links back to list positions
 - Strengthened validation, authentication, admin password setup/change, and user password reset flows
 - Updated Japanese documentation, API references, operation notes, and release instructions
