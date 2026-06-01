@@ -5,10 +5,24 @@ declare(strict_types=1);
 require_once __DIR__ . '/api.php';
 
 if (PHP_SAPI !== 'cli') {
-    http_response_code(403);
-    header('Content-Type: text/plain; charset=utf-8');
-    echo "This cron script must be run from the server cron command.\n";
-    exit(1);
+    $pdo = getConnection();
+    requireCronApiKey($pdo);
+    socialDebugLog('cron web social reaction refresh start');
+    $result = runSocialReactionRefresh($pdo);
+    socialDebugLog('cron web social reaction refresh complete', [
+        'updated' => $result['updated'],
+        'checked_posts' => $result['checked_posts'],
+        'errors' => count($result['errors']),
+    ]);
+
+    jsonResponse([
+        'success' => true,
+        'message' => 'SNS reactions refreshed.',
+        'updated' => $result['updated'],
+        'checked_posts' => $result['checked_posts'],
+        'recent_days' => $result['recent_days'],
+        'errors' => $result['errors'],
+    ]);
 }
 
 socialDebugLog('cron social reaction refresh start');

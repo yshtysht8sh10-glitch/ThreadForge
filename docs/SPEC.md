@@ -148,7 +148,8 @@ Public UI reads a safe subset of settings through `?action=publicSettings`:
 - Current default limits are X 280, Bluesky 300, Mastodon 500, and Misskey 3000.
 - X uses weighted character counting; the other platform previews use normal character length.
 - Cached reaction counts are displayed as simple same-color metrics, with platform destination markers aligned by row.
-- Cached reaction refresh can be run manually from admin maintenance, by local `server/cron.php`, or by the API endpoint `?action=cronRefreshSocialReactions&api_key=...`.
+- Cached reaction refresh can be run manually from admin maintenance, by local `server/cron.php`, by `server/cron.php?api_key=...`, or by the API endpoint `?action=cronRefreshSocialReactions&api_key=...`.
+- `server/cron.php` rejects keyless browser access. URL-style schedulers can call it with the API key, and those runs are logged as `cron web social reaction ...`.
 - Automatic reaction refresh targets all non-deleted top-level posts that have SNS post IDs.
 
 ## Comment and Fixed-Comment Forms

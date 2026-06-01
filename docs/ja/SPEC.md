@@ -154,7 +154,8 @@ ThreadForge は、作品投稿、メディア投稿、制作ログ、小規模�
 - 既定上限は X 280、Bluesky 300、Mastodon 500、Misskey 3000 です。
 - X は重み付き文字数、それ以外は通常の文字数でプレビューします。
 - キャッシュ済みリアクション数は同色のシンプルな指標として表示します。
-- リアクション更新は管理画面、ローカル `server/cron.php`、または `?action=cronRefreshSocialReactions&api_key=...` から実行できます。
+- リアクション更新は管理画面、ローカル `server/cron.php`、`server/cron.php?api_key=...`、または `?action=cronRefreshSocialReactions&api_key=...` から実行できます。
+- `server/cron.php` はブラウザからのキーなし実行を拒否します。外部URL型CronではAPIキー付きURLとして呼び出し、実行ログに `cron web social reaction ...` を残します。
 - 自動リアクション更新は、SNS投稿IDを持つ未削除親投稿すべてを対象にします。
 
 ## コメントと固定文返信フォーム

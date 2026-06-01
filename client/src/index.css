@@ -1233,6 +1233,28 @@ img.thumbnail {
   margin-left: 0;
 }
 
+@media (max-width: 640px) {
+  .board-social-row {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    row-gap: 0.15rem;
+  }
+
+  .board-social-label {
+    flex: 0 0 5.3rem;
+    width: 5.3rem;
+  }
+
+  .board-social-row:first-child .board-social-label {
+    flex-basis: 4.2rem;
+  }
+
+  .board-social-metric {
+    margin-left: 0;
+    margin-right: 0.45rem;
+  }
+}
+
 .board-tweet-link,
 .board-tweet-placeholder {
   color: #d8d1bd;

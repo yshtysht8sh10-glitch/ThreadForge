@@ -3125,9 +3125,13 @@ function listSocialLogs(PDO $pdo): void
     $lines = array_reverse($lines);
     $slice = array_slice($lines, $offset, $limit);
     $items = array_map(static function (string $line): array {
+        $isError = preg_match('/\[(ERROR|WARNING)\]/', $line) === 1;
+        if (!$isError && preg_match('/\[(INFO)\]/', $line) !== 1) {
+            $isError = preg_match('/failed|HTTP\s+[45]\d\d|success":false|error":\s*"[^"]+"/i', $line) === 1;
+        }
         return [
             'text' => $line,
-            'is_error' => preg_match('/\\[(ERROR|WARNING)\\]|error|failed|HTTP\\s+[45]\\d\\d|success":false/i', $line) === 1,
+            'is_error' => $isError,
         ];
     }, $slice);
     $nextOffset = $offset + count($slice);

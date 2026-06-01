@@ -59,7 +59,7 @@ The local archive importer reads `LOG_*.cgi` files and referenced images from th
 - SNS posting runs for new top-level posts only; replies and later edits do not post to SNS
 - SNS posts include the attached image for X, Bluesky, Mastodon, and Misskey
 - SNS posts include a "latest is here" board-list link such as `/#post-000001`
-- Cached social reaction counts can be refreshed from the admin maintenance screen, local cron, or an API-key-protected external scheduler URL
+- Cached social reaction counts can be refreshed from the admin maintenance screen, local cron, or an API-key-protected external scheduler URL. `cron.php` rejects keyless browser access and also supports `cron.php?api_key=...` for URL-style schedulers.
 - gdgd visual mode
 - Embedded manual page
 - Admin-configurable HOME link, manual text, SNS platform switches, gdgd switch, gdgd label, and live-preview design colors

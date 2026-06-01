@@ -191,6 +191,8 @@ APIキーは管理画面に表示される `cronApiKey` を使います。GitHub
 対象は `refreshSocialReactions` と同じく、SNS投稿IDを持つ未削除親投稿すべてです。
 
 ローカルサーバーのCronを使う場合は、管理画面に表示される `server/cron.php` のファイルパスをCron設定に登録します。
+`cron.php` はブラウザからそのまま開くと拒否します。外部URL型Cronで `cron.php` を直接呼ぶ場合は、`cron.php?api_key={key}` のようにAPIキーを付けます。
+この場合もSNSリアクション更新だけを実行し、ログには `cron web social reaction ...` と記録します。
 
 ## GET `?action=listDeletedPosts&admin_password={password}`
 

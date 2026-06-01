@@ -122,6 +122,7 @@ X, Bluesky, Mastodon, and Misskey integrations are disabled by default. In this 
 When SNS posting is enabled, top-level posts can be copied to enabled SNS platforms at creation time. X, Bluesky, Mastodon, and Misskey receive the post image when one is attached. SNS text includes a "latest is here" link back to the top list anchor for the board post, and long text is trimmed with `..` instead of blocking submission.
 
 Post edits update the board only and do not edit or repost to SNS. Cached reaction counts can be refreshed manually from the admin maintenance screen or automatically through either the local `server/cron.php` script or the protected API URL shown in the admin screen. Automatic reaction refresh targets all non-deleted top-level posts that have SNS post IDs.
+`cron.php` rejects keyless browser access. If your scheduler calls URLs instead of local files, use `cron.php?api_key=...` or the protected API URL shown in the admin screen.
 
 ## Documentation Map
 

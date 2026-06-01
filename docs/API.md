@@ -157,6 +157,7 @@ Use the `cronApiKey` shown in the admin screen. This endpoint is intended for Gi
 Targets are the same as `refreshSocialReactions`: all non-deleted top-level posts that have SNS post IDs.
 
 For local server Cron, register the `server/cron.php` file path shown in the admin screen.
+Opening `cron.php` without a key is rejected. External URL-style schedulers may call `cron.php?api_key={key}`; successful runs are logged as `cron web social reaction ...`.
 
 ## GET `?action=listDeletedPosts&admin_password={password}`
 
