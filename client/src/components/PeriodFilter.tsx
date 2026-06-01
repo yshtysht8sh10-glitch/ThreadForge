@@ -12,10 +12,12 @@ type PeriodFilterProps = {
   selectedMonths: string[];
   total: number;
   onChange: (years: string[], months: string[]) => void;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
   className?: string;
 };
 
-const PeriodFilter = ({ periods, selectedYears, selectedMonths, total, onChange, className }: PeriodFilterProps) => {
+const PeriodFilter = ({ periods, selectedYears, selectedMonths, total, onChange, expanded = true, onExpandedChange, className }: PeriodFilterProps) => {
   const years = groupPeriods(periods);
   const hasPeriodFilter = selectedYears.length > 0 || selectedMonths.length > 0;
 
@@ -54,9 +56,22 @@ const PeriodFilter = ({ periods, selectedYears, selectedMonths, total, onChange,
       <div className="period-filter-header">
         <div>
           <h2>表示期間</h2>
-          <p>年を選ぶとその年全体、月を選ぶとその月だけを表示します。</p>
+          <p>総投稿数: {total.toLocaleString('ja-JP')}</p>
         </div>
-        <strong>総投稿数: {total.toLocaleString('ja-JP')}</strong>
+        {onExpandedChange && (
+          <label className="period-display-toggle">
+            <span>隠す</span>
+            <input
+              type="checkbox"
+              checked={expanded}
+              onChange={(event) => onExpandedChange(event.currentTarget.checked)}
+            />
+            <span className="period-toggle-track" aria-hidden="true">
+              <span className="period-toggle-thumb" />
+            </span>
+            <span>表示</span>
+          </label>
+        )}
       </div>
       <div className="period-filter-grid">
         {years.map((year) => {

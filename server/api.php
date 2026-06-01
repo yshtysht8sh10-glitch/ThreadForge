@@ -151,6 +151,9 @@ function handleApiRequest(): void
         case 'cronRefreshSocialReactions':
             cronRefreshSocialReactions($pdo);
             break;
+        case 'listSocialLogs':
+            listSocialLogs($pdo);
+            break;
         case 'exportBackup':
             exportBackup($pdo);
             break;
@@ -180,10 +183,12 @@ function handleApiRequest(): void
 function listThreads(PDO $pdo): void
 {
     [$limit, $offset] = paginationParams($pdo);
+    $requestedPage = max(1, (int)(filter_input(INPUT_GET, 'page', FILTER_VALIDATE_INT) ?: 1));
     $settings = loadSettings($pdo);
     $listOrder = listThreadOrder($settings);
     [$periodWhere, $periodParams] = threadPeriodFilterFromRequest();
     $targetId = filter_input(INPUT_GET, 'target_id', FILTER_VALIDATE_INT);
+    $targetDirection = (string)($_GET['target_direction'] ?? 'older');
     if ($targetId !== false && $targetId !== null) {
         $targetStmt = $pdo->prepare('SELECT id, created_at FROM posts WHERE id = :id AND parent_id = 0 AND deleted_at IS NULL LIMIT 1');
         $targetStmt->execute([':id' => $targetId]);
@@ -211,7 +216,19 @@ function listThreads(PDO $pdo): void
                 );
                 $beforeStmt->execute(array_merge($periodParams, [':id' => (int)$target['id']]));
             }
-            $offset = $limit === null ? 0 : intdiv((int)$beforeStmt->fetchColumn(), $limit) * $limit;
+            $targetOffset = $limit === null ? 0 : intdiv((int)$beforeStmt->fetchColumn(), $limit) * $limit;
+            if ($targetDirection === 'newer') {
+                if ($limit !== null) {
+                    $newerEnd = $targetOffset - (($requestedPage - 1) * $limit);
+                    if ($newerEnd <= 0) {
+                        jsonResponse([]);
+                    }
+                    $offset = max(0, $newerEnd - $limit);
+                    $limit = $newerEnd - $offset;
+                }
+            } else {
+                $offset = $limit === null ? 0 : $targetOffset + (($requestedPage - 1) * $limit);
+            }
         }
     }
     $orderBy = ($periodWhere !== '' || $listOrder === 'createdAt') ? 'p.created_at DESC, p.id DESC' : 'p.id DESC';
@@ -1146,7 +1163,9 @@ function createPost(PDO $pdo): void
 
     $responseMessage = '投稿が完了しました。';
     if (!$tweetOff && $tweetText !== null && $tweetEnabled) {
+        socialDebugLog('x post start', ['post_id' => $insertedId, 'text_length' => mb_strlen($tweetText, 'UTF-8'), 'has_image' => $imagePath !== null]);
         $tweetResult = publishTweetFromSettings($settings, $tweetText, $imagePath);
+        socialDebugLogResult('x post result', $tweetResult);
         if ($tweetResult['success']) {
             $tweetUrl = $tweetResult['url'];
             $updateTweetUrl = $pdo->prepare('UPDATE posts SET tweet_url = :tweet_url WHERE id = :id');
@@ -1162,6 +1181,7 @@ function createPost(PDO $pdo): void
 
     if (!$tweetOff) {
         foreach (publishFederatedPostsFromSettings($settings, $name, $title, $message, $normalizedSourceUrl, $insertedId, $imagePath) as $platform => $result) {
+            socialDebugLogResult($platform . ' post result', $result);
             if ($result['success']) {
                 saveSocialPublishResult($pdo, $insertedId, $platform, $result);
                 $responseMessage .= ' ' . socialPlatformLabel($platform) . 'へ投稿しました。';
@@ -1171,34 +1191,56 @@ function createPost(PDO $pdo): void
         }
     }
 
-    jsonResponse(['success' => true, 'message' => $responseMessage, 'tweet_url' => $tweetUrl]);
+    jsonResponse([
+        'success' => true,
+        'message' => $responseMessage,
+        'tweet_url' => $tweetUrl,
+        'id' => $insertedId,
+        'thread_id' => $threadId === 0 ? $insertedId : $threadId,
+    ]);
 }
 
 function fillTweetPostId(string $tweetText, int $postId): string
 {
-    return preg_replace('/000000/', str_pad((string)$postId, 6, '0', STR_PAD_LEFT), $tweetText) ?? $tweetText;
+    return preg_replace('/000000/', (string)$postId, $tweetText) ?? $tweetText;
 }
 
 function defaultBoardPostUrl(): ?string
 {
-    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-    if (!is_string($origin) || trim($origin) === '') {
-        $referer = $_SERVER['HTTP_REFERER'] ?? '';
-        if (is_string($referer) && trim($referer) !== '') {
-            $parts = parse_url($referer);
-            if (is_array($parts) && isset($parts['scheme'], $parts['host'])) {
-                $port = isset($parts['port']) ? ':' . $parts['port'] : '';
-                $origin = $parts['scheme'] . '://' . $parts['host'] . $port;
-            }
-        }
-    }
-
-    $origin = trim((string)$origin);
-    if ($origin === '' || !preg_match('/^https?:\/\//i', $origin)) {
+    $baseUrl = publicBoardBaseUrl();
+    if ($baseUrl === null) {
         return null;
     }
 
-    return rtrim($origin, '/') . '/#post-000000';
+    return rtrim($baseUrl, '/') . '/?target=000000#post-000000';
+}
+
+function publicBoardBaseUrl(): ?string
+{
+    $referer = $_SERVER['HTTP_REFERER'] ?? '';
+    if (is_string($referer) && trim($referer) !== '') {
+        $parts = parse_url($referer);
+        if (is_array($parts) && isset($parts['scheme'], $parts['host'])) {
+            $port = isset($parts['port']) ? ':' . $parts['port'] : '';
+            $path = isset($parts['path']) ? (string)$parts['path'] : '/';
+            $dir = rtrim(str_replace('\\', '/', dirname($path)), '/');
+            if ($dir === '' || $dir === '.') {
+                $dir = '';
+            }
+            return $parts['scheme'] . '://' . $parts['host'] . $port . $dir;
+        }
+    }
+
+    $host = $_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '';
+    if (!is_string($host) || trim($host) === '') {
+        return null;
+    }
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443);
+    $scriptDir = rtrim(str_replace('\\', '/', dirname((string)($_SERVER['SCRIPT_NAME'] ?? ''))), '/');
+    if ($scriptDir === '' || $scriptDir === '.') {
+        $scriptDir = '';
+    }
+    return ($https ? 'https://' : 'http://') . $host . $scriptDir;
 }
 
 function publishTweetFromSettings(array $settings, string $text, ?string $imagePath, ?string $previousTweetId = null): array
@@ -1417,6 +1459,7 @@ function publishFederatedPostsFromSettings(array $settings, string $name, string
 
     if (toBoolFlag($config['blueskyEnabled'] ?? false)) {
         $text = fillTweetPostId(buildSocialPostText('bluesky', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#art')), $postId);
+        socialDebugLog('bluesky post start', ['post_id' => $postId, 'text_length' => mb_strlen($text, 'UTF-8'), 'has_image' => $imagePath !== null]);
         $results['bluesky'] = publishBlueskyPost($config, $text, $imagePath);
     }
     if (toBoolFlag($config['mastodonEnabled'] ?? false)) {
@@ -1425,6 +1468,7 @@ function publishFederatedPostsFromSettings(array $settings, string $name, string
     }
     if (toBoolFlag($config['misskeyEnabled'] ?? false)) {
         $text = fillTweetPostId(buildSocialPostText('misskey', $name, $title, $message, $sourceUrl, (string)($config['socialHashtags'] ?? '#art')), $postId);
+        socialDebugLog('misskey post start', ['post_id' => $postId, 'text_length' => mb_strlen($text, 'UTF-8'), 'has_image' => $imagePath !== null]);
         $results['misskey'] = publishMisskeyPost($config, $text, $imagePath);
     }
 
@@ -3065,6 +3109,36 @@ function cronRefreshSocialReactions(PDO $pdo): void
     ]);
 }
 
+function listSocialLogs(PDO $pdo): void
+{
+    requireAdmin();
+    $offset = max(0, filter_input(INPUT_GET, 'offset', FILTER_VALIDATE_INT) ?: 0);
+    $limit = filter_input(INPUT_GET, 'limit', FILTER_VALIDATE_INT) ?: 100;
+    $limit = max(1, min(200, $limit));
+    $logFile = __DIR__ . '/social_debug.log';
+    $fallbackFile = __DIR__ . '/mastodon_debug.log';
+    $file = is_file($logFile) ? $logFile : $fallbackFile;
+    if (!is_file($file)) {
+        jsonResponse(['success' => true, 'lines' => [], 'next_offset' => null, 'has_more' => false]);
+    }
+    $lines = file($file, FILE_IGNORE_NEW_LINES) ?: [];
+    $lines = array_reverse($lines);
+    $slice = array_slice($lines, $offset, $limit);
+    $items = array_map(static function (string $line): array {
+        return [
+            'text' => $line,
+            'is_error' => preg_match('/\\[(ERROR|WARNING)\\]|error|failed|HTTP\\s+[45]\\d\\d|success":false/i', $line) === 1,
+        ];
+    }, $slice);
+    $nextOffset = $offset + count($slice);
+    jsonResponse([
+        'success' => true,
+        'lines' => $items,
+        'next_offset' => $nextOffset < count($lines) ? $nextOffset : null,
+        'has_more' => $nextOffset < count($lines),
+    ]);
+}
+
 function requireCronApiKey(PDO $pdo): void
 {
     $settings = loadSettings($pdo);
@@ -3079,6 +3153,7 @@ function requireCronApiKey(PDO $pdo): void
 function runSocialReactionRefresh(PDO $pdo): array
 {
     $settings = loadSettings($pdo);
+    socialDebugLog('social reaction refresh start');
     $stmt = $pdo->prepare(
         "SELECT * FROM posts
          WHERE deleted_at IS NULL
@@ -3098,11 +3173,14 @@ function runSocialReactionRefresh(PDO $pdo): array
             if ($result['success']) {
                 saveSocialReactionResult($pdo, (int)$row['id'], $platform, $result);
                 $updated++;
+                socialDebugLog('social reaction fetch success', ['post_id' => (int)$row['id'], 'platform' => $platform, 'result' => $result]);
             } else {
                 $errors[] = '#' . $row['id'] . ' ' . socialPlatformLabel($platform) . ': ' . $result['message'];
+                socialDebugLog('social reaction fetch failed', ['post_id' => (int)$row['id'], 'platform' => $platform, 'message' => $result['message'] ?? ''], 'error');
             }
         }
     }
+    socialDebugLog('social reaction refresh complete', ['checked_posts' => count($rows), 'updated' => $updated, 'errors' => count($errors)]);
 
     return [
         'updated' => $updated,
@@ -4105,13 +4183,44 @@ function listThreadOrder(array $settings): string
     return $value === 'createdAt' ? 'createdAt' : 'number';
 }
 
-function socialDebugLog(string $message, array $data = []): void
+function socialDebugLog(string $message, array $data = [], string $level = 'info'): void
 {
-    $logFile = __DIR__ . '/mastodon_debug.log';
-    $line = '[' . date('Y-m-d H:i:s') . '] ' . $message;
+    socialDebugLogLine($message, $data, $level);
+}
+
+function socialDebugLogResult(string $message, array $result): void
+{
+    $level = !empty($result['success']) ? 'info' : 'error';
+    socialDebugLogLine($message, sanitizeSocialLogData($result), $level);
+}
+
+function socialDebugLogLine(string $message, array $data = [], string $level = 'info'): void
+{
+    $logFile = __DIR__ . '/social_debug.log';
+    $line = '[' . date('Y-m-d H:i:s') . '] [' . strtoupper($level) . '] ' . $message;
     if ($data !== []) {
-        $line .= ' ' . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $line .= ' ' . json_encode(sanitizeSocialLogData($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
     $line .= PHP_EOL;
     file_put_contents($logFile, $line, FILE_APPEND);
+    if (strpos($message, 'mastodon') === 0) {
+        file_put_contents(__DIR__ . '/mastodon_debug.log', $line, FILE_APPEND);
+    }
+}
+
+function sanitizeSocialLogData($value)
+{
+    if (is_array($value)) {
+        $sanitized = [];
+        foreach ($value as $key => $item) {
+            $keyString = strtolower((string)$key);
+            if (strpos($keyString, 'token') !== false || strpos($keyString, 'secret') !== false || strpos($keyString, 'password') !== false || $keyString === 'i') {
+                $sanitized[$key] = '[hidden]';
+            } else {
+                $sanitized[$key] = sanitizeSocialLogData($item);
+            }
+        }
+        return $sanitized;
+    }
+    return $value;
 }

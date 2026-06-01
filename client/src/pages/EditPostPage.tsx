@@ -119,7 +119,8 @@ const EditPostPage = () => {
     try {
       const response = await api.updatePost(formData);
       if (response.success) {
-        navigate(post ? `/thread/${post.thread_id}` : '/');
+        const target = post ? (post.parent_id === 0 ? post.id : post.thread_id) : null;
+        navigate(target ? `/?target=${target}#post-${target}` : '/');
       } else {
         setError(response.message);
         setStatus(null);

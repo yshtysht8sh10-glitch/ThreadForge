@@ -29,6 +29,11 @@ export type ThreadArchiveMeta = {
   total: number;
 };
 
+export type SocialLogLine = {
+  text: string;
+  is_error: boolean;
+};
+
 export type PublicSettings = {
   config: {
     bbsTitle: string;
@@ -565,13 +570,15 @@ export const api = {
     limit?: number | string | null,
     years?: string[] | null,
     months?: string[] | null,
+    targetDirection?: 'older' | 'newer',
   ): Promise<Post[]> => {
     const target = targetId ? `&target_id=${encodeURIComponent(String(targetId))}` : '';
     const pageParam = page ? `&page=${encodeURIComponent(String(page))}` : '';
     const limitParam = limit ? `&limit=${encodeURIComponent(String(limit))}` : '';
     const yearsParam = years && years.length > 0 ? `&years=${encodeURIComponent(years.join(','))}` : '';
     const monthsParam = months && months.length > 0 ? `&months=${encodeURIComponent(months.join(','))}` : '';
-    return fetchJson<Post[]>(`${apiBase()}?action=listThreads${target}${pageParam}${limitParam}${yearsParam}${monthsParam}`);
+    const directionParam = targetDirection ? `&target_direction=${encodeURIComponent(targetDirection)}` : '';
+    return fetchJson<Post[]>(`${apiBase()}?action=listThreads${target}${pageParam}${limitParam}${yearsParam}${monthsParam}${directionParam}`);
   },
   listAdminThreads: async (
     adminPassword: string,
@@ -703,7 +710,7 @@ export const api = {
     formData.append('auth_token', token);
     return fetchJson(`${apiBase()}`, { method: 'POST', body: formData });
   },
-  createPost: async (payload: NewPostData): Promise<{ success: boolean; message: string }> => {
+  createPost: async (payload: NewPostData): Promise<{ success: boolean; message: string; id?: number; thread_id?: number }> => {
     const formData = new FormData();
     Object.entries(payload).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
@@ -844,6 +851,9 @@ export const api = {
   },
   refreshSocialReactions: async (adminPassword: string): Promise<{ success: boolean; message: string; updated: number; errors: string[] }> => {
     return fetchJson(`${apiBase()}?action=refreshSocialReactions&admin_password=${encodeURIComponent(adminPassword)}`);
+  },
+  listSocialLogs: async (adminPassword: string, offset = 0, limit = 100): Promise<{ success: boolean; lines: SocialLogLine[]; next_offset: number | null; has_more: boolean }> => {
+    return fetchJson(`${apiBase()}?action=listSocialLogs&admin_password=${encodeURIComponent(adminPassword)}&offset=${encodeURIComponent(String(offset))}&limit=${encodeURIComponent(String(limit))}`);
   },
   importBackup: async (file: File, adminPassword: string): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();

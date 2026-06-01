@@ -55,7 +55,8 @@ const PostFormPage = () => {
     misskey: settings.config.misskeyEnabled,
   };
   const socialEnabled = Object.values(enabledSocialPlatforms).some(Boolean);
-  const boardSourceUrl = `${window.location.origin}/#post-000000`;
+  const boardPath = window.location.pathname.replace(/\/(?:index\.html)?$/, '/');
+  const boardSourceUrl = `${window.location.origin}${boardPath}?target=000000#post-000000`;
   const nameSuffixLimit = user ? userNameSuffixLimit(user.display_name) : 0;
   const displayName = user ? composeUserName(user.display_name, nameSuffix) : name;
   const socialPreviews = socialTransferOff ? [] : createSocialPostPreviews(enabledSocialPlatforms, displayName, title, message, boardSourceUrl, settings.config.socialHashtags);
@@ -92,7 +93,8 @@ const PostFormPage = () => {
       const result = await api.createPost(payload);
       if (result.success) {
         setStatus('投稿が完了しました。一覧画面に戻ります。');
-        setTimeout(() => navigate('/'), 1000);
+        const target = result.thread_id ?? result.id;
+        setTimeout(() => navigate(target ? `/?target=${target}#post-${target}` : '/'), 1000);
       } else {
         setStatus(`エラー: ${result.message}`);
       }

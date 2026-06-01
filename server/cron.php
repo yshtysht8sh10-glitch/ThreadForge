@@ -11,7 +11,13 @@ if (PHP_SAPI !== 'cli') {
     exit(1);
 }
 
-$result = runSocialReactionRefresh(getConnection(), 7);
+socialDebugLog('cron social reaction refresh start');
+$result = runSocialReactionRefresh(getConnection());
+socialDebugLog('cron social reaction refresh complete', [
+    'updated' => $result['updated'],
+    'checked_posts' => $result['checked_posts'],
+    'errors' => count($result['errors']),
+]);
 
 echo json_encode([
     'success' => true,

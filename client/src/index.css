@@ -423,35 +423,128 @@ img.thumbnail {
   padding: 0.75rem 0.85rem;
   border: 1px solid var(--panel-border);
   border-radius: 8px;
-  background: var(--panel);
+  background: #101923;
   overflow: visible;
+}
+
+.period-filter-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #101923;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.65);
+  transition: max-height 0.18s ease, padding 0.18s ease;
+}
+
+.list-top-sentinel {
+  width: 100%;
+  height: 1px;
+}
+
+.period-filter-sticky.compact {
+  max-height: 3.2rem;
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+  overflow: hidden;
+}
+
+.period-filter-sticky.compact .period-filter-header {
+  margin-bottom: 0;
+}
+
+.period-filter-sticky.compact .period-filter-grid {
+  display: none;
+}
+
+.period-filter-sticky.compact .period-year-block {
+  min-height: 2rem;
+}
+
+.period-filter-sticky.compact .period-clear-button {
+  display: none;
+}
+
+.board-thread {
+  scroll-margin-top: 5rem;
 }
 
 .period-filter-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 0.75rem;
 }
 
+.period-filter-header > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
 .period-filter-header h2 {
-  margin: 0 0 0.2rem;
+  margin: 0;
   padding: 0;
   background: transparent;
   font-size: 1rem;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .period-filter-header p {
   margin: 0;
   color: var(--panel-label);
   font-size: 0.86rem;
+  white-space: nowrap;
 }
 
 .period-filter-header strong {
   white-space: nowrap;
   color: var(--text);
+}
+
+.period-display-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--panel-label);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.period-display-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.period-toggle-track {
+  position: relative;
+  width: 3.5rem;
+  height: 1.8rem;
+  border: 1px solid var(--button-border);
+  border-radius: 999px;
+  background: #34394a;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.period-toggle-thumb {
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: #9db9ff;
+  box-shadow: 0 0 8px rgba(157, 185, 255, 0.7);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.period-display-toggle input:checked + .period-toggle-track .period-toggle-thumb {
+  transform: translateX(1.65rem);
+  background: var(--accent);
+  box-shadow: 0 0 8px rgba(109, 255, 192, 0.7);
 }
 
 .period-filter-grid {
@@ -853,11 +946,64 @@ img.thumbnail {
   border-color: var(--primary-button-border);
 }
 
+@media (max-width: 640px) {
+  .board-thread-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .board-action-group {
+    margin-left: 0;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .board-action-group-quick {
+    align-items: stretch;
+    max-width: none;
+  }
+
+  .quick-reaction-stack {
+    width: min(100%, 9rem);
+  }
+}
+
 .board-action-button:hover,
 .board-action-button:first-child:hover {
   background: var(--primary-button-hover-bg);
   color: #fff;
   text-decoration: none;
+}
+
+.back-to-top-button {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 30;
+  min-width: 3.5rem;
+  min-height: 3rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--primary-button-border);
+  background: var(--primary-button-bg);
+  color: var(--primary-button-text);
+  box-shadow: 0 6px 16px var(--primary-button-shadow);
+}
+
+.back-to-top-button:hover {
+  background: var(--primary-button-hover-bg);
+}
+
+.target-newer-status {
+  display: flex;
+  justify-content: center;
+  margin: 0.25rem auto 0.75rem;
+}
+
+.target-top-sentinel {
+  height: 1px;
+  width: 100%;
 }
 
 .inline-status {
@@ -1813,6 +1959,22 @@ button.post-reset-button:hover {
   color: #8a96a6;
 }
 
+.admin-setting-dirty > span:first-child,
+.admin-setting-dirty .admin-setting-label-title {
+  color: #ffd36a;
+}
+
+.dirty-mark {
+  display: inline-flex;
+  margin-left: 0.45rem;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid #ffd36a;
+  border-radius: 999px;
+  color: #ffd36a;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
 .admin-settings-grid input:disabled,
 .admin-settings-grid textarea:disabled,
 .admin-settings-grid select:disabled {
@@ -1888,6 +2050,34 @@ button.post-reset-button:hover {
 
 .admin-settings-intro p {
   margin: 0;
+}
+
+.social-log-viewer {
+  max-height: 18rem;
+  overflow: auto;
+  padding: 0.75rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: #05080d;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.social-log-line {
+  padding: 0.15rem 0;
+  color: var(--text);
+}
+
+.social-log-line.error {
+  color: #ff7777;
+}
+
+.social-log-empty,
+.social-log-loading,
+.social-log-more {
+  color: var(--panel-label);
 }
 
 @media (max-width: 720px) {

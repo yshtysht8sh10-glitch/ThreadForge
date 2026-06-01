@@ -1,5 +1,5 @@
 import { CSSProperties, FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { AdminUser, api, apiBase, mediaUrl } from '../api';
+import { AdminUser, api, apiBase, mediaUrl, type SocialLogLine } from '../api';
 import { Post } from '../types';
 import SelectableThreadList from '../components/SelectableThreadList';
 import PeriodFilter, { filterPostsByPeriods, periodsFromPosts } from '../components/PeriodFilter';
@@ -48,6 +48,9 @@ const AdminPage = () => {
   const [editingUserPassword, setEditingUserPassword] = useState('');
   const [editingUserPasswordConfirm, setEditingUserPasswordConfirm] = useState('');
   const [showEditingUserPassword, setShowEditingUserPassword] = useState(false);
+  const [socialLogs, setSocialLogs] = useState<SocialLogLine[]>([]);
+  const [socialLogOffset, setSocialLogOffset] = useState<number | null>(0);
+  const [socialLogLoading, setSocialLogLoading] = useState(false);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [savedSettings, setSavedSettings] = useState<Settings | null>(null);
   const [cronPath, setCronPath] = useState('');
@@ -254,6 +257,41 @@ const AdminPage = () => {
     return () => observer.disconnect();
   }, [activeTab, bulkHasMore, loadMoreBulkThreads]);
 
+  useEffect(() => {
+    if (activeTab === 'maintenance' && settings && socialLogs.length === 0 && !socialLogLoading) {
+      void loadSocialLogs(0, true);
+    }
+  }, [activeTab, settings]);
+
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (settings && savedSettings && isSettingsDirty(settings, savedSettings)) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [settings, savedSettings]);
+
+  useEffect(() => {
+    const onLinkClick = (event: MouseEvent) => {
+      if (!settings || !savedSettings || !isSettingsDirty(settings, savedSettings)) {
+        return;
+      }
+      const target = event.target instanceof Element ? event.target.closest('a[href]') : null;
+      if (!target) {
+        return;
+      }
+      if (!window.confirm('設定が保存されていません。保存せずに移動しますか？')) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    document.addEventListener('click', onLinkClick, true);
+    return () => document.removeEventListener('click', onLinkClick, true);
+  }, [settings, savedSettings]);
+
   const bulkDelete = guarded(async () => {
     if (selectedIds.length === 0) {
       setError('削除する投稿または返信を選択してください。');
@@ -357,11 +395,12 @@ const AdminPage = () => {
 
   const exportBackup = guarded(async () => {
     setStatus('エクスポート中...');
+    const fileHandle = await chooseSaveFile('threadforge-full-backup.zip', 'application/zip');
     const response = await fetch(`${apiBase()}?action=exportBackup&admin_password=${encodeURIComponent(adminPassword)}`);
     if (!response.ok) {
       throw new Error(`${response.status} ${response.statusText}`);
     }
-    await saveBlobWithPicker(await response.blob(), 'threadforge-full-backup.zip');
+    await saveBlobWithPicker(await response.blob(), 'threadforge-full-backup.zip', fileHandle);
     setStatus('フルバックアップZIPをエクスポートしました。');
   });
 
@@ -380,8 +419,26 @@ const AdminPage = () => {
     setStatus('SNSリアクションを更新中...');
     const response = await api.refreshSocialReactions(adminPassword);
     setStatus(`${response.message} 更新: ${response.updated}件 / エラー: ${response.errors.length}件`);
+    await loadSocialLogs(0, true);
     await reloadThreads();
   });
+
+  const loadSocialLogs = async (offset = socialLogOffset ?? 0, replace = false) => {
+    if (socialLogLoading || offset === null) {
+      return;
+    }
+    setSocialLogLoading(true);
+    try {
+      const response = await api.listSocialLogs(adminPassword, offset, 100);
+      setSocialLogs((current) => replace ? response.lines : [...current, ...response.lines]);
+      setSocialLogOffset(response.next_offset);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSocialLogLoading(false);
+    }
+  };
 
   const renumberPostsByCreatedAt = guarded(async () => {
     if (!window.confirm('投稿番号を投稿日順に採番しなおします。投稿URLやNo表記が変わります。実行しますか？')) {
@@ -555,6 +612,20 @@ const AdminPage = () => {
     });
   };
 
+  const dirtySettingKeys = settings && savedSettings ? changedSettingKeys(settings, savedSettings) : new Set<string>();
+  const changeTab = (tab: AdminTab) => {
+    if ((activeTab === 'settings' || activeTab === 'design') && settings && savedSettings && isSettingsDirty(settings, savedSettings)) {
+      if (!window.confirm('設定が保存されていません。保存せずに移動しますか？')) {
+        return;
+      }
+    }
+    setActiveTab(tab);
+    if (tab !== 'users') {
+      setEditingUser(null);
+      setUserDeleteEnabled(false);
+    }
+  };
+
   return (
     <div className="admin-page">
       <section className="card admin-system-card">
@@ -622,13 +693,7 @@ const AdminPage = () => {
                 key={tab.id}
                 type="button"
                 className={activeTab === tab.id ? 'active' : undefined}
-                onClick={() => {
-                  setActiveTab(tab.id);
-                  if (tab.id !== 'users') {
-                    setEditingUser(null);
-                    setUserDeleteEnabled(false);
-                  }
-                }}
+                onClick={() => changeTab(tab.id)}
               >
                 {tab.label}
               </button>
@@ -746,6 +811,34 @@ const AdminPage = () => {
                   <p>登録済みユーザーの情報編集や消去は、専用画面で行います。</p>
                   <div className="button-row align-right">
                     <button type="button" className="secondary" onClick={openUserManagement}>編集</button>
+                  </div>
+                </div>
+              </section>
+
+              <section className="admin-maintenance-section">
+                <h3>SNSログ</h3>
+                <div className="admin-maintenance-section-body">
+                  <p>SNS投稿とSNSリアクション取得の直近ログを確認できます。エラーや警告は赤色で表示します。</p>
+                  <div className="button-row align-right">
+                    <button type="button" className="secondary" onClick={() => void loadSocialLogs(0, true)}>再読み込み</button>
+                  </div>
+                  <div
+                    className="social-log-viewer"
+                    onScroll={(event) => {
+                      const target = event.currentTarget;
+                      if (target.scrollTop + target.clientHeight >= target.scrollHeight - 24) {
+                        void loadSocialLogs();
+                      }
+                    }}
+                  >
+                    {socialLogs.length === 0 && <div className="social-log-empty">ログはまだありません。</div>}
+                    {socialLogs.map((line, index) => (
+                      <div key={`${index}-${line.text}`} className={line.is_error ? 'social-log-line error' : 'social-log-line'}>
+                        {line.text}
+                      </div>
+                    ))}
+                    {socialLogLoading && <div className="social-log-empty">読み込み中...</div>}
+                    {!socialLogLoading && socialLogOffset !== null && <div className="social-log-empty">下へスクロールすると古いログを読み込みます。</div>}
                   </div>
                 </div>
               </section>
@@ -927,6 +1020,7 @@ const AdminPage = () => {
                 values={settings.config}
                 groups={configSettingGroups}
                 warningColor={settings.skin.warningColor}
+                dirtyKeys={dirtySettingKeys}
                 onChange={(key, value) => updateSetting('config', key, value)}
               />
             </section>
@@ -954,6 +1048,7 @@ const AdminPage = () => {
               <SettingsForm
                 values={{ ...settings.skin, ...settings.config }}
                 groups={designSettingGroups}
+                dirtyKeys={dirtySettingKeys}
                 onChange={(key, value) => updateSetting(key in settings.skin ? 'skin' : 'config', key, value)}
               />
               <DesignPreview settings={settings} />
@@ -1093,11 +1188,13 @@ function SettingsForm({
   groups,
   onChange,
   warningColor,
+  dirtyKeys,
 }: {
   values: Record<string, SettingValue>;
   groups: SettingGroup[];
   onChange: (key: string, value: SettingValue) => void;
   warningColor?: SettingValue;
+  dirtyKeys?: Set<string>;
 }) {
   return (
     <>
@@ -1143,8 +1240,8 @@ function SettingsForm({
               if (isReactionTextKey(key)) {
                 const colorKey = reactionColorKeyForTextKey(key);
                 return (
-                  <label key={key} className={['admin-setting-inline-row admin-setting-wide', disabled ? 'admin-setting-disabled' : ''].filter(Boolean).join(' ')}>
-                    <span>{label}</span>
+                  <label key={key} className={['admin-setting-inline-row admin-setting-wide', dirtyKeys?.has(key) || (colorKey && dirtyKeys?.has(colorKey)) ? 'admin-setting-dirty' : '', disabled ? 'admin-setting-disabled' : ''].filter(Boolean).join(' ')}>
+                    <span>{label}{(dirtyKeys?.has(key) || (colorKey && dirtyKeys?.has(colorKey))) && <b className="dirty-mark">未保存</b>}</span>
                     <input value={stringValue} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
                     {colorKey && (
                       <>
@@ -1163,11 +1260,12 @@ function SettingsForm({
                 key === 'socialHashtags' ? 'admin-setting-wide' : '',
                 key === 'ssoSharedSecret' ? 'admin-setting-wide' : '',
                 key.endsWith('Color') ? 'admin-color-row' : '',
+                dirtyKeys?.has(key) ? 'admin-setting-dirty' : '',
                 disabled ? 'admin-setting-disabled' : '',
               ].filter(Boolean).join(' ') || undefined;
               return (
                 <label key={key} className={labelClassName}>
-                  <span>{label}</span>
+                  <span>{label}{dirtyKeys?.has(key) && <b className="dirty-mark">未保存</b>}</span>
                   {key === 'manualBody' ? (
                     <textarea value={stringValue} rows={12} onChange={(event) => onChange(key, event.target.value)} disabled={disabled} />
                   ) : isBooleanSetting(key) ? (
@@ -1276,6 +1374,27 @@ function cloneSettings(settings: Settings): Settings {
     config: { ...settings.config },
     skin: { ...settings.skin },
   };
+}
+
+function isSettingsDirty(settings: Settings, savedSettings: Settings): boolean {
+  return changedSettingKeys(settings, savedSettings).size > 0;
+}
+
+function changedSettingKeys(settings: Settings, savedSettings: Settings): Set<string> {
+  const changed = new Set<string>();
+  (['config', 'skin'] as const).forEach((section) => {
+    const keys = new Set([...Object.keys(settings[section] ?? {}), ...Object.keys(savedSettings[section] ?? {})]);
+    keys.forEach((key) => {
+      if (settingCompareValue(settings[section]?.[key]) !== settingCompareValue(savedSettings[section]?.[key])) {
+        changed.add(key);
+      }
+    });
+  });
+  return changed;
+}
+
+function settingCompareValue(value: unknown): string {
+  return JSON.stringify(value ?? null);
 }
 
 function pickKeys(values: Record<string, SettingValue>, keys: string[]): Record<string, SettingValue> {
@@ -1454,7 +1573,36 @@ function SettingsJsonTools({
   );
 }
 
-async function saveBlobWithPicker(blob: Blob, suggestedName: string): Promise<void> {
+async function chooseSaveFile(suggestedName: string, mimeType: string): Promise<any | null> {
+  const picker = (window as any).showSaveFilePicker;
+  if (typeof picker !== 'function') {
+    return null;
+  }
+  const extension = suggestedName.includes('.') ? `.${suggestedName.split('.').pop()}` : '';
+  try {
+    return await picker({
+      suggestedName,
+      types: extension ? [{
+        description: suggestedName,
+        accept: { [mimeType]: [extension] },
+      }] : undefined,
+    });
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      throw err;
+    }
+    return null;
+  }
+}
+
+async function saveBlobWithPicker(blob: Blob, suggestedName: string, fileHandle: any | null = null): Promise<void> {
+  const handle = fileHandle ?? await chooseSaveFile(suggestedName, blob.type || 'application/octet-stream');
+  if (handle) {
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
