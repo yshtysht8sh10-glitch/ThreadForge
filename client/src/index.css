@@ -497,6 +497,8 @@ img.thumbnail {
   color: var(--panel-label);
   font-size: 0.86rem;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .period-filter-header strong {
@@ -508,6 +510,7 @@ img.thumbnail {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
   width: 2.15rem;
   height: 2rem;
   padding: 0;
@@ -634,6 +637,14 @@ img.thumbnail {
 @media (max-width: 720px) {
   .period-filter-header {
     display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .period-filter-header > div:first-child {
+    min-width: 0;
+    gap: 0.65rem;
   }
 
   .period-filter-header strong {

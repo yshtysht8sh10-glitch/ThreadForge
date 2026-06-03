@@ -135,6 +135,7 @@ Public UI reads a safe subset of settings through `?action=publicSettings`:
 ## SNS Posting Rules
 
 - SNS posting is controlled by one user-facing "SNS transfer OFF" switch on post and edit forms.
+- Posts created with social transfer disabled show only the board metrics row; X/Bluesky/Mastodon/Misskey destination rows are hidden.
 - The admin page separates settings for X, Bluesky, Mastodon, and Misskey.
 - Platform credential fields are disabled while that platform is OFF.
 - New top-level posts can be reflected to enabled SNS platforms.

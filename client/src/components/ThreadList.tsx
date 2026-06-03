@@ -488,8 +488,8 @@ function SocialRows({ thread, enabled }: { thread: Post; enabled: PublicSettings
     ['お美事数', boardReactions.omigoto],
     ['いい仕事数', boardReactions.goodjob],
   ];
-  const rows = [
-    !thread.tweet_off && enabled.tweetEnabled && {
+  const rows = thread.tweet_off ? [] : [
+    enabled.tweetEnabled && {
       key: 'x',
       label: 'X',
       url: links.x ?? thread.tweet_url,

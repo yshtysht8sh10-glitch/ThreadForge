@@ -140,6 +140,7 @@ ThreadForge は、作品投稿、メディア投稿、制作ログ、小規模�
 ## SNS転記ルール
 
 - SNS転記は、新規投稿フォームの `SNS転記OFF` スイッチで制御します。
+- SNS転記OFFの投稿は、掲示板内の統計行だけを表示し、X/Bluesky/Mastodon/Misskey先の行は表示しません。
 - 管理画面では X、Bluesky、Mastodon、Misskey の設定を分けます。
 - 各SNSがOFFの間、そのSNSの認証情報欄は無効化されます。
 - 新規の親投稿だけが、有効なSNSへ転記されます。

@@ -9,7 +9,9 @@ ThreadForge follows semantic versioning while it is being prepared for public us
 Maintenance release for the production board.
 
 - Replaced the display-period open/close control with a compact triangle button for both desktop and mobile layouts
+- Kept the display-period triangle visible in compact mobile layouts
 - Improved mobile wrapping of SNS reaction/status metrics so counters fit more safely on narrow screens
+- Hid Bluesky/Mastodon/Misskey destination rows for posts created with SNS transfer disabled
 - Allowed keyed web execution of `cron.php` for rental-server cron jobs while keeping keyless browser access blocked
 - Improved SNS reaction logs so successful entries containing empty `error` fields are not highlighted as errors
 
