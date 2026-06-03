@@ -507,44 +507,28 @@ img.thumbnail {
 .period-display-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  color: var(--panel-label);
+  justify-content: center;
+  width: 2.15rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--button-border);
+  border-radius: 6px;
+  background: var(--button-bg);
+  color: var(--button-text);
   font-weight: 700;
   white-space: nowrap;
+  cursor: pointer;
 }
 
-.period-display-toggle input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+.period-display-toggle:hover {
+  background: var(--gray-button-bg);
+  border-color: var(--accent);
 }
 
-.period-toggle-track {
-  position: relative;
-  width: 3.5rem;
-  height: 1.8rem;
-  border: 1px solid var(--button-border);
-  border-radius: 999px;
-  background: #34394a;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-
-.period-toggle-thumb {
-  position: absolute;
-  top: 0.2rem;
-  left: 0.2rem;
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 999px;
-  background: #9db9ff;
-  box-shadow: 0 0 8px rgba(157, 185, 255, 0.7);
-  transition: transform 0.15s ease, background 0.15s ease;
-}
-
-.period-display-toggle input:checked + .period-toggle-track .period-toggle-thumb {
-  transform: translateX(1.65rem);
-  background: var(--accent);
-  box-shadow: 0 0 8px rgba(109, 255, 192, 0.7);
+.period-toggle-triangle {
+  display: block;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .period-filter-grid {

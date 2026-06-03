@@ -59,18 +59,18 @@ const PeriodFilter = ({ periods, selectedYears, selectedMonths, total, onChange,
           <p>総投稿数: {total.toLocaleString('ja-JP')}</p>
         </div>
         {onExpandedChange && (
-          <label className="period-display-toggle">
-            <span>隠す</span>
-            <input
-              type="checkbox"
-              checked={expanded}
-              onChange={(event) => onExpandedChange(event.currentTarget.checked)}
-            />
-            <span className="period-toggle-track" aria-hidden="true">
-              <span className="period-toggle-thumb" />
+          <button
+            type="button"
+            className="period-display-toggle"
+            onClick={() => onExpandedChange(!expanded)}
+            title={expanded ? '表示期間を隠す' : '表示期間を表示'}
+            aria-label={expanded ? '表示期間を隠す' : '表示期間を表示'}
+            aria-expanded={expanded}
+          >
+            <span className="period-toggle-triangle" aria-hidden="true">
+              {expanded ? '▲' : '▼'}
             </span>
-            <span>表示</span>
-          </label>
+          </button>
         )}
       </div>
       <div className="period-filter-grid">
