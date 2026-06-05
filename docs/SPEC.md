@@ -91,6 +91,17 @@ Notes:
 - `homePageUrl`, `manualTitle`, `manualBody`, SNS platform switches, `gdgdEnabled`, `gdgdLabel`, and basic colors are applied to runtime UI through the public settings API.
 - Applying every remaining saved setting to runtime behavior and live styling is still in progress.
 
+## Parent Site SSO
+
+ThreadForge can accept signed SSO tokens from a parent site so users logged in on the parent site can enter a child ThreadForge board.
+
+- Enable "Use SSO" in board settings and configure the shared SSO secret.
+- When SSO is enabled, users cannot create new accounts from the ThreadForge login screen. The login screen tells users to create accounts on the parent site instead.
+- The parent site sends users to `index.html#/login?sso=<token>`.
+- The token format is `base64url(payload).base64url(hmac_sha256(base64url(payload), secret))`.
+- The payload must include `login_id` or `sub`, and `exp`. It may also include `display_name`, `post_password`, `home_url`, and `iat`.
+- ThreadForge verifies the signature and expiration, then logs in the existing user or creates the user from the SSO payload.
+
 ## Data Model
 
 The main SQLite table is `posts`.

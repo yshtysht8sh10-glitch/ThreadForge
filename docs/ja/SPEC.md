@@ -97,7 +97,8 @@ ThreadForge は、作品投稿、メディア投稿、制作ログ、小規模�
 
 親サイトでログイン済みのユーザーを、配下のThreadForgeへ引き継ぐための簡易SSOを用意しています。
 
-- 管理画面の掲示板設定で「SSOログイン」をONにし、「SSO共有秘密鍵」を設定します。
+- 管理画面の掲示板設定で「SSOを使う」をONにし、「SSO共有秘密鍵」を設定します。
+- 「SSOを使う」がONのとき、ThreadForge側のログイン画面ではアカウントを新規作成できません。利用者には親サイト側でアカウントを作成するよう案内します。
 - 親サイトはJSONペイロードをBase64URL化し、その文字列を共有秘密鍵でHMAC-SHA256署名します。
 - トークン形式は `base64url(payload).base64url(hmac_sha256(base64url(payload), secret))` です。
 - ペイロードには `login_id` または `sub`、`exp` を必須で入れます。任意で `display_name`、`post_password`、`home_url`、`iat` を渡せます。

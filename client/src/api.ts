@@ -54,6 +54,7 @@ export type PublicSettings = {
     eejanaikaEejanaikaColor: string;
     socialHashtags: string;
     allowedImageTypes: string[];
+    ssoEnabled?: boolean;
     listOrder?: 'number' | 'createdAt' | string;
   };
 };
@@ -77,6 +78,7 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
     eejanaikaEejanaikaColor: '#fff200',
     socialHashtags: '#art',
     allowedImageTypes: ['gif', 'png', 'jpeg', 'jpg', 'bmp'],
+    ssoEnabled: false,
     listOrder: 'number',
     manualBody: [
       'この取説は、このサイトを利用する方向けの案内です。',

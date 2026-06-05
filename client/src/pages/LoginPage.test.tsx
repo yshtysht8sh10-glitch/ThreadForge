@@ -28,6 +28,7 @@ vi.mock('../api', () => ({
     claimUserPost: vi.fn(),
     unclaimUserPost: vi.fn(),
     deletePost: vi.fn(),
+    publicSettings: vi.fn(),
   },
   mediaUrl: (path?: string | null) => path,
 }));
@@ -81,6 +82,70 @@ describe('LoginPage', () => {
     vi.mocked(api.claimUserPost).mockResolvedValue({ success: true, message: '自分の作品として登録しました。' });
     vi.mocked(api.unclaimUserPost).mockResolvedValue({ success: true, message: '登録を解除しました。' });
     vi.mocked(api.deletePost).mockResolvedValue({ success: true, message: '削除しました。' });
+    vi.mocked(api.publicSettings).mockResolvedValue({
+      success: true,
+      settings: {
+        config: {
+          bbsTitle: 'ThreadForge',
+          homePageUrl: '/',
+          manualTitle: 'ThreadForge',
+          manualBody: '',
+          tweetEnabled: false,
+          blueskyEnabled: false,
+          mastodonEnabled: false,
+          misskeyEnabled: false,
+          gdgdEnabled: false,
+          gdgdLabel: '特殊投稿',
+          eejanaikaOmigotoText: 'お美事にございまする',
+          eejanaikaOmigotoColor: '#ff72ff',
+          eejanaikaGoodjobText: 'いい仕事してますねぇ',
+          eejanaikaGoodjobColor: '#27a8ff',
+          eejanaikaEejanaikaText: 'ええじゃないか',
+          eejanaikaEejanaikaColor: '#fff200',
+          socialHashtags: '#art',
+          allowedImageTypes: ['gif', 'png'],
+          ssoEnabled: false,
+        },
+      },
+    });
+  });
+
+  it('hides local registration when SSO is enabled', async () => {
+    vi.mocked(api.publicSettings).mockResolvedValueOnce({
+      success: true,
+      settings: {
+        config: {
+          bbsTitle: 'ThreadForge',
+          homePageUrl: '/',
+          manualTitle: 'ThreadForge',
+          manualBody: '',
+          tweetEnabled: false,
+          blueskyEnabled: false,
+          mastodonEnabled: false,
+          misskeyEnabled: false,
+          gdgdEnabled: false,
+          gdgdLabel: '特殊投稿',
+          eejanaikaOmigotoText: 'お美事にございまする',
+          eejanaikaOmigotoColor: '#ff72ff',
+          eejanaikaGoodjobText: 'いい仕事してますねぇ',
+          eejanaikaGoodjobColor: '#27a8ff',
+          eejanaikaEejanaikaText: 'ええじゃないか',
+          eejanaikaEejanaikaColor: '#fff200',
+          socialHashtags: '#art',
+          allowedImageTypes: ['gif', 'png'],
+          ssoEnabled: true,
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('SSOログインが有効です。アカウントの新規作成は親サイト側で行ってください。')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '新規作成' })).not.toBeInTheDocument();
   });
 
   it('checks duplicate IDs before registration and submits the new user profile', async () => {

@@ -633,6 +633,12 @@ function checkLoginId(PDO $pdo): void
 
 function registerUser(PDO $pdo): void
 {
+    $settings = loadSettings($pdo);
+    $config = $settings['config'] ?? [];
+    if (toBoolFlag($config['ssoEnabled'] ?? false)) {
+        jsonResponse(['success' => false, 'message' => 'SSOログインが有効なため、ThreadForge側ではアカウントを新規作成できません。親サイト側でアカウントを作成してください。'], 403);
+    }
+
     $loginId = normalizeLoginId($_POST['login_id'] ?? '');
     $password = (string)($_POST['password'] ?? '');
     $displayName = normalizeString($_POST['display_name'] ?? $loginId);
@@ -3846,6 +3852,7 @@ function publicSettings(PDO $pdo): void
                 'eejanaikaEejanaikaColor' => (string)($config['eejanaikaEejanaikaColor'] ?? '#fff200'),
                 'socialHashtags' => (string)($config['socialHashtags'] ?? '#art'),
                 'allowedImageTypes' => allowedImageExtensionsFromConfig($config),
+                'ssoEnabled' => toBoolFlag($config['ssoEnabled'] ?? false),
                 'listOrder' => listThreadOrder($settings),
             ],
         ],

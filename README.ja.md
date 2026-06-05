@@ -93,7 +93,7 @@ threadforge-<version>/
 - フルバックアップ Zip のインポート/エクスポート
 - BBSNote/ローカルアーカイブの非破壊インポート、画像修復、直近差分更新
 - X、Bluesky、Mastodon、Misskey 連携設定
-- 親サイト SSO
+- 親サイト SSO（SSO利用時はThreadForge側の新規アカウント作成を停止）
 
 ## 運用ツール
 

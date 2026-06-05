@@ -37,6 +37,7 @@ const LoginPage = () => {
   const [claimLoadingMore, setClaimLoadingMore] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [ssoRegistrationOnly, setSsoRegistrationOnly] = useState(false);
   const ssoHandledRef = useRef(false);
 
   const loadDashboard = async () => {
@@ -53,6 +54,30 @@ const LoginPage = () => {
     setHomeUrl(auth.user.home_url ?? '');
     loadDashboard().catch((err) => setError((err as Error).message));
   }, [auth.user, auth.token]);
+
+  useEffect(() => {
+    let ignore = false;
+    api.publicSettings()
+      .then((response) => {
+        if (!ignore) {
+          setSsoRegistrationOnly(Boolean(response.settings.config.ssoEnabled));
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          setSsoRegistrationOnly(false);
+        }
+      });
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (ssoRegistrationOnly && mode === 'register') {
+      setMode('login');
+    }
+  }, [mode, ssoRegistrationOnly]);
 
   useEffect(() => {
     if (ssoHandledRef.current || auth.user || auth.loading) {
@@ -103,6 +128,10 @@ const LoginPage = () => {
         const availability = await api.checkLoginId(loginId);
         if (!availability.available) {
           setError(availability.message ?? 'このIDは既に使われています。');
+          return;
+        }
+        if (ssoRegistrationOnly) {
+          setError('SSOログインが有効なため、ThreadForge側ではアカウントを新規作成できません。親サイト側でアカウントを作成してください。');
           return;
         }
         await auth.register({ login_id: loginId, password: loginPassword, display_name: displayName, post_password: postPassword, home_url: homeUrl, icon });
@@ -385,8 +414,13 @@ const LoginPage = () => {
       <h1>ログイン</h1>
       <div className="button-row">
         <button type="button" className={mode === 'login' ? 'active' : undefined} onClick={() => setMode('login')}>ログイン</button>
-        <button type="button" className={mode === 'register' ? 'active' : undefined} onClick={() => setMode('register')}>新規作成</button>
+        {!ssoRegistrationOnly && (
+          <button type="button" className={mode === 'register' ? 'active' : undefined} onClick={() => setMode('register')}>新規作成</button>
+        )}
       </div>
+      {ssoRegistrationOnly && (
+        <p className="status">SSOログインが有効です。アカウントの新規作成は親サイト側で行ってください。</p>
+      )}
       <form className="form-card" onSubmit={submitLogin}>
         <label>
           <span>ID<span className="required" aria-hidden="true">*</span></span>

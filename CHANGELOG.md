@@ -12,6 +12,7 @@ Maintenance release for the production board.
 - Kept the display-period triangle visible in compact mobile layouts
 - Improved mobile wrapping of SNS reaction/status metrics so counters fit more safely on narrow screens
 - Hid Bluesky/Mastodon/Misskey destination rows for posts created with SNS transfer disabled
+- Disabled local ThreadForge account registration while SSO is enabled and added guidance to create accounts on the parent site
 - Allowed keyed web execution of `cron.php` for rental-server cron jobs while keeping keyless browser access blocked
 - Improved SNS reaction logs so successful entries containing empty `error` fields are not highlighted as errors
 

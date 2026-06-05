@@ -1779,7 +1779,7 @@ const settingLabels: Record<string, string> = {
   eejanaikaEejanaikaText: 'リアクション3',
   eejanaikaEejanaikaColor: 'リアクション3の文字色',
   socialHashtags: 'SNS投稿ハッシュタグ',
-  ssoEnabled: 'SSOログイン',
+  ssoEnabled: 'SSOを使う',
   ssoSharedSecret: 'SSO共有秘密鍵',
   gdgdEnabled: '特殊投稿機能',
   gdgdLabel: '特殊投稿の表示名',
