@@ -4,10 +4,12 @@ import { api } from '../api';
 import { Post } from '../types';
 import ThreadList from '../components/ThreadList';
 import PeriodFilter, { queryList } from '../components/PeriodFilter';
+import { useAuth } from '../auth';
 
 const DEFAULT_BATCH_SIZE = 20;
 
 const HomePage = () => {
+  const auth = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [threads, setThreads] = useState<Post[]>([]);
   const [nextPage, setNextPage] = useState(2);
@@ -27,11 +29,27 @@ const HomePage = () => {
   const listTopRef = useRef<HTMLDivElement | null>(null);
   const loadingNewerRef = useRef(false);
   const autoPeriodExpandedRef = useRef(false);
+  const ssoHandledRef = useRef(false);
   const location = useLocation();
   const targetId = searchParams.get('target');
   const page = Math.max(1, Number(searchParams.get('page') || '1') || 1);
   const selectedYears = queryList(searchParams.get('years')).filter((year) => /^\d{4}$/.test(year));
   const selectedMonths = queryList(searchParams.get('months')).filter((month) => /^\d{4}-\d{2}$/.test(month));
+
+  useEffect(() => {
+    const ssoToken = searchParams.get('sso');
+    if (!ssoToken || ssoHandledRef.current || auth.loading) {
+      return;
+    }
+    ssoHandledRef.current = true;
+    auth.ssoLogin(ssoToken)
+      .catch(() => undefined)
+      .finally(() => {
+        const next = new URLSearchParams(searchParams);
+        next.delete('sso');
+        setSearchParams(next, { replace: true });
+      });
+  }, [auth, searchParams, setSearchParams]);
 
   useEffect(() => {
     let cancelled = false;

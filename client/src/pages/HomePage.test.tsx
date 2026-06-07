@@ -3,7 +3,32 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import HomePage from './HomePage';
 
+const authMock = vi.hoisted(() => ({
+  value: {
+    loading: false,
+    ssoLogin: vi.fn(),
+  },
+}));
+
+vi.mock('../auth', () => ({
+  useAuth: () => authMock.value,
+}));
+
 describe('HomePage', () => {
+  it('shows the thread list and processes SSO on the list route', async () => {
+    authMock.value.ssoLogin = vi.fn().mockResolvedValue(undefined);
+    window.history.replaceState(null, '', '/?sso=payload.signature');
+
+    render(
+      <BrowserRouter>
+        <HomePage />
+      </BrowserRouter>,
+    );
+
+    expect((await screen.findAllByRole('link', { name: /\[No/ })).length).toBeGreaterThan(0);
+    expect(authMock.value.ssoLogin).toHaveBeenCalledWith('payload.signature');
+  });
+
   it('renders thread blocks', async () => {
     render(
       <BrowserRouter>

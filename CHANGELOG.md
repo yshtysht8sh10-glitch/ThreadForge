@@ -4,6 +4,11 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## 0.9.6 - 2026-06-07
+
+- Made the thread list the universal entry route with or without login
+- Added SSO token processing directly to the thread list route
+
 ## 0.9.5 - 2026-06-07
 
 - Processed parent-site SSO tokens even when a previous ThreadForge session already exists

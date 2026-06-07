@@ -4,7 +4,7 @@
 
 ThreadForge is a lightweight, customizable thread board engine for posts, media, and community archives. It is designed as a fresh self-hosted board for posts, media, and community archives.
 
-The current production operation release is `0.9.5`.
+The current production operation release is `0.9.6`.
 
 ## Repository Contents
 
