@@ -4,6 +4,7 @@ import { api, DEFAULT_PUBLIC_SETTINGS, mediaUrl, PublicSettings } from '../api';
 import { Post } from '../types';
 import { useAuth } from '../auth';
 import { clampUserNameSuffix, composeUserName, userNameSuffixLimit } from '../name';
+import ThreadList from '../components/ThreadList';
 
 const DEFAULT_ALLOWED_IMAGE_TYPES = ['gif', 'png', 'jpeg', 'jpg', 'bmp'];
 
@@ -13,6 +14,9 @@ const EditPostPage = () => {
   const location = useLocation();
   const { token, user } = useAuth();
   const [post, setPost] = useState<Post | null>(null);
+  const [threadPreview, setThreadPreview] = useState<Post | null>(null);
+  const [repliesLoading, setRepliesLoading] = useState(false);
+  const [repliesError, setRepliesError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [nameSuffix, setNameSuffix] = useState('');
   const [url, setUrl] = useState('');
@@ -33,13 +37,29 @@ const EditPostPage = () => {
   useEffect(() => {
     if (!id) return;
     api.getPost(id)
-      .then((data) => {
+      .then(async (data) => {
         setPost(data);
         setName(data.name);
         setUrl(data.url ?? '');
         setTitle(data.title);
         setMessage(data.message);
         setGdgd(Boolean(data.gdgd));
+
+        const threadId = data.parent_id === 0 ? data.id : data.thread_id;
+        setRepliesLoading(true);
+        setRepliesError(null);
+        try {
+          const threadData = await api.getThread(String(threadId));
+          setThreadPreview(threadData.thread ? {
+            ...threadData.thread,
+            replies: threadData.replies,
+            reply_count: threadData.replies.length,
+          } : null);
+        } catch (err: any) {
+          setRepliesError(err.message);
+        } finally {
+          setRepliesLoading(false);
+        }
       })
       .catch((err) => setError(err.message));
   }, [id]);
@@ -140,6 +160,7 @@ const EditPostPage = () => {
         {!password.trim() && <div className="error">編集モードから投稿を選択してください。</div>}
         {!post && !error && <p>投稿を読み込み中...</p>}
         {post && (
+          <>
           <form onSubmit={onSubmit} className="form-card">
             {user ? (
               <label>
@@ -200,6 +221,14 @@ const EditPostPage = () => {
               <button type="submit">更新する</button>
             </div>
           </form>
+          <section className="edit-post-thread-preview" aria-label="投稿とついたレス">
+            {repliesLoading && <p className="edit-post-replies-message">レスを読み込み中...</p>}
+            {repliesError && <p className="edit-post-replies-message error">レスを読み込めませんでした: {repliesError}</p>}
+            {!repliesLoading && !repliesError && threadPreview && (
+              <ThreadList threads={[threadPreview]} showAllReplies repliesOnly action={() => null} />
+            )}
+          </section>
+          </>
         )}
       </div>
     </div>

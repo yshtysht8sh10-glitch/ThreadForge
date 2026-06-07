@@ -11,6 +11,8 @@ type ThreadListProps = {
   threads: Post[];
   action?: (post: Post) => React.ReactNode;
   showReplies?: boolean;
+  showAllReplies?: boolean;
+  repliesOnly?: boolean;
   userIconLinks?: boolean;
 };
 
@@ -48,7 +50,14 @@ const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
   },
 };
 
-const ThreadList = ({ threads, action, showReplies = true, userIconLinks = true }: ThreadListProps) => {
+const ThreadList = ({
+  threads,
+  action,
+  showReplies = true,
+  showAllReplies = false,
+  repliesOnly = false,
+  userIconLinks = true,
+}: ThreadListProps) => {
   const { token, user } = useAuth();
   const [settings, setSettings] = useState<PublicSettings>(DEFAULT_PUBLIC_SETTINGS);
   const viewedPostIds = useRef<Set<number>>(new Set());
@@ -255,7 +264,9 @@ const ThreadList = ({ threads, action, showReplies = true, userIconLinks = true 
       {threads.length === 0 && <div className="board-message">投稿はまだありません。</div>}
       {threads.map((thread) => {
         const previewReplies = thread.replies ?? [];
-        const replies = showReplies ? (expandedReplies[thread.id] ?? previewReplies.slice(0, 10)) : [];
+        const replies = showReplies
+          ? (expandedReplies[thread.id] ?? (showAllReplies ? previewReplies : previewReplies.slice(0, 10)))
+          : [];
         const hiddenReplyCount = showReplies ? Math.max(0, Number(thread.reply_count ?? 0) - replies.length) : 0;
         const omittedStart = 1;
         const omittedEnd = hiddenReplyCount;
@@ -265,35 +276,46 @@ const ThreadList = ({ threads, action, showReplies = true, userIconLinks = true 
           : thread;
 
         return (
-          <article key={thread.id} id={`post-${thread.id}`} data-post-id={thread.id} className={threadClassName(thread)}>
-            <header className="board-thread-title">
-              <Link to={`/thread/${thread.id}`}>[No.{thread.display_no ?? thread.id}] {thread.title || '無題'}</Link>
-            </header>
+          <article
+            key={thread.id}
+            id={`post-${thread.id}`}
+            data-post-id={thread.id}
+            className={`${threadClassName(thread)}${repliesOnly ? ' board-thread-replies-only' : ''}`}
+          >
+            {!repliesOnly && (
+              <header className="board-thread-title">
+                <Link to={`/thread/${thread.id}`}>[No.{thread.display_no ?? thread.id}] {thread.title || '無題'}</Link>
+              </header>
+            )}
 
             <div className="board-thread-body">
-              <p className="board-meta">
-                <UserIconLink post={thread} enabled={userIconLinks} />
-                NAME：<strong>{thread.name}</strong>
-                {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
-                {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
-                <RevisionBadge post={thread} />
-              </p>
-              {user && thread.user_id === user.id && (
-                <p className="owner-post-links">
-                  {!isPresetComment(thread, settings.config) && <Link to={`/edit/${thread.id}`}>編集</Link>}
-                  <button type="button" onClick={() => deleteOwnedPost(thread)}>削除</button>
-                </p>
-              )}
+              {!repliesOnly && (
+                <>
+                  <p className="board-meta">
+                    <UserIconLink post={thread} enabled={userIconLinks} />
+                    NAME：<strong>{thread.name}</strong>
+                    {thread.url && <> <a href={thread.url} target="_blank" rel="noreferrer">[HOME]</a></>}
+                    {' '}<span className="board-meta-sub">投稿日時：{formatDate(thread.created_at)}</span>
+                    <RevisionBadge post={thread} />
+                  </p>
+                  {user && thread.user_id === user.id && (
+                    <p className="owner-post-links">
+                      {!isPresetComment(thread, settings.config) && <Link to={`/edit/${thread.id}`}>編集</Link>}
+                      <button type="button" onClick={() => deleteOwnedPost(thread)}>削除</button>
+                    </p>
+                  )}
 
-              {mediaUrl(thread.image_path) && (
-                <Link to={`/thread/${thread.id}`} className="board-image-link">
-                  <img className="board-post-image" src={mediaUrl(thread.image_path) ?? undefined} alt={thread.title || '投稿画像'} />
-                </Link>
-              )}
+                  {mediaUrl(thread.image_path) && (
+                    <Link to={`/thread/${thread.id}`} className="board-image-link">
+                      <img className="board-post-image" src={mediaUrl(thread.image_path) ?? undefined} alt={thread.title || '投稿画像'} />
+                    </Link>
+                  )}
 
-              <div className="board-message-text">
-                <LinkedText text={thread.message} />
-              </div>
+                  <div className="board-message-text">
+                    <LinkedText text={thread.message} />
+                  </div>
+                </>
+              )}
 
               {replies.map((reply) => (
                 <section key={reply.id} className="board-reply">

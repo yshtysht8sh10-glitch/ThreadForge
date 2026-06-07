@@ -11,6 +11,7 @@ vi.mock('../api', () => ({
   },
   api: {
     getPost: vi.fn(),
+    getThread: vi.fn(),
     updatePost: vi.fn(),
     deletePost: vi.fn(),
     publicSettings: vi.fn(),
@@ -69,6 +70,10 @@ describe('EditPostPage', () => {
       logout: vi.fn(),
     });
     vi.mocked(api.getPost).mockResolvedValue(replyPost);
+    vi.mocked(api.getThread).mockResolvedValue({
+      thread: threadPost,
+      replies: [replyPost],
+    });
     vi.mocked(api.updatePost).mockResolvedValue({ success: true, message: 'ok' });
     vi.mocked(api.publicSettings).mockResolvedValue({
       success: true,
@@ -85,6 +90,45 @@ describe('EditPostPage', () => {
     expect(screen.queryByLabelText('SNS投稿のプレビュー')).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/画像置換/)).not.toBeInTheDocument();
     expect(document.querySelector('input[type="file"]')).not.toBeInTheDocument();
+  });
+
+  it('shows all replies on the edit screen so the body can be edited in context', async () => {
+    const secondReply = {
+      ...replyPost,
+      id: 3,
+      name: 'Carol',
+      message: 'Second reply',
+      reply_no: 2,
+    };
+    vi.mocked(api.getPost).mockResolvedValue(threadPost);
+    vi.mocked(api.getThread).mockResolvedValue({
+      thread: threadPost,
+      replies: [replyPost, secondReply],
+    });
+
+    renderEditPostPage('1');
+
+    expect(await screen.findByText('Reply body')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '[No.1] Thread title' })).not.toBeInTheDocument();
+    expect(screen.getByText('Second reply')).toBeInTheDocument();
+    expect(api.getThread).toHaveBeenCalledWith('1');
+  });
+
+  it('loads the parent thread replies when editing a reply without omitting replies after the tenth', async () => {
+    const replies = Array.from({ length: 12 }, (_, index) => ({
+      ...replyPost,
+      id: index + 2,
+      message: `Reply ${index + 1}`,
+      reply_no: index + 1,
+    }));
+    vi.mocked(api.getThread).mockResolvedValue({ thread: threadPost, replies });
+
+    renderEditPostPage('2');
+
+    expect(await screen.findByText('Reply 12')).toBeInTheDocument();
+
+    expect(api.getThread).toHaveBeenCalledWith('1');
+    expect(screen.queryByText(/コメント1-2は省略/)).not.toBeInTheDocument();
   });
 
   it('updates replies without tweet, image, or delete fields', async () => {

@@ -4,6 +4,12 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## 0.9.7 - 2026-06-07
+
+- Displayed replies below the post edit form for editing the body in conversation context
+- Reused the standard list reply and analytics layout without duplicating the parent post
+- Displayed every reply on the edit screen without the normal ten-reply preview limit
+
 ## 0.9.6 - 2026-06-07
 
 - Made the thread list the universal entry route with or without login

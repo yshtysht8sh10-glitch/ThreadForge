@@ -3237,6 +3237,30 @@ button.post-reset-button:hover {
   gap: 0;
 }
 
+.edit-post-thread-preview {
+  margin-top: 1rem;
+}
+
+.edit-post-thread-preview .thread-list {
+  gap: 0;
+}
+
+.board-thread.board-thread-replies-only {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.board-thread-replies-only .board-thread-body {
+  padding-top: 0;
+}
+
+.edit-post-replies-message {
+  margin: 0;
+  padding: 0.8rem;
+}
+
 .social-transfer-preview-item {
   display: grid;
   gap: 0.4rem;
