@@ -4,6 +4,15 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## 0.9.3 - 2026-06-07
+
+Account experience maintenance release.
+
+- Redirected successful parent-site SSO logins to the thread list
+- Added icon selection to new account registration with immediate preview
+- Updated the current icon immediately when selecting a replacement in user settings
+- Added regression coverage for SSO navigation and icon previews
+
 ## 0.9.2 - 2026-06-07
 
 Administration and SSO maintenance release.

@@ -1,5 +1,5 @@
 import { FormEvent, UIEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api, mediaUrl } from '../api';
 import { useAuth } from '../auth';
 import { metricOptions, MetricId, metricValue } from '../metrics';
@@ -11,6 +11,7 @@ const CLAIM_SEARCH_MAX_PAGES = 100;
 
 const LoginPage = () => {
   const auth = useAuth();
+  const navigate = useNavigate();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [loginId, setLoginId] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -39,6 +40,15 @@ const LoginPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [ssoRegistrationOnly, setSsoRegistrationOnly] = useState(false);
   const ssoHandledRef = useRef(false);
+  const selectedIconUrl = useMemo(() => icon ? URL.createObjectURL(icon) : null, [icon]);
+
+  useEffect(() => {
+    return () => {
+      if (selectedIconUrl) {
+        URL.revokeObjectURL(selectedIconUrl);
+      }
+    };
+  }, [selectedIconUrl]);
 
   const loadDashboard = async () => {
     if (!auth.token) return;
@@ -92,13 +102,13 @@ const LoginPage = () => {
     setError(null);
     auth.ssoLogin(ssoToken)
       .then(() => {
-        setStatus('ログインしました。');
         removeSsoTokenFromLocation();
+        navigate('/', { replace: true });
       })
       .catch((err) => {
         setError((err as Error).message);
       });
-  }, [auth]);
+  }, [auth, navigate]);
 
   const checkId = async () => {
     if (mode !== 'register' || loginId.trim() === '') {
@@ -284,7 +294,13 @@ const LoginPage = () => {
       <section className="card account-page">
         <h1>ユーザー設定</h1>
         <div className="account-summary">
-          {auth.user.icon_path && <img className="account-icon-preview" src={mediaUrl(auth.user.icon_path) ?? undefined} alt="" />}
+          {(selectedIconUrl || auth.user.icon_path) && (
+            <img
+              className="account-icon-preview"
+              src={selectedIconUrl ?? mediaUrl(auth.user.icon_path) ?? undefined}
+              alt="現在のアイコン"
+            />
+          )}
           <strong>{auth.user.login_id}</strong>
           <button type="button" onClick={auth.logout}>ログアウト</button>
         </div>
@@ -464,6 +480,7 @@ const LoginPage = () => {
             <label>
               アイコン
               <input type="file" accept="image/png,image/jpeg,image/gif" onChange={(event) => setIcon(event.target.files?.[0] ?? null)} />
+              {selectedIconUrl && <img className="account-icon-preview selected-icon-preview" src={selectedIconUrl} alt="選択中のアイコン" />}
             </label>
           </>
         )}

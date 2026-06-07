@@ -2678,6 +2678,10 @@ button.post-reset-button:hover {
   object-fit: cover;
 }
 
+.selected-icon-preview {
+  margin-top: 0.5rem;
+}
+
 .account-claim-form {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;

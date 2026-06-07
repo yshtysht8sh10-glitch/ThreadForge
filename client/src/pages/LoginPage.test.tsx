@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import LoginPage from './LoginPage';
 import { api } from '../api';
 
@@ -10,6 +10,7 @@ const authMock = vi.hoisted(() => ({
     user: null as any,
     loading: false,
     login: vi.fn(),
+    ssoLogin: vi.fn(),
     register: vi.fn(),
     updateProfile: vi.fn(),
     logout: vi.fn(),
@@ -72,6 +73,7 @@ describe('LoginPage', () => {
       user: null,
       loading: false,
       login: vi.fn(),
+      ssoLogin: vi.fn(),
       register: vi.fn(),
       updateProfile: vi.fn(),
       logout: vi.fn(),
@@ -187,6 +189,77 @@ describe('LoginPage', () => {
     })));
   });
 
+  it('shows the selected icon immediately while registering', async () => {
+    const icon = new File(['icon'], 'icon.png', { type: 'image/png' });
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:selected-icon');
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+
+    const { unmount } = render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '新規作成' }));
+    fireEvent.change(screen.getByLabelText('アイコン'), { target: { files: [icon] } });
+
+    expect(await screen.findByAltText('選択中のアイコン')).toHaveAttribute('src', 'blob:selected-icon');
+    unmount();
+    expect(createObjectUrl).toHaveBeenCalledWith(icon);
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:selected-icon');
+  });
+
+  it('shows a newly selected icon immediately while editing the profile', async () => {
+    authMock.value = {
+      token: 'user-token',
+      user: {
+        id: 7,
+        login_id: 'alice-id',
+        display_name: 'Alice',
+        post_password: 'postpass',
+        home_url: 'https://example.com',
+        icon_path: '/storage/data/user_7.png',
+      },
+      loading: false,
+      login: vi.fn(),
+      ssoLogin: vi.fn(),
+      register: vi.fn(),
+      updateProfile: vi.fn(),
+      logout: vi.fn(),
+    };
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:replacement-icon');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    const icon = new File(['replacement'], 'replacement.png', { type: 'image/png' });
+    fireEvent.change(screen.getByLabelText('アイコン'), { target: { files: [icon] } });
+
+    expect(await screen.findByAltText('現在のアイコン')).toHaveAttribute('src', 'blob:replacement-icon');
+  });
+
+  it('moves to the thread list after SSO login', async () => {
+    authMock.value.ssoLogin = vi.fn().mockResolvedValue(undefined);
+    window.history.replaceState(null, '', '/#/login?sso=payload.signature');
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<LocationView />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(authMock.value.ssoLogin).toHaveBeenCalledWith('payload.signature'));
+    expect(await screen.findByTestId('location')).toHaveTextContent('/');
+    expect(window.location.hash).not.toContain('sso=');
+  });
+
   it('shows user settings, analytics, own posts, claim search, and claim actions while logged in', async () => {
     authMock.value = {
       token: 'user-token',
@@ -272,3 +345,8 @@ describe('LoginPage', () => {
     await waitFor(() => expect(api.claimUserPost).toHaveBeenCalledWith('user-token', '40'));
   });
 });
+
+function LocationView() {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}</div>;
+}
