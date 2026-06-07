@@ -29,6 +29,8 @@ powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
 
 配布Zipは `release/threadforge-<version>.zip` に出力されます。Zip内は、展開して公開ディレクトリへアップロードしやすい構成になります。
 
+GitHubへ公開するときは、`VERSION` と変更履歴を更新してZIPを生成・検証した後、同じバージョンの `v<version>` タグとGitHub Releaseを作成し、ZIPを添付します。
+
 ローカルアーカイブログを取り込みます。
 
 ```powershell

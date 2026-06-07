@@ -2651,6 +2651,12 @@ function listAdminUsers(PDO $pdo): void
 function adminUpdateUser(PDO $pdo): void
 {
     requireAdmin();
+    $settings = loadSettings($pdo);
+    $config = $settings['config'] ?? [];
+    if (toBoolFlag($config['ssoEnabled'] ?? false)) {
+        jsonResponse(['success' => false, 'message' => 'SSOログインが有効なため、ThreadForge側ではユーザー情報を編集できません。親サイト側で編集してください。'], 403);
+    }
+
     $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
     if ($id === false || $id === null) {
         jsonResponse(['success' => false, 'message' => 'ユーザーIDが不正です。'], 400);

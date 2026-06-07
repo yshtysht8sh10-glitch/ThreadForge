@@ -29,6 +29,8 @@ powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
 
 The release ZIP is written to `release/threadforge-<version>.zip`. Its contents are arranged for upload to a public web directory.
 
+For a GitHub release, update `VERSION` and the changelog, generate and verify the ZIP, then create the matching `v<version>` tag and attach the ZIP to the GitHub Release.
+
 Import local archive logs:
 
 ```powershell

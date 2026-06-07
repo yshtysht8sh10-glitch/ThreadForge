@@ -96,7 +96,9 @@ Notes:
 ThreadForge can accept signed SSO tokens from a parent site so users logged in on the parent site can enter a child ThreadForge board.
 
 - Enable "Use SSO" in board settings and configure the shared SSO secret.
+- The shared secret is empty by default. The settings screen can generate a cryptographically secure 64-character secret after confirmation and copy it for use by the parent site. The generated value is not persisted until settings are saved.
 - When SSO is enabled, users cannot create new accounts from the ThreadForge login screen. The login screen tells users to create accounts on the parent site instead.
+- When SSO is enabled, the registered-user management button on the maintenance screen is disabled, so the child-site user management screen cannot be opened. User profile changes and deletion should be handled by the parent site.
 - The parent site sends users to `index.html#/login?sso=<token>`.
 - The token format is `base64url(payload).base64url(hmac_sha256(base64url(payload), secret))`.
 - The payload must include `login_id` or `sub`, and `exp`. It may also include `display_name`, `post_password`, `home_url`, and `iat`.
@@ -216,7 +218,7 @@ Public UI, package metadata, repository metadata, and public documentation shoul
 
 The project version is managed with semantic versioning.
 
-Current version: `0.9.1`
+Current version: `0.9.2`
 
 Version references must be updated together:
 

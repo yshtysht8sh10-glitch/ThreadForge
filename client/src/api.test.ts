@@ -318,7 +318,7 @@ describe('API Module', () => {
   describe('version API', () => {
     it('should return the application version from mock API', async () => {
       const result = await api.version();
-      expect(result).toEqual({ name: 'ThreadForge', version: '0.9.1' });
+      expect(result).toEqual({ name: 'ThreadForge', version: '0.9.2' });
     });
   });
 

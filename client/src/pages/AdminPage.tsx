@@ -474,6 +474,10 @@ const AdminPage = () => {
   };
 
   const openUserManagement = () => {
+    if (settings?.config?.ssoEnabled === true || settings?.config?.ssoEnabled === 'true') {
+      setError('SSOを使う設定がONのため、ユーザー登録情報は親サイト側で管理してください。');
+      return;
+    }
     if (!window.confirm('ユーザー登録情報を表示しますか？')) {
       return;
     }
@@ -483,6 +487,10 @@ const AdminPage = () => {
   };
 
   const startEditUser = (user: AdminUser) => {
+    if (settings?.config?.ssoEnabled === true || settings?.config?.ssoEnabled === 'true') {
+      setError('SSOを使う設定がONのため、ThreadForge側ではユーザー情報を編集できません。親サイト側で編集してください。');
+      return;
+    }
     setEditingUser(user);
     setEditingUserPassword('');
     setEditingUserPasswordConfirm('');
@@ -491,6 +499,10 @@ const AdminPage = () => {
 
   const saveAdminUser = guarded(async () => {
     if (!editingUser) {
+      return;
+    }
+    if (settings?.config?.ssoEnabled === true || settings?.config?.ssoEnabled === 'true') {
+      setError('SSOを使う設定がONのため、ThreadForge側ではユーザー情報を編集できません。親サイト側で編集してください。');
       return;
     }
     if (editingUserPassword !== editingUserPasswordConfirm) {
@@ -613,6 +625,7 @@ const AdminPage = () => {
   };
 
   const dirtySettingKeys = settings && savedSettings ? changedSettingKeys(settings, savedSettings) : new Set<string>();
+  const ssoUserEditingDisabled = settings?.config?.ssoEnabled === true || settings?.config?.ssoEnabled === 'true';
   const changeTab = (tab: AdminTab) => {
     if ((activeTab === 'settings' || activeTab === 'design') && settings && savedSettings && isSettingsDirty(settings, savedSettings)) {
       if (!window.confirm('設定が保存されていません。保存せずに移動しますか？')) {
@@ -808,9 +821,21 @@ const AdminPage = () => {
               <section className="admin-maintenance-section">
                 <h3>ユーザー登録情報</h3>
                 <div className="admin-maintenance-section-body">
-                  <p>登録済みユーザーの情報編集や消去は、専用画面で行います。</p>
+                  <p>
+                    {ssoUserEditingDisabled
+                      ? 'SSOを使う設定がONのため、ユーザー登録情報は親サイト側で管理してください。'
+                      : '登録済みユーザーの情報編集や消去は、専用画面で行います。'}
+                  </p>
                   <div className="button-row align-right">
-                    <button type="button" className="secondary" onClick={openUserManagement}>編集</button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={ssoUserEditingDisabled}
+                      title={ssoUserEditingDisabled ? 'SSO利用中は親サイト側で管理してください。' : undefined}
+                      onClick={openUserManagement}
+                    >
+                      編集
+                    </button>
                   </div>
                 </div>
               </section>
@@ -870,7 +895,12 @@ const AdminPage = () => {
             <section className="card admin-maintenance-card">
               <h2>ユーザー登録情報</h2>
               <div className="admin-section-intro-row">
-                <p>登録済みユーザーの情報編集、登録情報の消去、ユーザー番号ごとの完全削除を行います。</p>
+                <div>
+                  <p>登録済みユーザーの情報編集、登録情報の消去、ユーザー番号ごとの完全削除を行います。</p>
+                  {ssoUserEditingDisabled && (
+                    <p className="warning">SSOを使う設定がONのため、ユーザー情報の編集は親サイト側で行ってください。</p>
+                  )}
+                </div>
                 <label className="admin-danger-enable">
                   <input type="checkbox" checked={userDeleteEnabled} onChange={(event) => setUserDeleteEnabled(event.target.checked)} />
                   消去を有効にする
@@ -901,7 +931,7 @@ const AdminPage = () => {
                         </div>
                       </div>
                       <div className="button-row align-right admin-user-actions">
-                        <button type="button" className="admin-fixed-action-button" onClick={() => startEditUser(user)}>編集</button>
+                        <button type="button" className="admin-fixed-action-button" disabled={ssoUserEditingDisabled} title={ssoUserEditingDisabled ? 'SSO利用中は親サイト側で編集してください。' : undefined} onClick={() => startEditUser(user)}>編集</button>
                         <button type="button" className="danger admin-fixed-action-button" disabled={!userDeleteEnabled} onClick={() => void deleteAdminUser(user, 1)}>情報消去</button>
                         <button type="button" className="danger admin-fixed-action-button" disabled={!userDeleteEnabled} onClick={() => void deleteAdminUser(user, 2)}>番号ごと消去</button>
                       </div>
@@ -1196,6 +1226,8 @@ function SettingsForm({
   warningColor?: SettingValue;
   dirtyKeys?: Set<string>;
 }) {
+  const [secretActionStatus, setSecretActionStatus] = useState('');
+
   return (
     <>
       {groups.map((group) => {
@@ -1255,6 +1287,61 @@ function SettingsForm({
               if (isReactionColorKey(key)) {
                 return null;
               }
+              if (key === 'ssoSharedSecret') {
+                const isDirty = dirtyKeys?.has(key) ?? false;
+                return (
+                  <div key={key} className={['admin-setting-wide', isDirty ? 'admin-setting-dirty' : ''].filter(Boolean).join(' ')}>
+                    <span className="admin-setting-label-title">
+                      {label}
+                      {isDirty && <b className="dirty-mark">未保存</b>}
+                    </span>
+                    <div className="admin-secret-setting-row">
+                      <input
+                        aria-label={label}
+                        type="password"
+                        value={stringValue}
+                        onChange={(event) => {
+                          onChange(key, event.target.value);
+                          setSecretActionStatus('');
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => {
+                          if (!window.confirm('新しいSSO共有秘密鍵を自動生成し、現在の入力値を置き換えます。よろしいですか？')) {
+                            return;
+                          }
+                          try {
+                            onChange(key, generateSharedSecret());
+                            setSecretActionStatus('秘密鍵を生成しました。「設定を保存」を押すと反映されます。');
+                          } catch (error) {
+                            setSecretActionStatus((error as Error).message);
+                          }
+                        }}
+                      >
+                        自動生成
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={!stringValue}
+                        onClick={async () => {
+                          try {
+                            await copyTextToClipboard(stringValue);
+                            setSecretActionStatus('秘密鍵をコピーしました。');
+                          } catch {
+                            setSecretActionStatus('秘密鍵をコピーできませんでした。入力欄を選択してコピーしてください。');
+                          }
+                        }}
+                      >
+                        コピー
+                      </button>
+                    </div>
+                    {secretActionStatus && <small className="admin-secret-setting-status" role="status">{secretActionStatus}</small>}
+                  </div>
+                );
+              }
               const labelClassName = [
                 key === 'manualBody' ? 'admin-setting-wide' : '',
                 key === 'socialHashtags' ? 'admin-setting-wide' : '',
@@ -1304,6 +1391,35 @@ function isBooleanSetting(key: string): boolean {
 
 function isSecretSetting(key: string): boolean {
   return key.endsWith('Secret') || key.endsWith('Token') || key === 'blueskyAppPassword' || key === 'ssoSharedSecret';
+}
+
+function generateSharedSecret(): string {
+  if (!window.crypto?.getRandomValues) {
+    throw new Error('このブラウザでは安全な秘密鍵を生成できません。');
+  }
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function copyTextToClipboard(value: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  textarea.remove();
+  if (!copied) {
+    throw new Error('copy failed');
+  }
 }
 
 function isDisabledPlatformSetting(values: Record<string, SettingValue>, key: string): boolean {

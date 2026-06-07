@@ -814,13 +814,17 @@ export const api = {
   listAdminUsers: async (adminPassword: string): Promise<{ success: boolean; users: AdminUser[] }> => {
     return fetchJson(`${apiBase()}?action=listAdminUsers&admin_password=${encodeURIComponent(adminPassword)}`);
   },
-  adminUpdateUser: async (payload: Partial<AdminUser> & { id: number; login_password?: string }, adminPassword: string): Promise<{ success: boolean; message: string }> => {
+  adminUpdateUser: async (payload: Partial<AdminUser> & { id: number; login_password?: string; icon?: File | null }, adminPassword: string): Promise<{ success: boolean; message: string }> => {
     const formData = new FormData();
     formData.append('action', 'adminUpdateUser');
     formData.append('admin_password', adminPassword);
     Object.entries(payload).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        formData.append(key, String(value));
+        if (key === 'icon' && value instanceof File) {
+          formData.append('icon', value);
+        } else {
+          formData.append(key, String(value));
+        }
       }
     });
     return fetchJson(`${apiBase()}`, {

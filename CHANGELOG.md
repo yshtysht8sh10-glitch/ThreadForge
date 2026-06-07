@@ -4,6 +4,16 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## 0.9.2 - 2026-06-07
+
+Administration and SSO maintenance release.
+
+- Disabled ThreadForge-side registered-user editing and deletion while parent-site SSO is enabled
+- Added secure shared-secret generation and clipboard copy controls to the SSO settings
+- Added clearer guidance that SSO-managed user information must be maintained on the parent site
+- Improved registered-user administration, including icon upload handling and related validation
+- Expanded automated coverage for SSO restrictions and administration controls
+
 ## 0.9.1 - 2026-06-04
 
 Maintenance release for the production board.

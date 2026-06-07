@@ -392,6 +392,61 @@ describe('AdminPage', () => {
     ));
   });
 
+  it('generates and copies an SSO shared secret after confirmation', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const randomSpy = vi.spyOn(window.crypto, 'getRandomValues').mockImplementation((array) => {
+      (array as Uint8Array).fill(0xab);
+      return array;
+    });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    vi.mocked(api.getSettings).mockResolvedValueOnce({
+      success: true,
+      settings: {
+        config: {
+          bbsTitle: 'ThreadForge',
+          ssoEnabled: true,
+          ssoSharedSecret: 'existing-secret',
+        },
+        skin: { warningColor: '#ffd36a' },
+      },
+    });
+    vi.mocked(api.updateSettings).mockResolvedValue({ success: true, message: '設定を保存しました。' });
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '掲示板設定' }));
+    const settingsPanel = screen.getByRole('heading', { name: '掲示板設定' }).closest('section')!;
+    fireEvent.click(within(settingsPanel).getByRole('button', { name: '自動生成' }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('新しいSSO共有秘密鍵を自動生成し、現在の入力値を置き換えます。よろしいですか？');
+    const generatedSecret = 'ab'.repeat(32);
+    expect(within(settingsPanel).getByLabelText('SSO共有秘密鍵')).toHaveValue(generatedSecret);
+    expect(within(settingsPanel).getByText('秘密鍵を生成しました。「設定を保存」を押すと反映されます。')).toBeInTheDocument();
+
+    fireEvent.click(within(settingsPanel).getByRole('button', { name: 'コピー' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(generatedSecret));
+    expect(within(settingsPanel).getByText('秘密鍵をコピーしました。')).toBeInTheDocument();
+
+    fireEvent.click(within(settingsPanel).getByRole('button', { name: '設定を保存' }));
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({ ssoSharedSecret: generatedSecret }),
+      }),
+      'admin-secret',
+    ));
+
+    randomSpy.mockRestore();
+    confirmSpy.mockRestore();
+  });
+
   it('shows max upload size in KB while saving bytes', async () => {
     vi.mocked(api.updateSettings).mockResolvedValue({ success: true, message: '設定を保存しました。' });
     render(
@@ -568,6 +623,44 @@ describe('AdminPage', () => {
 
     fireEvent.click(within(userScreen).getByRole('button', { name: '番号ごと消去' }));
     await waitFor(() => expect(api.adminDeleteUser).toHaveBeenCalledWith(1, 2, 'admin-secret'));
+    confirmSpy.mockRestore();
+  });
+
+  it('disables access to registered user management while SSO is enabled', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm');
+    vi.mocked(api.getSettings).mockResolvedValueOnce({
+      success: true,
+      settings: {
+        config: {
+          bbsTitle: 'ThreadForge',
+          homePageUrl: 'https://example.com/home',
+          manualTitle: '取説タイトル',
+          manualBody: '取説本文',
+          tweetEnabled: true,
+          gdgdEnabled: true,
+          gdgdLabel: '特殊投稿',
+          socialHashtags: '#art',
+          listOrder: 'number',
+          maxUploadBytes: 5100000,
+          ssoEnabled: true,
+        },
+        skin: { normalFrameColor: '#a23dff' },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <AdminPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: '保守' }));
+    const maintenanceUserSection = screen.getByRole('heading', { name: 'ユーザー登録情報' }).closest('section')!;
+    expect(within(maintenanceUserSection).getByText('SSOを使う設定がONのため、ユーザー登録情報は親サイト側で管理してください。')).toBeInTheDocument();
+    expect(within(maintenanceUserSection).getByRole('button', { name: '編集' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '保守に戻る' })).not.toBeInTheDocument();
+    expect(confirmSpy).not.toHaveBeenCalled();
+    expect(api.adminUpdateUser).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
   });
 

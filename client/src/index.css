@@ -1968,6 +1968,26 @@ button.post-reset-button:hover {
   gap: 0.25rem;
 }
 
+.admin-secret-setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.admin-secret-setting-row input {
+  min-width: 0;
+}
+
+.admin-secret-setting-row button {
+  white-space: nowrap;
+}
+
+.admin-secret-setting-status {
+  margin-top: 0.35rem;
+  color: var(--success-color, #8dff9b);
+}
+
 .admin-settings-grid label.admin-setting-disabled {
   color: #6f7a86;
 }
@@ -2473,6 +2493,7 @@ button.post-reset-button:hover {
   .admin-user-edit-form,
   .admin-setting-inline-row,
   .admin-setting-wide.admin-setting-inline-row,
+  .admin-secret-setting-row,
   .admin-color-row {
     grid-template-columns: 1fr;
   }
