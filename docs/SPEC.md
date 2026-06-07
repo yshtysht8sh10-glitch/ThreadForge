@@ -218,7 +218,7 @@ Public UI, package metadata, repository metadata, and public documentation shoul
 
 The project version is managed with semantic versioning.
 
-Current version: `0.9.4`
+Current version: `0.9.5`
 
 Version references must be updated together:
 

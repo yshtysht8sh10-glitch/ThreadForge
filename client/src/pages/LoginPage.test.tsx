@@ -68,6 +68,7 @@ const claimedPost = {
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.history.replaceState(null, '', '/');
     authMock.value = {
       token: '',
       user: null,
@@ -256,6 +257,39 @@ describe('LoginPage', () => {
     );
 
     await waitFor(() => expect(authMock.value.ssoLogin).toHaveBeenCalledWith('payload.signature'));
+    expect(await screen.findByTestId('location')).toHaveTextContent('/');
+  });
+
+  it('uses the SSO token and moves to the thread list even when a previous session exists', async () => {
+    authMock.value = {
+      token: 'previous-token',
+      user: {
+        id: 7,
+        login_id: 'previous-user',
+        display_name: 'Previous User',
+        post_password: 'postpass',
+        home_url: null,
+        icon_path: null,
+      },
+      loading: false,
+      login: vi.fn(),
+      ssoLogin: vi.fn().mockResolvedValue(undefined),
+      register: vi.fn(),
+      updateProfile: vi.fn(),
+      logout: vi.fn(),
+    };
+    window.history.replaceState(null, '', '/#/login?sso=new.payload.signature');
+
+    render(
+      <MemoryRouter initialEntries={['/login']}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/" element={<LocationView />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(authMock.value.ssoLogin).toHaveBeenCalledWith('new.payload.signature'));
     expect(await screen.findByTestId('location')).toHaveTextContent('/');
   });
 

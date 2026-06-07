@@ -90,7 +90,7 @@ const LoginPage = () => {
   }, [mode, ssoRegistrationOnly]);
 
   useEffect(() => {
-    if (ssoHandledRef.current || auth.user || auth.loading) {
+    if (ssoHandledRef.current || auth.loading) {
       return;
     }
     const ssoToken = ssoTokenFromLocation();

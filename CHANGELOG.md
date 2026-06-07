@@ -4,6 +4,12 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## 0.9.5 - 2026-06-07
+
+- Processed parent-site SSO tokens even when a previous ThreadForge session already exists
+- Ensured re-entry from the parent site always replaces the user settings route with the thread list
+- Added regression coverage for SSO re-entry with an existing session
+
 ## 0.9.4 - 2026-06-07
 
 - Fixed the HashRouter transition after SSO login so the thread list is shown first
