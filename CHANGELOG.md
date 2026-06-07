@@ -4,6 +4,11 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## 0.9.4 - 2026-06-07
+
+- Fixed the HashRouter transition after SSO login so the thread list is shown first
+- Removed direct browser history manipulation that could leave the user settings route active
+
 ## 0.9.3 - 2026-06-07
 
 Account experience maintenance release.

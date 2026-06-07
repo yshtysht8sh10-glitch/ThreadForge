@@ -102,7 +102,6 @@ const LoginPage = () => {
     setError(null);
     auth.ssoLogin(ssoToken)
       .then(() => {
-        removeSsoTokenFromLocation();
         navigate('/', { replace: true });
       })
       .catch((err) => {
@@ -617,17 +616,4 @@ function ssoTokenFromLocation(): string {
   }
   const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
   return new URLSearchParams(hashQuery).get('sso') ?? '';
-}
-
-function removeSsoTokenFromLocation(): void {
-  const url = new URL(window.location.href);
-  url.searchParams.delete('sso');
-  if (url.hash.includes('?')) {
-    const [path, query] = url.hash.split('?');
-    const params = new URLSearchParams(query);
-    params.delete('sso');
-    const nextQuery = params.toString();
-    url.hash = nextQuery ? `${path}?${nextQuery}` : path;
-  }
-  window.history.replaceState(null, '', url.toString());
 }

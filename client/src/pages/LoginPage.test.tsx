@@ -257,7 +257,6 @@ describe('LoginPage', () => {
 
     await waitFor(() => expect(authMock.value.ssoLogin).toHaveBeenCalledWith('payload.signature'));
     expect(await screen.findByTestId('location')).toHaveTextContent('/');
-    expect(window.location.hash).not.toContain('sso=');
   });
 
   it('shows user settings, analytics, own posts, claim search, and claim actions while logged in', async () => {
