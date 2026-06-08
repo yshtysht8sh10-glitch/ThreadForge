@@ -1,0 +1,145 @@
+body {
+  margin: 0;
+  background: #000;
+  color: #ffff99;
+  font-family: "MS PGothic", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+}
+
+a {
+  color: #919cff;
+  text-decoration: none;
+}
+
+a:visited {
+  color: #c950c9;
+}
+
+a:hover {
+  color: #ccaadd;
+}
+
+.materials-page .legacy-layout__header {
+  align-items: flex-start;
+  padding: 22px 40px 10px;
+}
+
+.materials-page h1 {
+  color: #ffff99;
+  font-size: clamp(36px, 7vw, 56px);
+  line-height: 1;
+}
+
+.materials-intro {
+  margin: 0 40px 28px;
+  max-width: 1100px;
+  line-height: 1.8;
+  font-weight: bold;
+}
+
+.materials-index {
+  margin: 0 40px 28px;
+  padding: 12px;
+  border-top: 1px dashed #bbbb55;
+  border-bottom: 1px dashed #bbbb55;
+  max-width: 1080px;
+}
+
+.materials-index a {
+  display: inline-block;
+  margin: 4px 16px 4px 0;
+}
+
+.materials-heading,
+.materials-subheading {
+  width: min(1204px, calc(100vw - 80px));
+  margin: 14px 40px;
+  padding: 4px;
+  background: #bbbb55;
+  color: #000;
+  border: 1px solid #bbbb55;
+}
+
+.materials-heading {
+  font-size: 22px;
+}
+
+.materials-subheading {
+  font-size: 13px;
+}
+
+.materials-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+  width: min(1500px, calc(100vw - 80px));
+  margin-left: 40px;
+}
+
+.materials-page .catalog-card {
+  width: 294px;
+  min-height: 460px;
+  padding: 10px;
+  border: 1px solid #aaa;
+  color: #ffff99;
+  text-align: center;
+  font-size: 12px;
+}
+
+.materials-page .catalog-card__image {
+  height: 200px;
+  background: #040404;
+}
+
+.materials-page .catalog-card__download {
+  margin: 10px 0;
+}
+
+.materials-page .rule-table {
+  color: #ffff99;
+  border: 1px solid #aaa;
+  margin: 12px 0;
+}
+
+.materials-page .rule-table th,
+.materials-page .rule-table td {
+  border-top: 1px solid #aaa;
+  border-left: 1px dashed #aaa;
+}
+
+.materials-page .catalog-card__description p {
+  margin: 8px 0;
+}
+
+.materials-post {
+  width: min(760px, calc(100vw - 80px));
+  margin: 36px 40px 80px;
+  padding: 14px;
+  border: 1px solid #bbbb55;
+}
+
+.materials-post label {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.materials-post input,
+.materials-post textarea {
+  color: #ffff99;
+  background: #111;
+  border: 1px solid #bbbb55;
+  padding: 6px;
+}
+
+.materials-post textarea {
+  min-height: 130px;
+}
+
+.materials-post button {
+  background: #bbbb55;
+  color: #000;
+  border: 0;
+  padding: 6px 16px;
+  font-weight: bold;
+}

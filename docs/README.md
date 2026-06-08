@@ -6,14 +6,35 @@ This directory is the English documentation index. Keep the root `README.md` as 
 
 ## Canonical Documents
 
-- `SPEC.md`: current product specification and implementation status
+- `SPEC.md`: specification index and shared contracts
 - `../CHANGELOG.md`: release history
 - `../CHANGELOG.ja.md`: Japanese release history
 - `API.md`: PHP API actions and request/response notes
-- `DB.md`: SQLite schema, runtime data, backups, imports, and reset procedures
+- `DB.md`: DB/runtime index and shared runtime rules
 - `MIGRATION.md`: local archive log import notes
 - `ARCHITECTURE.md`: frontend/backend structure
+- `FRONTEND_ARCHITECTURE.md`: multi-frontend layout and migration direction
 - `TESTING.md`: test commands and coverage notes
+
+## Frontend Documents
+
+Each frontend owns its own README, DB notes, and spec.
+
+- `frontends/image-board/README.md`
+- `frontends/image-board/DB.md`
+- `frontends/image-board/SPEC.md`
+- `frontends/file-uploader/README.md`
+- `frontends/file-uploader/DB.md`
+- `frontends/file-uploader/SPEC.md`
+- `frontends/guide-posts/README.md`
+- `frontends/guide-posts/DB.md`
+- `frontends/guide-posts/SPEC.md`
+- `frontends/proxy-release/README.md`
+- `frontends/proxy-release/DB.md`
+- `frontends/proxy-release/SPEC.md`
+- `frontends/materials-library/README.md`
+- `frontends/materials-library/DB.md`
+- `frontends/materials-library/SPEC.md`
 
 Japanese versions live in `docs/ja/`, with `../README.ja.md` at the repository root.
 

@@ -12,22 +12,31 @@
 
 主なテスト:
 
-- `client/src/api.test.ts`
-- `client/src/pages/HomePage.test.tsx`
-- `client/src/pages/PostFormPage.test.tsx`
-- `client/src/pages/ThreadPage.test.tsx`
-- `client/src/pages/LoginPage.test.tsx`
-- `client/src/pages/UserPostsPage.test.tsx`
-- `client/src/pages/BoardAnalyticsPage.test.tsx`
-- `client/src/pages/SearchPage.test.tsx`
-- `client/src/pages/RankingPage.test.tsx`
-- `client/src/pages/AdminPage.test.tsx`
-- `client/src/tweet.test.ts`
+- `frontends/image-board/src/api.test.ts`
+- `frontends/image-board/src/pages/HomePage.test.tsx`
+- `frontends/image-board/src/pages/PostFormPage.test.tsx`
+- `frontends/image-board/src/pages/ThreadPage.test.tsx`
+- `frontends/image-board/src/pages/LoginPage.test.tsx`
+- `frontends/image-board/src/pages/UserPostsPage.test.tsx`
+- `frontends/image-board/src/pages/BoardAnalyticsPage.test.tsx`
+- `frontends/image-board/src/pages/SearchPage.test.tsx`
+- `frontends/image-board/src/pages/RankingPage.test.tsx`
+- `frontends/image-board/src/pages/AdminPage.test.tsx`
+- `frontends/image-board/src/tweet.test.ts`
 
 実行:
 
+リポジトリルートから:
+
 ```powershell
-cd client
+npm run test:image-board
+npm run build:frontends
+```
+
+フロントエンドディレクトリから:
+
+```powershell
+cd frontends/image-board
 npm test
 ```
 

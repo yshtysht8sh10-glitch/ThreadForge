@@ -12,17 +12,26 @@ Tools:
 
 Main tests:
 
-- `client/src/api.test.ts`
-- `client/src/pages/HomePage.test.tsx`
-- `client/src/pages/PostFormPage.test.tsx`
-- `client/src/pages/ThreadPage.test.tsx`
-- `client/src/pages/AdminPage.test.tsx`
-- `client/src/tweet.test.ts`
+- `frontends/image-board/src/api.test.ts`
+- `frontends/image-board/src/pages/HomePage.test.tsx`
+- `frontends/image-board/src/pages/PostFormPage.test.tsx`
+- `frontends/image-board/src/pages/ThreadPage.test.tsx`
+- `frontends/image-board/src/pages/AdminPage.test.tsx`
+- `frontends/image-board/src/tweet.test.ts`
 
 Run:
 
+From the repository root:
+
 ```powershell
-cd client
+npm run test:image-board
+npm run build:frontends
+```
+
+From the frontend directory:
+
+```powershell
+cd frontends/image-board
 npm test
 ```
 

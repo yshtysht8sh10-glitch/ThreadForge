@@ -2,16 +2,68 @@
 
 declare(strict_types=1);
 
+if (!defined('FRONTEND_ID')) {
+    define('FRONTEND_ID', resolveFrontendId());
+}
+
+if (!defined('FRONTEND_RUNTIME_DIR')) {
+    define('FRONTEND_RUNTIME_DIR', __DIR__ . '/runtime/' . FRONTEND_ID);
+}
+
 if (!defined('DB_FILE')) {
-    define('DB_FILE', getenv('THREADFORGE_DB_FILE') ?: __DIR__ . '/database.sqlite');
+    define('DB_FILE', getenv('THREADFORGE_DB_FILE') ?: defaultDatabaseFile());
 }
 
 if (!defined('STORAGE_DIR')) {
-    define('STORAGE_DIR', getenv('THREADFORGE_STORAGE_DIR') ?: __DIR__ . '/storage/data');
+    define('STORAGE_DIR', getenv('THREADFORGE_STORAGE_DIR') ?: defaultStorageDir());
+}
+
+if (!defined('STORAGE_PUBLIC_BASE')) {
+    $defaultPublicBase = getenv('THREADFORGE_STORAGE_DIR') ? '/storage/data' : defaultStoragePublicBase();
+    define('STORAGE_PUBLIC_BASE', getenv('THREADFORGE_STORAGE_PUBLIC_BASE') ?: $defaultPublicBase);
+}
+
+function resolveFrontendId(): string
+{
+    $raw = trim((string)(getenv('THREADFORGE_FRONTEND_ID') ?: 'image-board'));
+    $frontendId = strtolower((string)preg_replace('/[^a-zA-Z0-9_-]+/', '-', $raw));
+    $frontendId = trim($frontendId, '-_');
+    return $frontendId === '' ? 'image-board' : $frontendId;
+}
+
+function isPackagedSingleFrontendApp(): bool
+{
+    return basename(__DIR__) !== 'server';
+}
+
+function defaultDatabaseFile(): string
+{
+    return isPackagedSingleFrontendApp()
+        ? __DIR__ . '/database.sqlite'
+        : FRONTEND_RUNTIME_DIR . '/database.sqlite';
+}
+
+function defaultStorageDir(): string
+{
+    return isPackagedSingleFrontendApp()
+        ? __DIR__ . '/storage/data'
+        : FRONTEND_RUNTIME_DIR . '/storage/data';
+}
+
+function defaultStoragePublicBase(): string
+{
+    return isPackagedSingleFrontendApp()
+        ? '/storage/data'
+        : '/runtime/' . FRONTEND_ID . '/storage/data';
 }
 
 function getConnection(): PDO
 {
+    $dbDir = dirname(DB_FILE);
+    if (!is_dir($dbDir)) {
+        mkdir($dbDir, 0775, true);
+    }
+
     if (!file_exists(DB_FILE)) {
         touch(DB_FILE);
     }
@@ -250,7 +302,7 @@ function publicStoragePath(?string $path): ?string
     if ($basename === '' || $basename === '.' || $basename === '..') {
         return null;
     }
-    return '/storage/data/' . $basename;
+    return rtrim(STORAGE_PUBLIC_BASE, '/') . '/' . $basename;
 }
 
 function buildBoardReactions(array $row): array

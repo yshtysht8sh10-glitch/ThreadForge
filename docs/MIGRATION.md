@@ -24,7 +24,7 @@ Import behavior:
 
 - The first line of each `LOG_*.cgi` file becomes a top-level thread.
 - Later lines become replies under that thread.
-- Referenced images are copied into `server/storage/data/`.
+- Referenced images are copied into the active frontend's `server/runtime/<frontend-id>/storage/data/`.
 - Existing DB rows, uploaded images, and admin settings are not reset.
 - Re-running the import skips already imported posts and replies by name, content, and timestamp.
 

@@ -2,6 +2,21 @@
 
 [English tools guide](README.md)
 
+## フロントエンドごとのDB分離
+
+バックエンドコードは共通ですが、DBとアップロードファイルは `THREADFORGE_FRONTEND_ID` ごとに分かれます。
+
+例:
+
+```text
+server/runtime/image-board/database.sqlite
+server/runtime/image-board/storage/data/
+server/runtime/file-uploader/database.sqlite
+server/runtime/file-uploader/storage/data/
+```
+
+複数フロントを動かす場合は、各フロント/APIごとに別の `THREADFORGE_FRONTEND_ID` を設定してください。
+
 配布、インポート、修復など、サイト運用者向けのスクリプトをまとめています。
 
 ## 配布 Zip

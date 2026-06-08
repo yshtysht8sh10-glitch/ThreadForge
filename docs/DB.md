@@ -2,222 +2,69 @@
 
 [Japanese DB notes](ja/DB.md)
 
-The current backend uses SQLite plus file storage.
+ThreadForge uses one common PHP backend, but each frontend owns its own runtime database and uploaded-file storage.
 
-## Runtime Files
+## Development Layout
 
-- DB: `server/database.sqlite`
-- Uploaded and imported media: `server/storage/data/`
+During local development, runtime data is separated by `THREADFORGE_FRONTEND_ID`:
 
-Both are ignored by Git. They are local runtime data, not source files.
-
-## Initialization Behavior
-
-`server/db.php` creates the SQLite file, tables, missing columns, and storage directory when the API starts. It does not delete existing rows, images, or settings.
-
-During development, do not delete `server/database.sqlite` or `server/storage/data/` unless you intentionally want a clean board.
-
-## posts Table
-
-```sql
-CREATE TABLE IF NOT EXISTS posts (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  thread_id INTEGER NOT NULL,
-  parent_id INTEGER NOT NULL,
-  name TEXT NOT NULL,
-  url TEXT,
-  title TEXT NOT NULL,
-  message TEXT NOT NULL,
-  image_path TEXT,
-  password_hash TEXT,
-  created_at TEXT NOT NULL,
-  deleted_at TEXT,
-  gdgd INTEGER NOT NULL DEFAULT 0,
-  tweet_off INTEGER NOT NULL DEFAULT 0,
-  tweet_text TEXT,
-  tweet_url TEXT,
-  tweet_like_count INTEGER NOT NULL DEFAULT 0,
-  tweet_retweet_count INTEGER NOT NULL DEFAULT 0,
-  tweet_comment_count INTEGER NOT NULL DEFAULT 0,
-  tweet_impression_count INTEGER NOT NULL DEFAULT 0,
-  bluesky_uri TEXT,
-  bluesky_cid TEXT,
-  bluesky_url TEXT,
-  bluesky_like_count INTEGER NOT NULL DEFAULT 0,
-  bluesky_repost_count INTEGER NOT NULL DEFAULT 0,
-  bluesky_quote_count INTEGER NOT NULL DEFAULT 0,
-  mastodon_id TEXT,
-  mastodon_url TEXT,
-  mastodon_boost_count INTEGER NOT NULL DEFAULT 0,
-  mastodon_fav_count INTEGER NOT NULL DEFAULT 0,
-  misskey_id TEXT,
-  misskey_url TEXT,
-  misskey_fire_count INTEGER NOT NULL DEFAULT 0,
-  misskey_eyes_count INTEGER NOT NULL DEFAULT 0,
-  misskey_cry_count INTEGER NOT NULL DEFAULT 0,
-  misskey_thinking_count INTEGER NOT NULL DEFAULT 0,
-  misskey_party_count INTEGER NOT NULL DEFAULT 0,
-  misskey_other_count INTEGER NOT NULL DEFAULT 0,
-  user_id INTEGER,
-  view_count INTEGER NOT NULL DEFAULT 0
-)
+```text
+server/runtime/<frontend-id>/database.sqlite
+server/runtime/<frontend-id>/storage/data/
 ```
 
-Social columns store per-platform destination IDs/URLs and cached reaction counts. X keeps the `tweet_*` column names for compatibility.
-`user_id` is set only for posts/replies created while logged in. Later "this is my work" links are stored separately so more than one user can claim the same imported or historical post.
+Current frontend ids:
 
-## users / user_sessions Tables
+- `image-board`
+- `file-uploader`
+- `guide-posts`
+- `proxy-release`
+- `materials-library`
 
-```sql
-CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  login_id TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  display_name TEXT NOT NULL DEFAULT "",
-  post_password TEXT NOT NULL DEFAULT "",
-  home_url TEXT,
-  icon_path TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
+The five frontends must not share DB rows, settings, sessions, users, or uploaded files.
 
-CREATE TABLE IF NOT EXISTS user_sessions (
-  token TEXT PRIMARY KEY,
-  user_id INTEGER NOT NULL,
-  created_at TEXT NOT NULL,
-  expires_at TEXT NOT NULL
-);
+## Release Layout
+
+Release ZIPs are single-frontend apps. After extracting one ZIP, that app stores runtime data locally:
+
+```text
+database.sqlite
+storage/data/
 ```
 
-## user_post_claims Table
+This means `file-uploader` release ZIP and `image-board` release ZIP are separate applications. Each deployed app has its own `database.sqlite`.
 
-```sql
-CREATE TABLE IF NOT EXISTS user_post_claims (
-  user_id INTEGER NOT NULL,
-  post_id INTEGER NOT NULL,
-  created_at TEXT NOT NULL,
-  PRIMARY KEY (user_id, post_id)
-);
-```
+## Frontend DB Documents
 
-This table links a user to a post they marked as their own. It intentionally does not make `post_id` unique, so overlapping claims are allowed.
+- [image-board DB](frontends/image-board/DB.md)
+- [file-uploader DB](frontends/file-uploader/DB.md)
+- [guide-posts DB](frontends/guide-posts/DB.md)
+- [proxy-release DB](frontends/proxy-release/DB.md)
+- [materials-library DB](frontends/materials-library/DB.md)
 
-## post_revisions Table
+## Overrides
 
-```sql
-CREATE TABLE IF NOT EXISTS post_revisions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  post_id INTEGER NOT NULL,
-  revised_at TEXT NOT NULL
-);
-```
+Advanced overrides still work when a deployment needs explicit paths:
 
-Each successful edit inserts one row. The API exposes the count as `revision_count` and the edit timestamps as `revision_dates`; the UI displays this as `rev01`, `rev02`, etc.
+- `THREADFORGE_FRONTEND_ID`: selects the development runtime directory
+- `THREADFORGE_DB_FILE`: exact SQLite file path
+- `THREADFORGE_STORAGE_DIR`: exact uploaded-file directory
+- `THREADFORGE_STORAGE_PUBLIC_BASE`: public URL prefix for stored files
 
-## access_counts Table
+## Clean Initialization
 
-```sql
-CREATE TABLE IF NOT EXISTS access_counts (
-  access_date TEXT PRIMARY KEY,
-  count INTEGER NOT NULL DEFAULT 0
-);
-```
+Use this only when you intentionally want a clean app.
 
-The frontend records one access when the app shell loads. Admin analytics can graph this as `accessCount`.
-
-## settings Table
-
-```sql
-CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-)
-```
-
-Settings are stored as JSON sections:
-
-- `config`
-- `skin`
-- `security`
-
-The `security` section stores `adminPasswordHash` and `cronApiKey`. `cronApiKey` is generated automatically when missing and is used by the protected `cronRefreshSocialReactions` API for external schedulers such as GitHub Actions.
-
-When the DB is fresh and the settings table has no rows, ThreadForge uses application defaults: gdgd/special posting OFF, list page size 20, SNS hashtag `#art`, all SNS integrations OFF, and SNS credential fields empty. An empty or non-positive list page size shows all posts on one page.
-
-## Backups
-
-Use the admin maintenance screen full backup export button to download one ZIP file containing:
-
-- posts and replies
-- edit revisions
-- users
-- claimed works
-- access-count history
-- settings
-- post images and user icons under `images/`
-
-Login sessions are intentionally not included; users sign in again after restore.
-
-Importing this full backup ZIP is a full restore. It replaces backed-up DB rows and images, then restores settings from the backup. Legacy JSON backups from earlier versions remain import-compatible.
-
-## Local Archive Import
-
-Local Archive log import is operated from a local operator batch or PHP command instead of the web admin screen.
+Development:
 
 ```powershell
-tools\import_local_archive.bat legacy\data
+Remove-Item server\runtime\<frontend-id>\database.sqlite
+Get-ChildItem server\runtime\<frontend-id>\storage\data -File | Remove-Item
 ```
 
-The importer reads `LOG_*.cgi` files from a local directory, defaulting to root `data/`, and copies referenced image files into `server/storage/data/`.
-
-This import is intentionally non-destructive:
-
-- It does not delete existing posts.
-- It does not delete existing images.
-- It does not reset admin settings.
-- Re-running it skips posts and replies already imported by matching name, content, and timestamp.
-
-Imported posts use generated unknown password hashes. They should be managed from the admin screen unless a password migration is implemented.
-
-## Release ZIP
-
-Create a distribution archive with:
+Release deployment:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
+Remove-Item database.sqlite
+Get-ChildItem storage\data -File | Remove-Item
 ```
-
-The script creates `release/threadforge-<version>.zip` from a whitelist of application files. The archive is arranged so the extracted contents can be uploaded directly to a rental server public directory:
-
-- `index.html`
-- `assets/`
-- `api.php`
-- `db.php`
-- `cron.php`
-- `storage/data/.gitkeep`
-- documentation
-
-Runtime DB files, uploaded images, local PHP binaries, logs, dependency directories, operator scripts, and legacy import source data are intentionally not included. A deployed site should be updated by backing up runtime data first, then replacing application files while preserving `database.sqlite` and `storage/data/`.
-
-On a clean deployment, the next API request creates `database.sqlite` and the storage directory automatically when PHP has write permission.
-
-## Intentional Clean Initialization
-
-For public release or a clean local board:
-
-1. Export a backup first if you need the current data.
-2. Stop the PHP server.
-3. Delete `server/database.sqlite`.
-4. Delete files under `server/storage/data/`, keeping the directory or recreating it later.
-5. Start the PHP server again.
-
-The next API request recreates the DB schema and storage directory with default settings.
-
-PowerShell example:
-
-```powershell
-Remove-Item server\database.sqlite
-Get-ChildItem server\storage\data -File | Remove-Item
-```
-
-Use this only when you truly want to reset runtime data.

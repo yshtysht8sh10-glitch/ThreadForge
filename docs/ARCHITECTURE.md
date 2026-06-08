@@ -5,21 +5,25 @@
 ## Current Structure
 
 ```text
-client/ React + TypeScript + Vite
+frontends/image-board/ React + TypeScript + Vite
+frontends/shared/ shared frontend code
+frontends/*/ planned frontend applications
   |
   | HTTP JSON / multipart form-data
   v
 server/api.php
   |
   +-- server/db.php
-  |     +-- server/database.sqlite
+  |     +-- server/runtime/<frontend-id>/database.sqlite
   |
-  +-- server/storage/data/
+  +-- server/runtime/<frontend-id>/storage/data/
 ```
 
 ## Frontend
 
-`client/src/App.tsx` defines routing.
+`frontends/image-board/src/App.tsx` defines routing for the current image posting board frontend.
+
+See `docs/FRONTEND_ARCHITECTURE.md` for the multi-frontend layout, planned frontend slots, and migration rules.
 
 - `/`: `HomePage`
 - `/thread/:id`: `ThreadPage`
@@ -27,7 +31,7 @@ server/api.php
 - `/search`: `SearchPage`
 - `/edit/:id`: `EditPostPage`
 
-API calls are centralized in `client/src/api.ts`.
+API calls are currently centralized in `frontends/image-board/src/api.ts`.
 
 When `VITE_USE_MOCK` is `true` or unset, the frontend uses mock responses. Set `VITE_USE_MOCK=false` to use the real PHP API.
 
@@ -58,7 +62,7 @@ New top-level post:
 2. The API validates required fields.
 3. The password is hashed.
 4. The post row is saved to SQLite and receives an ID.
-5. If an image exists, it is stored under `server/storage/data/` using the post ID.
+5. If an image exists, it is stored under the active frontend's `server/runtime/<frontend-id>/storage/data/` using the post ID.
 6. The image path is stored on the post row.
 7. If SNS posting is enabled, the API posts to enabled platforms and stores destination IDs/URLs.
 8. JSON success or error is returned.

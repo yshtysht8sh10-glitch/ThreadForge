@@ -1,0 +1,112 @@
+* {
+  box-sizing: border-box;
+  font-size: 13px;
+}
+
+body {
+  margin: 0;
+  background: #eeeeee;
+  color: #000;
+  font-family: Arial, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+}
+
+a {
+  color: blue;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.uploader-page {
+  min-height: 100vh;
+  padding: 8px;
+}
+
+.uploader-shell {
+  width: min(720px, calc(100vw - 16px));
+  margin: 0 auto;
+  border: 1px solid gray;
+  background: #2a2a2a;
+  padding: 1px;
+}
+
+.uploader-title {
+  border: 1px solid gray;
+  padding: 7px 3px;
+  background: linear-gradient(#f7f7f7, #d8d8d8);
+}
+
+.uploader-content {
+  border: 1px solid gray;
+  background: #fff;
+  padding: 5px;
+}
+
+.upload-form {
+  width: min(440px, 100%);
+  margin: 0 auto 8px;
+  border: 1px solid #d0d0d0;
+  background: #eeeeee;
+  padding: 10px;
+}
+
+.upload-form label {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.upload-form input {
+  min-width: 0;
+  border: 1px solid #999;
+  background: white;
+}
+
+.upload-form__inline {
+  grid-template-columns: 52px 90px auto;
+}
+
+.upload-form button {
+  width: max-content;
+  border: 1px solid #666;
+  background: #f5f5f5;
+}
+
+.upload-note {
+  margin: 8px 0 0;
+  color: #666;
+  line-height: 1.4;
+}
+
+.upload-note span {
+  float: right;
+}
+
+.file-count {
+  line-height: 2;
+  margin: 0;
+}
+
+.upload-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #d0d0d0;
+}
+
+.upload-table th,
+.upload-table td {
+  border: 1px solid #d0d0d0;
+  background: #fff;
+  padding: 8px 4px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.upload-table th {
+  background: #eeeeee;
+  font-weight: normal;
+}

@@ -15,7 +15,12 @@ ThreadForge は、作品投稿、画像、返信、簡単リアクション、�
 
 ## ディレクトリ構成
 
-- `client/`: React / TypeScript / Vite フロントエンド
+- `frontends/image-board/`: 現在の画像投稿掲示板用 React / TypeScript / Vite フロントエンド
+- `frontends/shared/`: 今後の複数フロントで使う共通フロント部品
+- `frontends/file-uploader/`: ファイルアップローダ用フロント
+- `frontends/guide-posts/`: MUGEN/ドット絵制作指南ページ投稿所予定地
+- `frontends/proxy-release/`: MUGENキャラ代理公開所予定地
+- `frontends/materials-library/`: 制作素材提供所予定地
 - `server/`: PHP API、SQLite、サーバー側処理
 - `docs/`: 仕様、API、DB、運用、テスト関連ドキュメント
 - `tools/`: 配布 Zip 作成、BBSNote/ローカルアーカイブ取り込み、修復などの運用ツール
@@ -23,10 +28,20 @@ ThreadForge は、作品投稿、画像、返信、簡単リアクション、�
 
 ## ローカル起動
 
+ルートからのショートカット:
+
+```powershell
+npm run dev:image-board
+npm run dev:file-uploader
+npm run dev:guide-posts
+npm run dev:proxy-release
+npm run dev:materials-library
+```
+
 フロントエンド:
 
 ```powershell
-cd client
+cd frontends/image-board
 copy .env.example .env
 npm install
 npm run dev -- --host 127.0.0.1 --port 5173
@@ -116,10 +131,18 @@ release/threadforge-<version>.zip
 
 ## テスト
 
+リポジトリルートから:
+
+```powershell
+npm run test:image-board
+npm run build:image-board
+npm run build:frontends
+```
+
 フロントエンド:
 
 ```powershell
-cd client
+cd frontends/image-board
 npm test -- --run
 npm run build
 ```
@@ -134,6 +157,7 @@ vendor/bin/phpunit
 ## ドキュメント
 
 - `docs/ja/SPEC.md`: 日本語仕様
+- `docs/ja/FRONTEND_ARCHITECTURE.md`: 複数フロント構成と移行方針
 - `docs/ja/API.md`: API
 - `docs/ja/DB.md`: DB とランタイムデータ
 - `docs/ja/MIGRATION.md`: 移行メモ

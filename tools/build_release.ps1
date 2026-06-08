@@ -7,6 +7,7 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 Set-Location $repoRoot
+$imageBoardFrontend = Join-Path $repoRoot 'frontends\image-board'
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $versionFile = Join-Path $repoRoot 'VERSION'
@@ -37,7 +38,7 @@ function Copy-ReleaseItem {
 }
 
 if (-not $SkipClientBuild) {
-    Push-Location (Join-Path $repoRoot 'client')
+    Push-Location $imageBoardFrontend
     try {
         $previousApiBase = $env:VITE_API_BASE_URL
         $previousUseMock = $env:VITE_USE_MOCK
@@ -51,8 +52,8 @@ if (-not $SkipClientBuild) {
     }
 }
 
-if (-not (Test-Path (Join-Path $repoRoot 'client\dist'))) {
-    throw 'client/dist is missing. Run npm run build in client, or run this script without -SkipClientBuild.'
+if (-not (Test-Path (Join-Path $imageBoardFrontend 'dist'))) {
+    throw 'frontends/image-board/dist is missing. Run npm run build in frontends/image-board, or run this script without -SkipClientBuild.'
 }
 
 New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
@@ -65,11 +66,13 @@ if ((Test-Path $stageBase) -and -not ((Resolve-Path $stageBase).Path.StartsWith(
 Remove-Item -LiteralPath $stageBase -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $stageRoot | Out-Null
 
-Copy-Item -Path (Join-Path $repoRoot 'client\dist\*') -Destination $stageRoot -Recurse -Force
+Copy-Item -Path (Join-Path $imageBoardFrontend 'dist\*') -Destination $stageRoot -Recurse -Force
 Copy-ReleaseItem -Source 'server\api.php' -Destination 'api.php'
 Copy-ReleaseItem -Source 'server\db.php' -Destination 'db.php'
 Copy-ReleaseItem -Source 'server\cron.php' -Destination 'cron.php'
-Copy-ReleaseItem -Source 'server\storage\data\.gitkeep' -Destination 'storage\data\.gitkeep'
+$storageDir = Join-Path $stageRoot 'storage\data'
+New-Item -ItemType Directory -Force -Path $storageDir | Out-Null
+Set-Content -Path (Join-Path $storageDir '.gitkeep') -Value '' -Encoding UTF8
 Copy-ReleaseItem -Source 'docs' -Destination 'docs'
 Copy-ReleaseItem -Source 'README.md' -Destination 'README.md'
 Copy-ReleaseItem -Source 'README.ja.md' -Destination 'README.ja.md'

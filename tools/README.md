@@ -29,14 +29,18 @@ threadforge-<version>/
 
 The frontend is built to call `./api.php` on the same site. The release ZIP includes the built frontend, PHP backend, and documentation. Operator scripts are not included in the release ZIP. Runtime data is intentionally excluded:
 
-- `server/database.sqlite`
-- uploaded images under `server/storage/data/`
+- development DBs under `server/runtime/<frontend-id>/database.sqlite`
+- development uploaded images under `server/runtime/<frontend-id>/storage/data/`
+- deployed release DB as `database.sqlite`
+- deployed release uploaded images under `storage/data/`
 - local PHP binaries
 - dependency directories
 - logs
 - legacy source data
 
-On first access, ThreadForge creates the SQLite DB automatically when PHP has write permission for the deployed directory. Make sure `storage/data/` is writable so uploaded images can be saved.
+On first access, ThreadForge creates the SQLite DB automatically when PHP has write permission for the deployed directory. In a release ZIP deployment, make sure `storage/data/` is writable so uploaded images can be saved.
+
+Set `THREADFORGE_FRONTEND_ID` per frontend/API pair when multiple frontends are deployed. For example, use `image-board` for the image posting board and `file-uploader` for the file uploader.
 
 ## Local Archive Import
 

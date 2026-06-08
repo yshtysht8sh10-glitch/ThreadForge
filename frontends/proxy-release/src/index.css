@@ -1,0 +1,119 @@
+body {
+  margin: 0;
+  background: #191919;
+  color: #01fd65;
+  font-family: "MS PGothic", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+}
+
+a {
+  color: #919cff;
+  text-decoration: none;
+}
+
+a:visited {
+  color: #c950c9;
+}
+
+a:hover {
+  color: #ccaadd;
+}
+
+.proxy-page .legacy-layout__header {
+  align-items: flex-start;
+  padding: 28px 40px 12px 10px;
+}
+
+.proxy-page h1 {
+  color: #40ff56;
+  font-size: clamp(34px, 7vw, 56px);
+  line-height: 1;
+}
+
+.proxy-page .legacy-layout__header p {
+  color: #01fd65;
+  font-weight: bold;
+}
+
+.proxy-page .legacy-layout__header nav a {
+  color: #919cff;
+}
+
+.proxy-intro {
+  margin: 0 40px 28px;
+  max-width: 980px;
+  font-weight: bold;
+  line-height: 1.8;
+}
+
+.proxy-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 18px;
+  width: min(1500px, calc(100vw - 80px));
+  margin-left: 40px;
+}
+
+.proxy-page .catalog-card {
+  width: 350px;
+  color: #01fd65;
+  text-align: center;
+  font-size: 12px;
+}
+
+.proxy-page .catalog-card__image {
+  height: 250px;
+}
+
+.proxy-page .catalog-card__download {
+  font-weight: bold;
+}
+
+.proxy-page .rule-table {
+  margin: 12px auto;
+  color: #01fd65;
+  border: 1px solid #aaa;
+}
+
+.proxy-page .rule-table th,
+.proxy-page .rule-table td {
+  border-top: 1px solid #aaa;
+  border-left: 1px dashed #aaa;
+}
+
+.proxy-page .catalog-card__description {
+  min-height: 72px;
+}
+
+.proxy-post {
+  width: min(700px, calc(100vw - 80px));
+  margin: 30px 40px 60px;
+  padding: 14px;
+  border: 1px solid #555;
+}
+
+.proxy-post label {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.proxy-post input,
+.proxy-post textarea {
+  color: #01fd65;
+  background: #111;
+  border: 1px solid #777;
+  padding: 6px;
+}
+
+.proxy-post textarea {
+  min-height: 120px;
+}
+
+.proxy-post button {
+  color: #191919;
+  background: #01fd65;
+  border: 0;
+  padding: 6px 16px;
+  font-weight: bold;
+}

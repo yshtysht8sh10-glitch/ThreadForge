@@ -1,26 +1,28 @@
 # Dependencies
-client/node_modules/
+node_modules/
+frontends/*/node_modules/
 server/vendor/
 
 # Build output
-client/dist/
+frontends/*/dist/
 release/
 
 # Local environment
-client/.env
-client/.env.local
+frontends/*/.env
+frontends/*/.env.local
 server/.env
 server/.php/
 server/composer.phar
 
 # Runtime data
 server/database*.sqlite
+server/runtime/
 server/storage/data/*
 !server/storage/data/.gitkeep
 server/tests/runtime/
 server/.phpunit.result.cache
 server/laravel/
-client/vite*.log
+frontends/*/vite*.log
 server/php-server*.log
 server/*_debug.log
 

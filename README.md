@@ -8,7 +8,12 @@ The current production operation release is `0.9.7`.
 
 ## Repository Contents
 
-- `client/`: React, TypeScript, Vite frontend
+- `frontends/image-board/`: current production image posting board frontend
+- `frontends/shared/`: shared frontend code for future frontend apps
+- `frontends/file-uploader/`: file uploader frontend
+- `frontends/guide-posts/`: MUGEN and dot-art guide posting frontend
+- `frontends/proxy-release/`: proxy release frontend
+- `frontends/materials-library/`: materials library frontend
 - `server/`: PHP API, SQLite storage, PHPUnit tests
 - `docs/`: architecture, API, DB, migration, and testing notes
 - `docs/SPEC.md`: current product specification
@@ -19,10 +24,20 @@ Local archive files and historical image/log data are kept out of this Git repos
 
 ## Local Setup
 
+Root shortcut:
+
+```powershell
+npm run dev:image-board
+npm run dev:file-uploader
+npm run dev:guide-posts
+npm run dev:proxy-release
+npm run dev:materials-library
+```
+
 Frontend:
 
 ```powershell
-cd client
+cd frontends/image-board
 copy .env.example .env
 npm install
 npm run dev -- --host 127.0.0.1 --port 5173
@@ -46,10 +61,18 @@ http://127.0.0.1:5173
 
 ## Tests
 
+From the repository root:
+
+```powershell
+npm run test:image-board
+npm run build:image-board
+npm run build:frontends
+```
+
 Frontend:
 
 ```powershell
-cd client
+cd frontends/image-board
 npm test -- --run
 npm run build
 ```
@@ -67,21 +90,26 @@ The project version is tracked in:
 
 - `VERSION`
 - `CHANGELOG.md`
-- `client/package.json`
-- `client/src/version.ts`
+- `frontends/image-board/package.json`
+- `frontends/image-board/src/version.ts`
 
 Use semantic versioning. Update all version references and the changelog in the same commit.
 
 ## Runtime Data
 
-The backend creates runtime files locally:
+The backend creates development runtime files locally per frontend id:
 
-- `server/database.sqlite`
-- `server/storage/data/*`
+- `server/runtime/<frontend-id>/database.sqlite`
+- `server/runtime/<frontend-id>/storage/data/*`
+
+Release ZIPs are standalone single-frontend apps. In a deployed ZIP, runtime files live next to the packaged app:
+
+- `database.sqlite`
+- `storage/data/*`
 
 These files are intentionally ignored by Git. Use the admin full backup ZIP import/export feature to move live data between environments.
 
-Before updating a live site, export a full backup ZIP from the admin maintenance screen and separately keep a copy of `database.sqlite` and `storage/data/`.
+Before updating a live site, export a full backup ZIP from the admin maintenance screen and separately keep a copy of that frontend's `database.sqlite` and `storage/data/`.
 
 ## Rental Server Deployment
 

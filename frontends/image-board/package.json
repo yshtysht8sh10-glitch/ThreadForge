@@ -1,5 +1,5 @@
 {
-  "name": "threadforge-frontend",
+  "name": "@threadforge/image-board-frontend",
   "private": true,
   "version": "0.9.7",
   "type": "module",
@@ -13,7 +13,8 @@
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.14.0"
+    "react-router-dom": "^6.14.0",
+    "threadforge": "file:../.."
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

@@ -5,21 +5,25 @@
 ## 現在の構成
 
 ```text
-client/ React + TypeScript + Vite
+frontends/image-board/ React + TypeScript + Vite
+frontends/shared/ 複数フロントで使う共通フロント部品
+frontends/*/ 追加フロント予定地
   |
   | HTTP JSON / multipart form-data
   v
 server/api.php
   |
   +-- server/db.php
-  |     +-- server/database.sqlite
+  |     +-- server/runtime/<frontend-id>/database.sqlite
   |
-  +-- server/storage/data/
+  +-- server/runtime/<frontend-id>/storage/data/
 ```
 
 ## フロントエンド
 
-`client/src/App.tsx` がルーティングを定義します。
+`frontends/image-board/src/App.tsx` が現在の画像投稿掲示板フロントのルーティングを定義します。
+
+複数フロント構成、予定しているフロント枠、移行ルールは `docs/ja/FRONTEND_ARCHITECTURE.md` を参照してください。
 
 - `/`: `HomePage`
 - `/thread/:id`: `ThreadPage`
@@ -27,7 +31,7 @@ server/api.php
 - `/search`: `SearchPage`
 - `/edit/:id`: `EditPostPage`
 
-API 呼び出しは `client/src/api.ts` に集約されています。
+現在の画像投稿掲示板フロントの API 呼び出しは `frontends/image-board/src/api.ts` に集約されています。
 
 `VITE_USE_MOCK` が `true` または未指定の場合、フロントエンドはモックレスポンスを使います。実APIを使う場合は `VITE_USE_MOCK=false` を指定します。
 
@@ -58,7 +62,7 @@ DB接続、テーブル作成、画像保存補助、JSONレスポンスは `ser
 2. API が必須項目を検証します。
 3. パスワードをハッシュ化します。
 4. SQLite に投稿行を保存し、投稿IDを確定します。
-5. 画像があれば、投稿IDを使って `server/storage/data/` に保存します。
+5. 画像があれば、投稿IDを使って有効なフロントエンドの `server/runtime/<frontend-id>/storage/data/` に保存します。
 6. 画像パスを投稿行に反映します。
 7. SNS転記が有効な場合、ON のSNSへ投稿し、転記先ID/URLを保存します。
 8. 成功または失敗をJSONで返します。
