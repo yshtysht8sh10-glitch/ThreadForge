@@ -86,8 +86,11 @@ function apiBase() {
 }
 
 function backendFileUrl(path: string) {
-  const apiUrl = new URL(apiBase(), window.location.href);
-  return new URL(path, apiUrl).toString();
+  return resolveBackendFileUrl(path, apiBase(), window.location.href);
+}
+
+export function resolveBackendFileUrl(path: string, apiUrl: string, pageUrl: string) {
+  return new URL(path, new URL(apiUrl, pageUrl)).toString();
 }
 
 async function apiPost<T>(action: string, values: Record<string, string>): Promise<T> {

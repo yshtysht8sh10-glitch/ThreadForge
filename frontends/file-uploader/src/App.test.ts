@@ -6,6 +6,7 @@ import {
   formatSize,
   homeHref,
   normalizeSettings,
+  resolveBackendFileUrl,
   toggleId,
   validateUploadFile,
   type UploadRow,
@@ -49,6 +50,14 @@ describe('file-uploader helpers', () => {
     expect(homeHref('example.com/home')).toBe('https://example.com/home');
     expect(homeHref('/DotoEita/')).toBe('/DotoEita/');
     expect(homeHref('../')).toBe('../');
+  });
+
+  it('resolves packaged storage paths beside the deployed API', () => {
+    expect(resolveBackendFileUrl(
+      'storage/data/file1.png',
+      'api.php',
+      'https://mugendoteita.main.jp/DotoEita/12_file_uploader/',
+    )).toBe('https://mugendoteita.main.jp/DotoEita/12_file_uploader/storage/data/file1.png');
   });
 
   it('builds monthly analytics and formats sizes', () => {

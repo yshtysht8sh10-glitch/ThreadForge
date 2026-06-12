@@ -53,7 +53,7 @@ function defaultStorageDir(): string
 function defaultStoragePublicBase(): string
 {
     return isPackagedSingleFrontendApp()
-        ? '/storage/data'
+        ? 'storage/data'
         : '/runtime/' . FRONTEND_ID . '/storage/data';
 }
 
