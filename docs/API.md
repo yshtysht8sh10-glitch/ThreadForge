@@ -292,6 +292,48 @@ type Post = {
 
 `password_hash` is never included in API responses.
 
+## file-uploader API
+
+These actions use the `uploader_files` table and are enabled for the `file-uploader` frontend.
+
+### GET `?action=uploaderSettings`
+
+Returns the public uploader title, allowed extensions, maximum upload size, and design colors.
+
+### GET `?action=listUploaderFiles`
+
+Returns active files in newest-first order. Each row includes the generated filename, original filename, comment, byte size, creation date, and public download URL.
+
+### POST `?action=uploadUploaderFile`
+
+Multipart fields:
+
+- `file`: required
+- `comment`: optional
+- `delete_key`: required
+
+The API validates the configured extension allowlist and maximum size before storing the file and hashed delete key.
+
+### POST `?action=deleteUploaderFile`
+
+Fields:
+
+- `id`: required
+- `delete_key`: required
+
+Matching the stored delete-key hash soft-deletes the file row.
+
+### Administrator actions
+
+- `listDeletedUploaderFiles`: list soft-deleted files
+- `adminDeleteUploaderFiles`: soft-delete multiple active files
+- `restoreUploaderFiles`: restore multiple files
+- `purgeUploaderFiles`: physically remove rows and stored files
+- `exportBackup`: download DB, uploaded files, settings, and design as a ZIP
+- `importBackup`: restore a full uploader backup ZIP
+
+Administrator actions require `admin_password`.
+
 ## Laravel API
 
 `server/laravel/routes/api.php` contains Laravel routes, but the current frontend does not use them as the standard API. The Laravel API is not treated as production-ready yet.

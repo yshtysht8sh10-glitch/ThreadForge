@@ -12,6 +12,7 @@ Tools:
 
 Main tests:
 
+- `frontends/file-uploader/src/App.test.ts`
 - `frontends/image-board/src/api.test.ts`
 - `frontends/image-board/src/pages/HomePage.test.tsx`
 - `frontends/image-board/src/pages/PostFormPage.test.tsx`
@@ -25,6 +26,7 @@ From the repository root:
 
 ```powershell
 npm run test:image-board
+npm run test:file-uploader
 npm run build:frontends
 ```
 
@@ -45,6 +47,7 @@ Main tests:
 
 - `server/tests/StorageLayerTest.php`
 - `server/tests/ApiHttpIntegrationTest.php`
+- `server/tests/UploaderApiHttpIntegrationTest.php`
 
 Covered behavior:
 
@@ -74,6 +77,8 @@ Covered behavior:
 - Admin restore/purge selectable-card flows, including range selection, destructive-action enabling, data purge, row-level number purge, and top-level display-number compaction
 - Dedicated admin user management screen, including entry confirmation, edit, destructive-action enabling, information erase, row-level user delete, and user-number compaction
 - Admin design live preview and reset to persisted values
+- file-uploader extension/size validation, settings normalization, analytics aggregation, and selection helpers
+- file-uploader HTTP upload, list, delete-key rejection/acceptance, administrator restore, bulk delete, and purge
 
 Run:
 

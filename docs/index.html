@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>Documentation / ドキュメント | ThreadForge</title>
+  <link rel="stylesheet" href="assets/docs.css">
+  <script src="assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="./index.html" aria-current="page">ドキュメント</a></li><li><a href="./SPEC.html">仕様</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html">データベース</a></li><li><a href="./ARCHITECTURE.html">構成</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="./MIGRATION.html">移行</a></li><li><a href="./TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="./frontends/image-board/index.html">画像掲示板</a></li><li><a href="./frontends/image-board/SPEC.html">画像掲示板仕様</a></li><li><a href="./frontends/image-board/DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">ファイルアップローダー</a></li><li><a href="./frontends/file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="./frontends/file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">指南記事</a></li><li><a href="./frontends/guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="./frontends/guide-posts/DB.html">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">代理公開</a></li><li><a href="./frontends/proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="./frontends/proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">素材ライブラリ</a></li><li><a href="./frontends/materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="./frontends/materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="./index.html" aria-current="page">Documentation</a></li><li><a href="./SPEC.html">Specification</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html">Database</a></li><li><a href="./ARCHITECTURE.html">Architecture</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="./MIGRATION.html">Migration</a></li><li><a href="./TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="./frontends/image-board/index.html">Image Board</a></li><li><a href="./frontends/image-board/SPEC.html">Image Board Spec</a></li><li><a href="./frontends/image-board/DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">File Uploader</a></li><li><a href="./frontends/file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="./frontends/file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">Guide Posts</a></li><li><a href="./frontends/guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="./frontends/guide-posts/DB.html">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">Proxy Release</a></li><li><a href="./frontends/proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="./frontends/proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">Materials Library</a></li><li><a href="./frontends/materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="./frontends/materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>Documentation / ドキュメント</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="threadforge-ドキュメント">ThreadForge ドキュメント</h1>
+<p>人が読むドキュメントは、日本語/Englishを画面上で切り替えられるHTMLとして生成します。<a href="index.html"><code>../index.html</code></a> を開いてください。</p>
+<p>Markdownファイルは更新しやすい原稿として残します。編集後は次のコマンドでHTMLを再生成します。</p>
+<pre><code class="language-powershell">npm run build:docs</code></pre>
+<p>このディレクトリは日本語ドキュメントの索引です。</p>
+<h2 id="共通ドキュメント">共通ドキュメント</h2>
+<ul>
+<li><code>SPEC.md</code>: 仕様索引と共通契約</li>
+<li><code>DB.md</code>: DB/ランタイムデータの索引と共通ルール</li>
+<li><code>API.md</code>: PHP API のアクションとリクエスト/レスポンス</li>
+<li><code>ARCHITECTURE.md</code>: フロントエンド/バックエンド構成</li>
+<li><code>FRONTEND_ARCHITECTURE.md</code>: 複数フロント構成と移行方針</li>
+<li><code>MIGRATION.md</code>: ローカルアーカイブログの取り込みメモ</li>
+<li><code>TESTING.md</code>: テストコマンドと確認範囲</li>
+<li><code>../../CHANGELOG.md</code>: 英語変更履歴</li>
+<li><code>../../CHANGELOG.ja.md</code>: 日本語変更履歴</li>
+</ul>
+<h2 id="フロント別ドキュメント">フロント別ドキュメント</h2>
+<p>各フロントは README、DB、SPEC を持ちます。</p>
+<ul>
+<li><code>frontends/image-board/README.md</code></li>
+<li><code>frontends/image-board/DB.md</code></li>
+<li><code>frontends/image-board/SPEC.md</code></li>
+<li><code>frontends/file-uploader/README.md</code></li>
+<li><code>frontends/file-uploader/DB.md</code></li>
+<li><code>frontends/file-uploader/SPEC.md</code></li>
+<li><code>frontends/guide-posts/README.md</code></li>
+<li><code>frontends/guide-posts/DB.md</code></li>
+<li><code>frontends/guide-posts/SPEC.md</code></li>
+<li><code>frontends/proxy-release/README.md</code></li>
+<li><code>frontends/proxy-release/DB.md</code></li>
+<li><code>frontends/proxy-release/SPEC.md</code></li>
+<li><code>frontends/materials-library/README.md</code></li>
+<li><code>frontends/materials-library/DB.md</code></li>
+<li><code>frontends/materials-library/SPEC.md</code></li>
+</ul>
+<h2 id="運用ツール">運用ツール</h2>
+<p>リリースZip作成やローカルアーカイブ取り込み用のスクリプトは <code>tools/</code> にあります。</p>
+<pre><code class="language-powershell">npm run release:image-board
+npm run release:file-uploader</code></pre>
+<p>リリースZipは <code>release/threadforge-&lt;frontend-id&gt;-&lt;version&gt;.zip</code> に作られます。開発環境では <code>server/runtime/&lt;frontend-id&gt;/...</code>、配置後は <code>database.sqlite</code> と <code>storage/data/</code> を使います。</p></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="threadforge-docs">ThreadForge Docs</h1>
+<p>The human-facing documentation is generated as bilingual HTML. Open <a href="index.html"><code>index.html</code></a> and switch Japanese/English on the page.</p>
+<p>The Markdown files remain the maintainable source. Regenerate HTML after editing them:</p>
+<pre><code class="language-powershell">npm run build:docs</code></pre>
+<p>This directory is the English documentation index. Keep the root <code>README.md</code> as the short repository entry point, and keep detailed operational notes here.</p>
+<h2 id="canonical-documents">Canonical Documents</h2>
+<ul>
+<li><code>SPEC.md</code>: specification index and shared contracts</li>
+<li><code>../CHANGELOG.md</code>: release history</li>
+<li><code>../CHANGELOG.ja.md</code>: Japanese release history</li>
+<li><code>API.md</code>: PHP API actions and request/response notes</li>
+<li><code>DB.md</code>: DB/runtime index and shared runtime rules</li>
+<li><code>MIGRATION.md</code>: local archive log import notes</li>
+<li><code>ARCHITECTURE.md</code>: frontend/backend structure</li>
+<li><code>FRONTEND_ARCHITECTURE.md</code>: multi-frontend layout and migration direction</li>
+<li><code>TESTING.md</code>: test commands and coverage notes</li>
+</ul>
+<h2 id="frontend-documents">Frontend Documents</h2>
+<p>Each frontend owns its own README, DB notes, and spec.</p>
+<ul>
+<li><code>frontends/image-board/README.md</code></li>
+<li><code>frontends/image-board/DB.md</code></li>
+<li><code>frontends/image-board/SPEC.md</code></li>
+<li><code>frontends/file-uploader/README.md</code></li>
+<li><code>frontends/file-uploader/DB.md</code></li>
+<li><code>frontends/file-uploader/SPEC.md</code></li>
+<li><code>frontends/guide-posts/README.md</code></li>
+<li><code>frontends/guide-posts/DB.md</code></li>
+<li><code>frontends/guide-posts/SPEC.md</code></li>
+<li><code>frontends/proxy-release/README.md</code></li>
+<li><code>frontends/proxy-release/DB.md</code></li>
+<li><code>frontends/proxy-release/SPEC.md</code></li>
+<li><code>frontends/materials-library/README.md</code></li>
+<li><code>frontends/materials-library/DB.md</code></li>
+<li><code>frontends/materials-library/SPEC.md</code></li>
+</ul>
+<p>Japanese versions live in <code>docs/ja/</code>, with <code>../README.ja.md</code> at the repository root.</p>
+<h2 id="release-and-operator-tools">Release And Operator Tools</h2>
+<p>Release packaging and local archive import scripts live in <code>tools/</code>. These are maintainer/operator tools, so the root README keeps only deployment-oriented instructions.</p>
+<p>Create a release ZIP:</p>
+<pre><code class="language-powershell">npm run release:image-board
+npm run release:file-uploader</code></pre>
+<p>Release ZIPs are written to <code>release/threadforge-&lt;frontend-id&gt;-&lt;version&gt;.zip</code>. Their contents are arranged for upload to a public web directory.</p>
+<p>For a GitHub release, update <code>VERSION</code> and the changelog, generate and verify the ZIP, then create the matching <code>v&lt;version&gt;</code> tag and attach the ZIP to the GitHub Release.</p>
+<p>Import local archive logs:</p>
+<pre><code class="language-powershell">tools\import_local_archive.bat legacy\data</code></pre>
+<p>The local archive importer reads <code>LOG_*.cgi</code> files and referenced images from the specified directory. It is non-destructive and is not exposed from the web admin screen.</p>
+<h2 id="current-runtime-features">Current Runtime Features</h2>
+<ul>
+<li>Thread list and detail pages</li>
+<li>Top-level posts with images</li>
+<li>Comment replies without SNS or image controls</li>
+<li>Fixed-comment &quot;eejanaika&quot; replies</li>
+<li>Top page preview of up to 10 replies per thread</li>
+<li>Thread-only display numbers with reply child numbers</li>
+<li>Edit and soft delete</li>
+<li>Admin passwordless bulk delete with start/end range selection, parent-to-reply linked selection, and full/compact display modes</li>
+<li>Admin restore/purge with the same selectable card layout as bulk delete, guarded red purge actions, and full/compact display modes</li>
+<li>Confirmed-entry dedicated admin user-information screen with guarded destructive actions</li>
+<li>Admin DB integrity check</li>
+<li>Admin backup export/import</li>
+<li>Non-destructive local archive log import through a local operator batch, not the web admin screen</li>
+<li>Search by all fields, title, body, or author</li>
+<li>RSS output</li>
+<li>X, Bluesky, Mastodon, and Misskey posting settings are available but disabled by default for local-first operation</li>
+<li>SNS posting previews are generated per enabled platform and long text is shortened with <code>..</code></li>
+<li>SNS posting runs for new top-level posts only; replies and later edits do not post to SNS</li>
+<li>SNS posts include the attached image for X, Bluesky, Mastodon, and Misskey</li>
+<li>SNS posts include a &quot;latest is here&quot; board-list link such as <code>/#post-000001</code></li>
+<li>Cached social reaction counts can be refreshed from the admin maintenance screen, local cron, or an API-key-protected external scheduler URL. <code>cron.php</code> rejects keyless browser access and also supports <code>cron.php?api_key=...</code> for URL-style schedulers.</li>
+<li>gdgd visual mode</li>
+<li>Embedded manual page</li>
+<li>Admin-configurable HOME link, manual text, SNS platform switches, gdgd switch, gdgd label, and live-preview design colors</li>
+<li>SNS credential fields are disabled in the admin UI while each platform integration is OFF</li>
+<li>Admin password change</li>
+</ul>
+<h2 id="known-gaps">Known Gaps</h2>
+<ul>
+<li>Applying every saved <code>config.cgi</code>-equivalent setting to runtime limits</li>
+<li>Applying every saved <code>skincfg.cgi</code>-equivalent setting to live styling</li>
+<li>CSRF protection</li>
+<li>Production deployment packaging</li>
+<li>Analytics feature implementation</li>
+</ul></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

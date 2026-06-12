@@ -22,7 +22,10 @@
     "build:proxy-release": "npm --prefix frontends/proxy-release run build",
     "build:materials-library": "npm --prefix frontends/materials-library run build",
     "build:frontends": "npm run build:image-board && npm run build:file-uploader && npm run build:guide-posts && npm run build:proxy-release && npm run build:materials-library",
+    "build:docs": "node tools/build_docs.mjs",
     "test:image-board": "npm --prefix frontends/image-board test -- --run",
-    "release:image-board": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1"
+    "test:file-uploader": "npm --prefix frontends/file-uploader test -- --run",
+    "release:image-board": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId image-board",
+    "release:file-uploader": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId file-uploader"
   }
 }

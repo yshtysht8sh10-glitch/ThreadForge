@@ -24,7 +24,7 @@ The other frontend directories now contain first-pass React/Vite applications ba
 - Keep backend code common, but keep DB files and uploaded-file storage separated by frontend id during development.
 - Keep frontend-specific page flow, layout, skin, wording, and route trees inside each frontend directory.
 - Put shared UI, hooks, types, and API helpers in `frontends/shared/` only after at least two frontends need the same code.
-- Build and release one frontend at a time. The current release ZIP still packages `image-board` with the common backend.
+- Build and release one frontend at a time. The release script accepts a frontend id and packages that frontend with the common backend.
 - Prefer small adapters over backend forks when a frontend needs different labels or presentation.
 
 ## Runtime Isolation
@@ -70,5 +70,20 @@ This means `image-board` and `file-uploader` do not share posts, users, settings
 3. If duplication appears, copy locally first; move to `frontends/shared/` when reuse is proven.
 4. Keep common backend contracts documented in `docs/SPEC.md`.
 5. Keep release scripts explicit about which frontend they package.
+
+Release examples:
+
+```powershell
+npm run release:image-board
+npm run release:file-uploader
+```
+
+## Versioning
+
+- Each frontend has its own semantic version. `image-board` and `file-uploader` do not need matching versions.
+- Treat each `frontends/<frontend-id>/package.json` as the application version source and include that version in its release ZIP name.
+- Prefix Git tags with the frontend id, for example `image-board-v0.9.7` and `file-uploader-v0.1.0`.
+- Keep the root version for workspace-level development only, not as the release number for every standalone app.
+- Bundle the common backend with each application release. Track a separate API compatibility version only when a breaking backend contract change is introduced.
 
 This keeps the current board recoverable while allowing each new board type to grow its own personality.

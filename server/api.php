@@ -55,6 +55,30 @@ function handleApiRequest(): void
         case 'publicSettings':
             publicSettings($pdo);
             break;
+        case 'uploaderSettings':
+            uploaderSettings($pdo);
+            break;
+        case 'listUploaderFiles':
+            listUploaderFiles($pdo);
+            break;
+        case 'uploadUploaderFile':
+            uploadUploaderFile($pdo);
+            break;
+        case 'deleteUploaderFile':
+            deleteUploaderFile($pdo);
+            break;
+        case 'listDeletedUploaderFiles':
+            listDeletedUploaderFiles($pdo);
+            break;
+        case 'adminDeleteUploaderFiles':
+            adminDeleteUploaderFiles($pdo);
+            break;
+        case 'restoreUploaderFiles':
+            restoreUploaderFiles($pdo);
+            break;
+        case 'purgeUploaderFiles':
+            purgeUploaderFiles($pdo);
+            break;
         case 'adminStatus':
             adminStatus($pdo);
             break;
@@ -3392,6 +3416,7 @@ function exportSqliteBackup(PDO $pdo): void
     $manifest = [
         'backup_version' => 3,
         'backup_format' => 'sqlite-zip',
+        'frontend_id' => FRONTEND_ID,
         'exported_at' => currentTimestamp(),
     ];
     $zip->addFromString('backup.json', json_encode($manifest, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
@@ -3411,7 +3436,7 @@ function exportSqliteBackup(PDO $pdo): void
     $zip->close();
 
     header('Content-Type: application/zip');
-    header('Content-Disposition: attachment; filename="threadforge-full-backup-' . date('Ymd-His') . '.zip"');
+    header('Content-Disposition: attachment; filename="' . FRONTEND_ID . '-full-backup-' . date('Ymd-His') . '.zip"');
     header('Content-Length: ' . filesize($zipPath));
     readfile($zipPath);
     @unlink($zipPath);
@@ -3610,6 +3635,14 @@ function restoreSqliteBackup(string $path): void
         jsonResponse(['success' => false, 'message' => 'バックアップZIPを開けませんでした。'], 400);
     }
 
+    $manifestJson = $zip->getFromName('backup.json');
+    $manifest = is_string($manifestJson) ? json_decode($manifestJson, true) : null;
+    $backupFrontendId = is_array($manifest) ? (string)($manifest['frontend_id'] ?? '') : '';
+    if ($backupFrontendId !== '' && $backupFrontendId !== FRONTEND_ID) {
+        $zip->close();
+        jsonResponse(['success' => false, 'message' => '別フロント用のバックアップはインポートできません。'], 400);
+    }
+
     $databaseStream = $zip->getStream('database.sqlite');
     if ($databaseStream === false) {
         $zip->close();
@@ -3636,7 +3669,8 @@ function restoreSqliteBackup(string $path): void
     try {
         $test = new PDO('sqlite:' . $tempDb);
         $test->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $test->query('SELECT COUNT(*) FROM posts')->fetchColumn();
+        $requiredTable = FRONTEND_ID === 'file-uploader' ? 'uploader_files' : 'posts';
+        $test->query('SELECT COUNT(*) FROM ' . $requiredTable)->fetchColumn();
         $test = null;
     } catch (Throwable) {
         $zip->close();
@@ -3863,6 +3897,330 @@ function publicSettings(PDO $pdo): void
             ],
         ],
     ]);
+}
+
+function uploaderSettings(PDO $pdo): void
+{
+    $settings = loadSettings($pdo);
+    $config = $settings['config'] ?? [];
+    $skin = $settings['skin'] ?? [];
+    $title = (string)($config['uploaderTitle'] ?? 'ファイルアップローダー');
+    if ($title === 'ドット絵板新アップローダー') {
+        $title = 'ファイルアップローダー';
+    }
+
+    jsonResponse([
+        'success' => true,
+        'settings' => [
+            'title' => $title,
+            'allowedExtensions' => implode(' ', uploaderAllowedExtensions($config)),
+            'maxUploadKb' => uploaderMaxUploadKb($config),
+            'design' => uploaderDesignSettings($skin),
+        ],
+    ]);
+}
+
+function listUploaderFiles(PDO $pdo): void
+{
+    $stmt = $pdo->query(
+        'SELECT id, stored_name, original_name, comment, size_bytes, created_at
+         FROM uploader_files
+         WHERE deleted_at IS NULL
+         ORDER BY id DESC'
+    );
+    $rows = array_map(static function (array $row): array {
+        return [
+            'id' => (int)$row['id'],
+            'filename' => (string)$row['stored_name'],
+            'originalName' => (string)$row['original_name'],
+            'comment' => (string)$row['comment'],
+            'sizeBytes' => (int)$row['size_bytes'],
+            'createdAt' => (string)$row['created_at'],
+            'downloadUrl' => publicStoragePath((string)$row['stored_name']),
+        ];
+    }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+
+    jsonResponse(['success' => true, 'files' => $rows]);
+}
+
+function uploadUploaderFile(PDO $pdo): void
+{
+    if (FRONTEND_ID !== 'file-uploader' && !isPackagedSingleFrontendApp()) {
+        jsonResponse(['success' => false, 'message' => 'このAPIはfile-uploader専用です。'], 403);
+    }
+
+    $file = $_FILES['file'] ?? null;
+    if (!is_array($file) || !isset($file['tmp_name'], $file['name'], $file['size'])) {
+        jsonResponse(['success' => false, 'message' => 'アップロードするファイルを選択してください。'], 400);
+    }
+    $uploadError = (int)($file['error'] ?? UPLOAD_ERR_OK);
+    if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) {
+        jsonResponse([
+            'success' => false,
+            'message' => 'PHPのアップロード上限を超えています。upload_max_filesize: ' . ini_get('upload_max_filesize'),
+        ], 400);
+    }
+    if ($uploadError !== UPLOAD_ERR_OK || !is_uploaded_file((string)$file['tmp_name'])) {
+        jsonResponse(['success' => false, 'message' => 'ファイルの受信に失敗しました。'], 400);
+    }
+
+    $settings = loadSettings($pdo);
+    $config = $settings['config'] ?? [];
+    $originalName = basename(str_replace('\\', '/', (string)$file['name']));
+    $sizeBytes = (int)$file['size'];
+    $validationError = uploaderFileValidationError($originalName, $sizeBytes, $config);
+    if ($validationError !== null) {
+        jsonResponse(['success' => false, 'message' => $validationError], 400);
+    }
+
+    $comment = trim((string)($_POST['comment'] ?? ''));
+    $deleteKey = trim((string)($_POST['delete_key'] ?? ''));
+    if ($deleteKey === '') {
+        jsonResponse(['success' => false, 'message' => 'Delkeyを入力してください。'], 400);
+    }
+
+    $createdAt = currentTimestamp();
+    $extension = strtolower((string)pathinfo($originalName, PATHINFO_EXTENSION));
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO uploader_files
+             (stored_name, original_name, comment, size_bytes, delete_key_hash, created_at)
+             VALUES ("pending", :original_name, :comment, :size_bytes, :delete_key_hash, :created_at)'
+        );
+        $stmt->execute([
+            ':original_name' => $originalName,
+            ':comment' => $comment,
+            ':size_bytes' => $sizeBytes,
+            ':delete_key_hash' => password_hash($deleteKey, PASSWORD_DEFAULT),
+            ':created_at' => $createdAt,
+        ]);
+        $id = (int)$pdo->lastInsertId();
+        $storedName = 'file' . $id . '.' . $extension;
+        $destination = STORAGE_DIR . DIRECTORY_SEPARATOR . $storedName;
+        if (!is_dir(STORAGE_DIR)) {
+            mkdir(STORAGE_DIR, 0775, true);
+        }
+        if (!move_uploaded_file((string)$file['tmp_name'], $destination)) {
+            throw new RuntimeException('ファイルを保存できませんでした。');
+        }
+        $pdo->prepare('UPDATE uploader_files SET stored_name = :stored_name WHERE id = :id')
+            ->execute([':stored_name' => $storedName, ':id' => $id]);
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $exception;
+    }
+
+    jsonResponse(['success' => true, 'message' => 'アップロードしました。']);
+}
+
+function deleteUploaderFile(PDO $pdo): void
+{
+    if (FRONTEND_ID !== 'file-uploader' && !isPackagedSingleFrontendApp()) {
+        jsonResponse(['success' => false, 'message' => 'このAPIはfile-uploader専用です。'], 403);
+    }
+
+    $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+    $deleteKey = trim((string)($_POST['delete_key'] ?? ''));
+    if ($id === false || $id < 1 || $deleteKey === '') {
+        jsonResponse(['success' => false, 'message' => '削除対象とDelkeyを入力してください。'], 400);
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT id, delete_key_hash
+         FROM uploader_files
+         WHERE id = :id AND deleted_at IS NULL
+         LIMIT 1'
+    );
+    $stmt->execute([':id' => $id]);
+    $file = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$file) {
+        jsonResponse(['success' => false, 'message' => '削除対象のファイルが見つかりません。'], 404);
+    }
+    if (!password_verify($deleteKey, (string)$file['delete_key_hash'])) {
+        jsonResponse(['success' => false, 'message' => 'Delkeyが違います。'], 403);
+    }
+
+    $update = $pdo->prepare(
+        'UPDATE uploader_files
+         SET deleted_at = :deleted_at
+         WHERE id = :id AND deleted_at IS NULL'
+    );
+    $update->execute([
+        ':id' => $id,
+        ':deleted_at' => currentTimestamp(),
+    ]);
+
+    jsonResponse(['success' => true, 'message' => 'ファイルを削除しました。']);
+}
+
+function listDeletedUploaderFiles(PDO $pdo): void
+{
+    requireAdmin();
+    $stmt = $pdo->query(
+        'SELECT id, stored_name, original_name, comment, size_bytes, created_at, deleted_at
+         FROM uploader_files
+         WHERE deleted_at IS NOT NULL
+         ORDER BY deleted_at DESC, id DESC'
+    );
+    jsonResponse([
+        'success' => true,
+        'files' => array_map('uploaderFileResponse', $stmt->fetchAll(PDO::FETCH_ASSOC)),
+    ]);
+}
+
+function adminDeleteUploaderFiles(PDO $pdo): void
+{
+    requireAdmin();
+    $ids = uploaderRequestIds();
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare(
+        'UPDATE uploader_files
+         SET deleted_at = ?
+         WHERE deleted_at IS NULL AND id IN (' . $placeholders . ')'
+    );
+    $stmt->execute(array_merge([currentTimestamp()], $ids));
+    jsonResponse(['success' => true, 'message' => $stmt->rowCount() . '件を削除しました。']);
+}
+
+function restoreUploaderFiles(PDO $pdo): void
+{
+    requireAdmin();
+    $ids = uploaderRequestIds();
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare(
+        'UPDATE uploader_files
+         SET deleted_at = NULL
+         WHERE deleted_at IS NOT NULL AND id IN (' . $placeholders . ')'
+    );
+    $stmt->execute($ids);
+    jsonResponse(['success' => true, 'message' => $stmt->rowCount() . '件を復原しました。']);
+}
+
+function purgeUploaderFiles(PDO $pdo): void
+{
+    requireAdmin();
+    $ids = uploaderRequestIds();
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $pdo->prepare(
+        'SELECT id, stored_name
+         FROM uploader_files
+         WHERE deleted_at IS NOT NULL AND id IN (' . $placeholders . ')'
+    );
+    $stmt->execute($ids);
+    $files = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    if ($files === []) {
+        jsonResponse(['success' => true, 'message' => '完全削除するファイルはありません。']);
+    }
+
+    $deleteIds = array_map(static fn(array $file): int => (int)$file['id'], $files);
+    $deletePlaceholders = implode(',', array_fill(0, count($deleteIds), '?'));
+    $pdo->beginTransaction();
+    try {
+        $delete = $pdo->prepare('DELETE FROM uploader_files WHERE id IN (' . $deletePlaceholders . ')');
+        $delete->execute($deleteIds);
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        $pdo->rollBack();
+        throw $exception;
+    }
+    foreach ($files as $file) {
+        deleteStorageFile((string)$file['stored_name']);
+    }
+    jsonResponse(['success' => true, 'message' => count($files) . '件を完全削除しました。']);
+}
+
+function uploaderRequestIds(): array
+{
+    $raw = $_POST['ids'] ?? '';
+    $parts = is_array($raw) ? $raw : explode(',', (string)$raw);
+    $ids = array_values(array_unique(array_filter(
+        array_map(static fn(mixed $id): int => (int)$id, $parts),
+        static fn(int $id): bool => $id > 0
+    )));
+    if ($ids === []) {
+        jsonResponse(['success' => false, 'message' => '対象ファイルを選択してください。'], 400);
+    }
+    return $ids;
+}
+
+function uploaderFileResponse(array $row): array
+{
+    return [
+        'id' => (int)$row['id'],
+        'filename' => (string)$row['stored_name'],
+        'originalName' => (string)$row['original_name'],
+        'comment' => (string)$row['comment'],
+        'sizeBytes' => (int)$row['size_bytes'],
+        'createdAt' => (string)$row['created_at'],
+        'downloadUrl' => publicStoragePath((string)$row['stored_name']),
+    ];
+}
+
+function uploaderAllowedExtensions(array $config): array
+{
+    $raw = $config['uploaderAllowedExtensions'] ?? 'gif bmp png jpg jpeg zip txt avi swf';
+    if (is_array($raw)) {
+        $parts = $raw;
+    } else {
+        $parts = preg_split('/[\s,;]+/', strtolower((string)$raw)) ?: [];
+    }
+    $allowed = [];
+    foreach ($parts as $part) {
+        $extension = ltrim(strtolower(trim((string)$part)), '.');
+        if ($extension !== '' && preg_match('/^[a-z0-9]+$/', $extension)) {
+            $allowed[] = $extension;
+        }
+    }
+    $allowed = array_values(array_unique($allowed));
+    return $allowed === [] ? ['gif', 'bmp', 'png', 'jpg', 'jpeg', 'zip', 'txt', 'avi', 'swf'] : $allowed;
+}
+
+function uploaderMaxUploadKb(array $config): int
+{
+    $value = filter_var($config['uploaderMaxUploadKb'] ?? 20000, FILTER_VALIDATE_INT);
+    return $value === false ? 20000 : max(1, min(2097152, (int)$value));
+}
+
+function uploaderFileValidationError(string $filename, int $sizeBytes, array $config): ?string
+{
+    $allowed = uploaderAllowedExtensions($config);
+    $extension = strtolower((string)pathinfo($filename, PATHINFO_EXTENSION));
+    if ($extension === '' || !in_array($extension, $allowed, true)) {
+        return '許可されていない拡張子です。許可: ' . implode(' ', $allowed);
+    }
+    if ($sizeBytes > uploaderMaxUploadKb($config) * 1024) {
+        return 'ファイルサイズが上限を超えています。上限: ' . uploaderMaxUploadKb($config) . 'KB';
+    }
+    return null;
+}
+
+function uploaderDesignSettings(array $skin): array
+{
+    $defaults = [
+        'pageBackgroundColor' => '#eeeeee',
+        'pageTextColor' => '#000000',
+        'linkColor' => '#0000ff',
+        'shellBackgroundColor' => '#2a2a2a',
+        'contentBackgroundColor' => '#ffffff',
+        'formBackgroundColor' => '#eeeeee',
+        'titleStartColor' => '#f7f7f7',
+        'titleEndColor' => '#d8d8d8',
+        'tableHeaderColor' => '#eeeeee',
+        'borderColor' => '#808080',
+        'buttonBackgroundColor' => '#f5f5f5',
+        'buttonTextColor' => '#000000',
+        'activeTabColor' => '#8eb4e3',
+        'errorColor' => '#9b1c1c',
+    ];
+    $result = [];
+    foreach ($defaults as $key => $default) {
+        $result[$key] = (string)($skin['uploader' . ucfirst($key)] ?? $default);
+    }
+    return $result;
 }
 
 function updateSettings(PDO $pdo): void

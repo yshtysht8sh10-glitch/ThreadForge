@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>Testing / テスト | ThreadForge</title>
+  <link rel="stylesheet" href="assets/docs.css">
+  <script src="assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="./index.html">ドキュメント</a></li><li><a href="./SPEC.html">仕様</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html">データベース</a></li><li><a href="./ARCHITECTURE.html">構成</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="./MIGRATION.html">移行</a></li><li><a href="./TESTING.html" aria-current="page">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="./frontends/image-board/index.html">画像掲示板</a></li><li><a href="./frontends/image-board/SPEC.html">画像掲示板仕様</a></li><li><a href="./frontends/image-board/DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">ファイルアップローダー</a></li><li><a href="./frontends/file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="./frontends/file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">指南記事</a></li><li><a href="./frontends/guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="./frontends/guide-posts/DB.html">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">代理公開</a></li><li><a href="./frontends/proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="./frontends/proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">素材ライブラリ</a></li><li><a href="./frontends/materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="./frontends/materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="./index.html">Documentation</a></li><li><a href="./SPEC.html">Specification</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html">Database</a></li><li><a href="./ARCHITECTURE.html">Architecture</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="./MIGRATION.html">Migration</a></li><li><a href="./TESTING.html" aria-current="page">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="./frontends/image-board/index.html">Image Board</a></li><li><a href="./frontends/image-board/SPEC.html">Image Board Spec</a></li><li><a href="./frontends/image-board/DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">File Uploader</a></li><li><a href="./frontends/file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="./frontends/file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">Guide Posts</a></li><li><a href="./frontends/guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="./frontends/guide-posts/DB.html">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">Proxy Release</a></li><li><a href="./frontends/proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="./frontends/proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">Materials Library</a></li><li><a href="./frontends/materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="./frontends/materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>Testing / テスト</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="テスト">テスト</h1>
+<h2 id="フロントエンド">フロントエンド</h2>
+<p>使用ツール:</p>
+<ul>
+<li>Vitest</li>
+<li>React Testing Library</li>
+<li>jsdom</li>
+</ul>
+<p>主なテスト:</p>
+<ul>
+<li><code>frontends/file-uploader/src/App.test.ts</code></li>
+<li><code>frontends/image-board/src/api.test.ts</code></li>
+<li><code>frontends/image-board/src/pages/HomePage.test.tsx</code></li>
+<li><code>frontends/image-board/src/pages/PostFormPage.test.tsx</code></li>
+<li><code>frontends/image-board/src/pages/ThreadPage.test.tsx</code></li>
+<li><code>frontends/image-board/src/pages/LoginPage.test.tsx</code></li>
+<li><code>frontends/image-board/src/pages/UserPostsPage.test.tsx</code></li>
+<li><code>frontends/image-board/src/pages/BoardAnalyticsPage.test.tsx</code></li>
+<li><code>frontends/image-board/src/pages/SearchPage.test.tsx</code></li>
+<li><code>frontends/image-board/src/pages/RankingPage.test.tsx</code></li>
+<li><code>frontends/image-board/src/pages/AdminPage.test.tsx</code></li>
+<li><code>frontends/image-board/src/tweet.test.ts</code></li>
+</ul>
+<p>実行:</p>
+<p>リポジトリルートから:</p>
+<pre><code class="language-powershell">npm run test:image-board
+npm run test:file-uploader
+npm run build:frontends</code></pre>
+<p>フロントエンドディレクトリから:</p>
+<pre><code class="language-powershell">cd frontends/image-board
+npm test</code></pre>
+<h2 id="バックエンド">バックエンド</h2>
+<p>使用ツール:</p>
+<ul>
+<li>PHPUnit 9</li>
+</ul>
+<p>主なテスト:</p>
+<ul>
+<li><code>server/tests/StorageLayerTest.php</code></li>
+<li><code>server/tests/ApiHttpIntegrationTest.php</code></li>
+<li><code>server/tests/UploaderApiHttpIntegrationTest.php</code></li>
+</ul>
+<p>検証対象:</p>
+<ul>
+<li>SQLite接続とテーブル初期化</li>
+<li>画像保存ディレクトリ初期化</li>
+<li><code>buildPost()</code> の画像URL変換</li>
+<li><code>normalizeString()</code> の trim</li>
+<li><code>findPostById()</code> の取得</li>
+<li><code>findActivePostById()</code> がソフトデリート済み投稿を除外すること</li>
+<li><code>deleteImage()</code> の動作</li>
+<li><code>archiveExistingImage()</code> の履歴名退避</li>
+<li><code>saveUploadedImage()</code> が通常ファイルに対して <code>null</code> を返すこと</li>
+<li>SNS文言生成、「最新はこちら」URL、投稿IDプレースホルダー置換、X文字数計算、SNS別省略、<code>_TWEND_</code></li>
+<li>X、Bluesky、Mastodon、Misskey へのSNS画像転記</li>
+<li>SNSリアクション取得の手動実行、ローカルCron、APIキー付き外部定期実行、全対象更新</li>
+<li>ローカルアーカイブログ取り込みの非破壊・重複スキップ動作</li>
+<li>重複投稿判定</li>
+<li>URL正規化</li>
+<li><code>server/api.php</code> のHTTP統合テスト</li>
+<li>投稿作成、編集、削除の統合テスト</li>
+<li>削除APIが物理削除ではなく <code>deleted_at</code> を設定すること</li>
+<li>実アップロードによる画像保存成功パス</li>
+<li>画像差し替え時の履歴保持</li>
+<li>検索APIの空文字、ページング、検索対象、ワイルドカード文字</li>
+<li>パスワード不一致、存在しない投稿などのエラー</li>
+<li>管理者パスワード初期設定と認証</li>
+<li>定型コメントの編集不可、管理者パスワードによる削除</li>
+<li>ユーザーID重複、ユーザー名30文字制限、自分の作品として登録/解除</li>
+<li>管理画面の一括削除範囲指定、親投稿選択時の返信連動選択、選択解除</li>
+<li>管理画面の復元/消去。カード選択/範囲選択、消去有効化、データ消去、番号ごと完全削除、表示番号の前詰め</li>
+<li>管理画面のユーザー登録情報専用画面。表示前確認、編集、ログインパスワード再設定の確認入力/表示切替、消去有効化、情報消去、ユーザー番号ごと完全削除、ユーザー番号の前詰め</li>
+<li>掲示板設定の一覧の並び順。No順と投稿日順（新しい順）の切替</li>
+<li>一覧画面の年/月フィルタ。年単位、月単位、複数選択、指定期間の総投稿数表示</li>
+<li>掲示板デザインの色設定見本への即時反映、通常/特殊投稿の配色、入力欄/ボタン/注意文/統計表示の見本、保存済み設定への復帰</li>
+<li>file-uploaderの拡張子/サイズ検証、設定正規化、月別集計、選択操作</li>
+<li>file-uploaderのHTTPアップロード、一覧、Delkey不一致/一致、一括削除、復原、完全削除</li>
+</ul>
+<p>実行:</p>
+<pre><code class="language-powershell">cd server
+vendor\bin\phpunit</code></pre>
+<h2 id="カバレッジ確認メモ">カバレッジ確認メモ</h2>
+<ul>
+<li>2026-05-23時点で、主要なHTTP API、ストレージ、SNS文言、投稿/返信UI、検索、順位、管理画面、ログイン/ユーザー設定、個人/管理アナリティクス、管理者の復元/消去、ユーザー登録情報管理を自動テストで確認します。</li>
+<li>レイアウトの見た目、ブラウザのファイル保存ダイアログ、実SNS API連携、レンタルサーバー上の権限/パスは人の手で確認します。</li>
+<li><code>server/laravel/</code> は移行用スケルトンです。現在の標準APIではないため、本番仕様の自動テスト対象外です。</li>
+</ul></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="testing">Testing</h1>
+<h2 id="frontend">Frontend</h2>
+<p>Tools:</p>
+<ul>
+<li>Vitest</li>
+<li>React Testing Library</li>
+<li>jsdom</li>
+</ul>
+<p>Main tests:</p>
+<ul>
+<li><code>frontends/file-uploader/src/App.test.ts</code></li>
+<li><code>frontends/image-board/src/api.test.ts</code></li>
+<li><code>frontends/image-board/src/pages/HomePage.test.tsx</code></li>
+<li><code>frontends/image-board/src/pages/PostFormPage.test.tsx</code></li>
+<li><code>frontends/image-board/src/pages/ThreadPage.test.tsx</code></li>
+<li><code>frontends/image-board/src/pages/AdminPage.test.tsx</code></li>
+<li><code>frontends/image-board/src/tweet.test.ts</code></li>
+</ul>
+<p>Run:</p>
+<p>From the repository root:</p>
+<pre><code class="language-powershell">npm run test:image-board
+npm run test:file-uploader
+npm run build:frontends</code></pre>
+<p>From the frontend directory:</p>
+<pre><code class="language-powershell">cd frontends/image-board
+npm test</code></pre>
+<h2 id="backend">Backend</h2>
+<p>Tools:</p>
+<ul>
+<li>PHPUnit 9</li>
+</ul>
+<p>Main tests:</p>
+<ul>
+<li><code>server/tests/StorageLayerTest.php</code></li>
+<li><code>server/tests/ApiHttpIntegrationTest.php</code></li>
+<li><code>server/tests/UploaderApiHttpIntegrationTest.php</code></li>
+</ul>
+<p>Covered behavior:</p>
+<ul>
+<li>SQLite connection and table initialization</li>
+<li>Image storage directory initialization</li>
+<li><code>buildPost()</code> image URL conversion</li>
+<li><code>normalizeString()</code> trimming</li>
+<li><code>findPostById()</code> lookup</li>
+<li><code>findActivePostById()</code> excluding soft-deleted posts</li>
+<li><code>deleteImage()</code> behavior</li>
+<li><code>archiveExistingImage()</code> archive naming</li>
+<li><code>saveUploadedImage()</code> returning <code>null</code> for normal files</li>
+<li>SNS text generation, &quot;latest is here&quot; URL, post ID placeholder replacement, X character counting, per-SNS shortening, <code>_TWEND_</code></li>
+<li>SNS image posting for X, Bluesky, Mastodon, and Misskey</li>
+<li>SNS reaction refresh through manual admin action, local Cron, and API-key-protected external scheduler</li>
+<li>Non-destructive and duplicate-skipping local archive log import</li>
+<li>Duplicate post detection</li>
+<li>URL normalization</li>
+<li>HTTP integration coverage for <code>server/api.php</code></li>
+<li>Create, update, and delete flows through HTTP</li>
+<li>Delete APIs setting <code>deleted_at</code> without physically deleting rows</li>
+<li>Real multipart image upload success path</li>
+<li>Image replacement preserving archived history through HTTP</li>
+<li>Search API empty query, pagination, scope, and escaped wildcard edges</li>
+<li>Error paths for password mismatch and missing posts</li>
+<li>Admin bulk-delete range selection, parent-to-reply linked selection, and clear-selection behavior</li>
+<li>Admin restore/purge selectable-card flows, including range selection, destructive-action enabling, data purge, row-level number purge, and top-level display-number compaction</li>
+<li>Dedicated admin user management screen, including entry confirmation, edit, destructive-action enabling, information erase, row-level user delete, and user-number compaction</li>
+<li>Admin design live preview and reset to persisted values</li>
+<li>file-uploader extension/size validation, settings normalization, analytics aggregation, and selection helpers</li>
+<li>file-uploader HTTP upload, list, delete-key rejection/acceptance, administrator restore, bulk delete, and purge</li>
+</ul>
+<p>Run:</p>
+<pre><code class="language-powershell">cd server
+.\.php\php.exe .\vendor\bin\phpunit</code></pre>
+<h2 id="laravel-skeleton">Laravel Skeleton</h2>
+<p>Additional Laravel-side feature tests are scaffolded under:</p>
+<ul>
+<li><code>server/laravel/tests/Feature/PostApiTest.php</code></li>
+</ul>
+<p>Run after installing the Laravel skeleton dependencies:</p>
+<pre><code class="language-powershell">cd server\laravel
+composer install
+vendor\bin\phpunit</code></pre></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

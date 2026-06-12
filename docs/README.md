@@ -1,6 +1,12 @@
 # ThreadForge Docs
 
-[Japanese docs](ja/README.md)
+The human-facing documentation is generated as bilingual HTML. Open [`index.html`](index.html) and switch Japanese/English on the page.
+
+The Markdown files remain the maintainable source. Regenerate HTML after editing them:
+
+```powershell
+npm run build:docs
+```
 
 This directory is the English documentation index. Keep the root `README.md` as the short repository entry point, and keep detailed operational notes here.
 
@@ -45,10 +51,11 @@ Release packaging and local archive import scripts live in `tools/`. These are m
 Create a release ZIP:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
+npm run release:image-board
+npm run release:file-uploader
 ```
 
-The release ZIP is written to `release/threadforge-<version>.zip`. Its contents are arranged for upload to a public web directory.
+Release ZIPs are written to `release/threadforge-<frontend-id>-<version>.zip`. Their contents are arranged for upload to a public web directory.
 
 For a GitHub release, update `VERSION` and the changelog, generate and verify the ZIP, then create the matching `v<version>` tag and attach the ZIP to the GitHub Release.
 

@@ -4,6 +4,15 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## file-uploader 1.0.0 - 2026-06-12
+
+- Completed the standalone file upload, list, URL copy, delete-key deletion, and responsive mobile flows
+- Added administrator bulk delete, restore/purge, settings, analytics, design customization, and password management
+- Added settings/design JSON import/export and full DB/file backup ZIP import/export
+- Added frontend and HTTP integration regression tests for uploader validation and lifecycle operations
+- Added frontend-selectable release packaging and the `threadforge-file-uploader-1.0.0.zip` artifact
+- Rebuilt the documentation as colored bilingual HTML with an in-page Japanese/English switch
+
 ## 0.9.7 - 2026-06-07
 
 - Displayed replies below the post edit form for editing the body in conversation context

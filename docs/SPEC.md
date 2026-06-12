@@ -23,5 +23,6 @@ ThreadForge is moving toward one common backend with five standalone frontend ap
 ## Current Status
 
 - `image-board` is the mature production frontend and contains the detailed current feature specification.
-- `file-uploader`, `guide-posts`, `proxy-release`, and `materials-library` are early frontend applications based on their `legacy/` references.
+- `file-uploader` 1.0.0 is the first completed standalone frontend after `image-board`.
+- `guide-posts`, `proxy-release`, and `materials-library` are early frontend applications based on their `legacy/` references.
 - The backend code is shared, but runtime DBs and storage are isolated per frontend in development and per release ZIP in deployment.

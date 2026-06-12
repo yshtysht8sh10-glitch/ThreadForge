@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>Specification / 仕様 | ThreadForge</title>
+  <link rel="stylesheet" href="assets/docs.css">
+  <script src="assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="./index.html">ドキュメント</a></li><li><a href="./SPEC.html" aria-current="page">仕様</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html">データベース</a></li><li><a href="./ARCHITECTURE.html">構成</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="./MIGRATION.html">移行</a></li><li><a href="./TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="./frontends/image-board/index.html">画像掲示板</a></li><li><a href="./frontends/image-board/SPEC.html">画像掲示板仕様</a></li><li><a href="./frontends/image-board/DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">ファイルアップローダー</a></li><li><a href="./frontends/file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="./frontends/file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">指南記事</a></li><li><a href="./frontends/guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="./frontends/guide-posts/DB.html">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">代理公開</a></li><li><a href="./frontends/proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="./frontends/proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">素材ライブラリ</a></li><li><a href="./frontends/materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="./frontends/materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="./index.html">Documentation</a></li><li><a href="./SPEC.html" aria-current="page">Specification</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html">Database</a></li><li><a href="./ARCHITECTURE.html">Architecture</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="./MIGRATION.html">Migration</a></li><li><a href="./TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="./frontends/image-board/index.html">Image Board</a></li><li><a href="./frontends/image-board/SPEC.html">Image Board Spec</a></li><li><a href="./frontends/image-board/DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">File Uploader</a></li><li><a href="./frontends/file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="./frontends/file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">Guide Posts</a></li><li><a href="./frontends/guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="./frontends/guide-posts/DB.html">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">Proxy Release</a></li><li><a href="./frontends/proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="./frontends/proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">Materials Library</a></li><li><a href="./frontends/materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="./frontends/materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>Specification / 仕様</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="threadforge-仕様索引">ThreadForge 仕様索引</h1>
+<p>ThreadForge は、1つの共通バックエンドの上に5つの単体フロントアプリを載せる構成へ移行しています。</p>
+<p>共通契約は共通ドキュメントに置き、各フロント固有の仕様はフロント別に管理します。</p>
+<h2 id="フロント別仕様">フロント別仕様</h2>
+<ul>
+<li><a href="frontends/image-board/SPEC.html">image-board 仕様</a></li>
+<li><a href="frontends/file-uploader/SPEC.html">file-uploader 仕様</a></li>
+<li><a href="frontends/guide-posts/SPEC.html">guide-posts 仕様</a></li>
+<li><a href="frontends/proxy-release/SPEC.html">proxy-release 仕様</a></li>
+<li><a href="frontends/materials-library/SPEC.html">materials-library 仕様</a></li>
+</ul>
+<h2 id="共通契約">共通契約</h2>
+<ul>
+<li><a href="API.html">API</a></li>
+<li><a href="DB.html">DBランタイム索引</a></li>
+<li><a href="ARCHITECTURE.html">バックエンド/フロントエンド構成</a></li>
+<li><a href="FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li>
+<li><a href="TESTING.html">テスト</a></li>
+</ul>
+<h2 id="現在の状態">現在の状態</h2>
+<ul>
+<li><code>image-board</code> は現行の本番フロントで、詳細仕様を持ちます。</li>
+<li><code>file-uploader</code> 1.0.0 は、<code>image-board</code> に続いて完成した最初の単体フロントです。</li>
+<li><code>guide-posts</code>、<code>proxy-release</code>、<code>materials-library</code> は legacy をもとにした初期フロントです。</li>
+<li>バックエンドコードは共通ですが、開発中もリリース配置後もDBとストレージはフロントごとに独立します。</li>
+</ul></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="threadforge-specification-index">ThreadForge Specification Index</h1>
+<p>ThreadForge is moving toward one common backend with five standalone frontend applications. Shared backend contracts stay in the common docs, while frontend behavior is documented per frontend.</p>
+<h2 id="frontend-specs">Frontend Specs</h2>
+<ul>
+<li><a href="frontends/image-board/SPEC.html">image-board spec</a></li>
+<li><a href="frontends/file-uploader/SPEC.html">file-uploader spec</a></li>
+<li><a href="frontends/guide-posts/SPEC.html">guide-posts spec</a></li>
+<li><a href="frontends/proxy-release/SPEC.html">proxy-release spec</a></li>
+<li><a href="frontends/materials-library/SPEC.html">materials-library spec</a></li>
+</ul>
+<h2 id="shared-contracts">Shared Contracts</h2>
+<ul>
+<li><a href="API.html">API</a></li>
+<li><a href="DB.html">DB runtime index</a></li>
+<li><a href="ARCHITECTURE.html">Backend/frontend architecture</a></li>
+<li><a href="FRONTEND_ARCHITECTURE.html">Frontend architecture</a></li>
+<li><a href="TESTING.html">Testing</a></li>
+</ul>
+<h2 id="current-status">Current Status</h2>
+<ul>
+<li><code>image-board</code> is the mature production frontend and contains the detailed current feature specification.</li>
+<li><code>file-uploader</code> 1.0.0 is the first completed standalone frontend after <code>image-board</code>.</li>
+<li><code>guide-posts</code>, <code>proxy-release</code>, and <code>materials-library</code> are early frontend applications based on their <code>legacy/</code> references.</li>
+<li>The backend code is shared, but runtime DBs and storage are isolated per frontend in development and per release ZIP in deployment.</li>
+</ul></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

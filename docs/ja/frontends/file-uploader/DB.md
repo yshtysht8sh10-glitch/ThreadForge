@@ -22,13 +22,28 @@ storage/data/
 
 ## 現在のスキーマ
 
-現時点では `server/db.php` が初期化する共通 ThreadForge SQLite スキーマを使います。
+共通の設定/管理テーブルに加え、`server/db.php` がアップローダー専用の `uploader_files` テーブルを作成します。
 
-想定データ:
+```sql
+CREATE TABLE IF NOT EXISTS uploader_files (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  stored_name TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  comment TEXT NOT NULL DEFAULT "",
+  size_bytes INTEGER NOT NULL,
+  delete_key_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+```
 
-- アップロードファイルは `storage/data/` に保存する
-- 専用アップロードテーブルを導入するまでは、ファイル項目を投稿行として扱う
-- コメント、削除キー/パスワード、サイズ情報、ページングはこのフロントの振る舞いとして扱う
+- アップロードファイルはこのフロント専用の `storage/data/` に保存します。
+- Delkey はハッシュ化して保存します。
+- 元ファイル名と保存用ファイル名を分けて保持します。
+- 許可拡張子と最大サイズはこのフロントの設定から読み込みます。
+- `deleted_at` が設定された行は管理画面の復原・完全削除一覧に表示します。
+- 復原では `deleted_at` を解除し、完全削除ではDB行と保存ファイルを削除します。
+- 保守画面のフルバックアップZIPには、このフロントの `database.sqlite` と `storage/data/` 配下の全ファイルを含めます。
 
 ## 分離ルール
 

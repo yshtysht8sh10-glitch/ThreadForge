@@ -1,5 +1,7 @@
 param(
     [switch]$SkipClientBuild,
+    [ValidateSet('image-board', 'file-uploader', 'guide-posts', 'proxy-release', 'materials-library')]
+    [string]$FrontendId = 'image-board',
     [string]$Version = ''
 )
 
@@ -7,14 +9,19 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 Set-Location $repoRoot
-$imageBoardFrontend = Join-Path $repoRoot 'frontends\image-board'
+$frontendDir = Join-Path $repoRoot "frontends\$FrontendId"
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    $versionFile = Join-Path $repoRoot 'VERSION'
-    $Version = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim() } else { 'dev' }
+    $packageFile = Join-Path $frontendDir 'package.json'
+    if (Test-Path $packageFile) {
+        $Version = (Get-Content $packageFile -Raw | ConvertFrom-Json).version
+    } else {
+        $versionFile = Join-Path $repoRoot 'VERSION'
+        $Version = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim() } else { 'dev' }
+    }
 }
 
-$packageName = "threadforge-$Version"
+$packageName = "threadforge-$FrontendId-$Version"
 $releaseDir = Join-Path $repoRoot 'release'
 $stageBase = Join-Path $releaseDir '.stage'
 $stageRoot = Join-Path $stageBase $packageName
@@ -38,7 +45,7 @@ function Copy-ReleaseItem {
 }
 
 if (-not $SkipClientBuild) {
-    Push-Location $imageBoardFrontend
+    Push-Location $frontendDir
     try {
         $previousApiBase = $env:VITE_API_BASE_URL
         $previousUseMock = $env:VITE_USE_MOCK
@@ -52,8 +59,8 @@ if (-not $SkipClientBuild) {
     }
 }
 
-if (-not (Test-Path (Join-Path $imageBoardFrontend 'dist'))) {
-    throw 'frontends/image-board/dist is missing. Run npm run build in frontends/image-board, or run this script without -SkipClientBuild.'
+if (-not (Test-Path (Join-Path $frontendDir 'dist'))) {
+    throw "frontends/$FrontendId/dist is missing. Build that frontend first, or run this script without -SkipClientBuild."
 }
 
 New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
@@ -66,7 +73,7 @@ if ((Test-Path $stageBase) -and -not ((Resolve-Path $stageBase).Path.StartsWith(
 Remove-Item -LiteralPath $stageBase -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $stageRoot | Out-Null
 
-Copy-Item -Path (Join-Path $imageBoardFrontend 'dist\*') -Destination $stageRoot -Recurse -Force
+Copy-Item -Path (Join-Path $frontendDir 'dist\*') -Destination $stageRoot -Recurse -Force
 Copy-ReleaseItem -Source 'server\api.php' -Destination 'api.php'
 Copy-ReleaseItem -Source 'server\db.php' -Destination 'db.php'
 Copy-ReleaseItem -Source 'server\cron.php' -Destination 'cron.php'
@@ -78,7 +85,8 @@ Copy-ReleaseItem -Source 'README.md' -Destination 'README.md'
 Copy-ReleaseItem -Source 'README.ja.md' -Destination 'README.ja.md'
 Copy-ReleaseItem -Source 'CHANGELOG.md' -Destination 'CHANGELOG.md'
 Copy-ReleaseItem -Source 'CHANGELOG.ja.md' -Destination 'CHANGELOG.ja.md'
-Copy-ReleaseItem -Source 'VERSION' -Destination 'VERSION'
+Set-Content -Path (Join-Path $stageRoot 'VERSION') -Value $Version -Encoding ASCII
+Set-Content -Path (Join-Path $stageRoot 'FRONTEND_ID') -Value $FrontendId -Encoding ASCII
 
 if (Test-Path $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
@@ -88,4 +96,5 @@ Compress-Archive -Path (Join-Path $stageRoot '*') -DestinationPath $zipPath -For
 Remove-Item -LiteralPath $stageBase -Recurse -Force
 
 Write-Host "Created: $zipPath"
+Write-Host "Frontend: $FrontendId"
 Write-Host 'Runtime DB and uploaded images are not included.'

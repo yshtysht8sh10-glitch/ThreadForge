@@ -327,6 +327,48 @@ type Post = {
 
 `password_hash` は API レスポンスに含めません。
 
+## file-uploader API
+
+次のアクションは `uploader_files` テーブルを使い、`file-uploader` フロントで有効になります。
+
+### GET `?action=uploaderSettings`
+
+公開用のタイトル、許可拡張子、最大アップロードサイズ、デザイン色を返します。
+
+### GET `?action=listUploaderFiles`
+
+有効なファイルを新しい順で返します。保存用ファイル名、元ファイル名、コメント、バイト数、作成日時、公開ダウンロードURLを含みます。
+
+### POST `?action=uploadUploaderFile`
+
+multipartフィールド:
+
+- `file`: 必須
+- `comment`: 任意
+- `delete_key`: 必須
+
+保存前に、設定された許可拡張子と最大サイズを検証し、Delkeyはハッシュ化して保存します。
+
+### POST `?action=deleteUploaderFile`
+
+フィールド:
+
+- `id`: 必須
+- `delete_key`: 必須
+
+保存済みDelkeyハッシュと一致した場合、ファイル行をソフトデリートします。
+
+### 管理者向けアクション
+
+- `listDeletedUploaderFiles`: 削除済みファイル一覧
+- `adminDeleteUploaderFiles`: 有効ファイルの一括ソフトデリート
+- `restoreUploaderFiles`: 複数ファイルの復原
+- `purgeUploaderFiles`: DB行と保存ファイルの完全削除
+- `exportBackup`: DB、アップロードファイル、設定、デザインをZIPで出力
+- `importBackup`: file-uploaderフルバックアップZIPの復元
+
+管理者向けアクションには `admin_password` が必要です。
+
 ## Laravel API
 
 `server/laravel/routes/api.php` に Laravel 版のルートがありますが、現在のフロントエンドの標準接続先ではありません。Laravel API はまだ本番仕様扱いではありません。

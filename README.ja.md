@@ -6,7 +6,7 @@ ThreadForge は、作品投稿、画像、返信、簡単リアクション、�
 
 ## 運用版
 
-現在の運用版は `0.9.7` です。
+画像掲示板の運用版は `0.9.7`、単体file-uploaderは `1.0.0` です。
 
 - 配布 Zip を展開して、レンタルサーバーの公開ディレクトリへアップロードして使います。
 - 初回アクセス時に、書き込み権限があれば SQLite DB が自動作成されます。
@@ -22,7 +22,8 @@ ThreadForge は、作品投稿、画像、返信、簡単リアクション、�
 - `frontends/proxy-release/`: MUGENキャラ代理公開所予定地
 - `frontends/materials-library/`: 制作素材提供所予定地
 - `server/`: PHP API、SQLite、サーバー側処理
-- `docs/`: 仕様、API、DB、運用、テスト関連ドキュメント
+- `docs/index.html`: 日本語/English切替式ドキュメント
+- `docs/`: Markdown原稿、生成HTML、仕様、API、DB、運用、テスト関連資料
 - `tools/`: 配布 Zip 作成、BBSNote/ローカルアーカイブ取り込み、修復などの運用ツール
 - `release/`: 配布 Zip の出力先
 
@@ -120,13 +121,14 @@ threadforge-<version>/
 配布 Zip は次で作成します。
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
+npm run release:image-board
+npm run release:file-uploader
 ```
 
 出力先:
 
 ```text
-release/threadforge-<version>.zip
+release/threadforge-<frontend-id>-<version>.zip
 ```
 
 ## テスト
@@ -156,10 +158,11 @@ vendor/bin/phpunit
 
 ## ドキュメント
 
-- `docs/ja/SPEC.md`: 日本語仕様
-- `docs/ja/FRONTEND_ARCHITECTURE.md`: 複数フロント構成と移行方針
-- `docs/ja/API.md`: API
-- `docs/ja/DB.md`: DB とランタイムデータ
-- `docs/ja/MIGRATION.md`: 移行メモ
-- `docs/ja/TESTING.md`: テスト方針
+- `docs/index.html`: 日英統合ドキュメント索引
+- `docs/SPEC.html`: 仕様
+- `docs/FRONTEND_ARCHITECTURE.html`: 複数フロント構成と移行方針
+- `docs/API.html`: API
+- `docs/DB.html`: DB とランタイムデータ
+- `docs/MIGRATION.html`: 移行メモ
+- `docs/TESTING.html`: テスト方針
 - `CHANGELOG.ja.md`: 変更履歴

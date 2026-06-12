@@ -174,6 +174,19 @@ function initializeDatabase(PDO $pdo): void
         )'
     );
 
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS uploader_files (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            stored_name TEXT NOT NULL,
+            original_name TEXT NOT NULL,
+            comment TEXT NOT NULL DEFAULT "",
+            size_bytes INTEGER NOT NULL,
+            delete_key_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            deleted_at TEXT
+        )'
+    );
+
     ensureColumnExists($pdo, 'posts', 'deleted_at', 'TEXT');
     ensureColumnExists($pdo, 'posts', 'url', 'TEXT');
     ensureColumnExists($pdo, 'posts', 'gdgd', 'INTEGER NOT NULL DEFAULT 0');
@@ -224,6 +237,7 @@ function ensureDatabaseIndexes(PDO $pdo): void
         'CREATE INDEX IF NOT EXISTS idx_posts_user_deleted_created ON posts(user_id, deleted_at, created_at)',
         'CREATE INDEX IF NOT EXISTS idx_user_post_claims_post_user ON user_post_claims(post_id, user_id)',
         'CREATE INDEX IF NOT EXISTS idx_post_revisions_post_revised ON post_revisions(post_id, revised_at)',
+        'CREATE INDEX IF NOT EXISTS idx_uploader_files_deleted_created ON uploader_files(deleted_at, created_at, id)',
     ];
 
     foreach ($indexes as $sql) {

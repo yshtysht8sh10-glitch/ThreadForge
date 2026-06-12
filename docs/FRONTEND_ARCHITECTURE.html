@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>Frontend Architecture / フロントエンド構成 | ThreadForge</title>
+  <link rel="stylesheet" href="assets/docs.css">
+  <script src="assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="./index.html">ドキュメント</a></li><li><a href="./SPEC.html">仕様</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html">データベース</a></li><li><a href="./ARCHITECTURE.html">構成</a></li><li><a href="./FRONTEND_ARCHITECTURE.html" aria-current="page">フロントエンド構成</a></li><li><a href="./MIGRATION.html">移行</a></li><li><a href="./TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="./frontends/image-board/index.html">画像掲示板</a></li><li><a href="./frontends/image-board/SPEC.html">画像掲示板仕様</a></li><li><a href="./frontends/image-board/DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">ファイルアップローダー</a></li><li><a href="./frontends/file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="./frontends/file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">指南記事</a></li><li><a href="./frontends/guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="./frontends/guide-posts/DB.html">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">代理公開</a></li><li><a href="./frontends/proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="./frontends/proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">素材ライブラリ</a></li><li><a href="./frontends/materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="./frontends/materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="./index.html">Documentation</a></li><li><a href="./SPEC.html">Specification</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html">Database</a></li><li><a href="./ARCHITECTURE.html">Architecture</a></li><li><a href="./FRONTEND_ARCHITECTURE.html" aria-current="page">Frontend Architecture</a></li><li><a href="./MIGRATION.html">Migration</a></li><li><a href="./TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="./frontends/image-board/index.html">Image Board</a></li><li><a href="./frontends/image-board/SPEC.html">Image Board Spec</a></li><li><a href="./frontends/image-board/DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">File Uploader</a></li><li><a href="./frontends/file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="./frontends/file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">Guide Posts</a></li><li><a href="./frontends/guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="./frontends/guide-posts/DB.html">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">Proxy Release</a></li><li><a href="./frontends/proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="./frontends/proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">Materials Library</a></li><li><a href="./frontends/materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="./frontends/materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>Frontend Architecture / フロントエンド構成</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="フロントエンド構成">フロントエンド構成</h1>
+<p>ThreadForge は、共通バックエンドをひとつ持ち、その上に複数のフロントエンドを載せる構成へ移行します。現在のドット絵板は「唯一の画面」ではなく、最初のフロントエンドとして扱います。</p>
+<h2 id="現在の配置">現在の配置</h2>
+<pre><code class="language-text">frontends/
+  image-board/          現在の本番画像投稿掲示板フロント
+  file-uploader/        ファイルアップローダ用フロント
+  guide-posts/          制作指南・記事投稿所用フロント
+  proxy-release/        MUGEN キャラ代理公開所用フロント
+  materials-library/    制作素材提供所用フロント
+  shared/               フロント共通部品
+server/                 共通 PHP バックエンドと SQLite ストレージ</code></pre>
+<p><code>frontends/image-board</code> は、これまで <code>client/</code> にあった既存の本番アプリです。<br>それ以外のフロントにも、各 <code>legacy/</code> サイトを元にした React/Vite の初期実装があります。</p>
+<h2 id="目指す形">目指す形</h2>
+<ul>
+<li>認証、投稿、返信、ファイル、分析、SSO、設定はできるだけ <code>server/</code> の共通バックエンドコードに集約します。</li>
+<li>バックエンドコードは共通にしますが、DB とアップロードファイル置き場はフロントエンドIDごとに分離します。</li>
+<li>画面遷移、レイアウト、見た目、文言、ルート構成は各フロントエンドの中に閉じます。</li>
+<li>UI 部品、hooks、型、API ヘルパーは、複数フロントで本当に使うことが見えてから <code>frontends/shared/</code> に移します。</li>
+<li>ビルドとリリースはフロントエンド単位で進めます。リリーススクリプトにフロントIDを指定し、そのフロントと共通バックエンドを梱包します。</li>
+<li>フロントごとの差分は、バックエンドを分岐させるより小さなアダプタで吸収する方針です。</li>
+</ul>
+<h2 id="ランタイムデータの分離">ランタイムデータの分離</h2>
+<p>各フロントエンドは、それぞれ別の <code>THREADFORGE_FRONTEND_ID</code> で動かします。標準では次の場所にデータを保存します。</p>
+<pre><code class="language-text">server/runtime/&lt;frontend-id&gt;/database.sqlite
+server/runtime/&lt;frontend-id&gt;/storage/data/</code></pre>
+<p>たとえば <code>image-board</code> と <code>file-uploader</code> は、投稿、ユーザー、設定、セッション、アップロードファイルを共有しません。PHP のバックエンドコードは共通でも、DB とファイルは完全に別になります。</p>
+<p>ローカル起動例:</p>
+<pre><code class="language-powershell">$env:THREADFORGE_FRONTEND_ID = 'image-board'
+php -S 127.0.0.1:8000 -t server</code></pre>
+<pre><code class="language-powershell">$env:THREADFORGE_FRONTEND_ID = 'file-uploader'
+php -S 127.0.0.1:8001 -t server</code></pre>
+<h2 id="フロントエンド">フロントエンド</h2>
+<ul>
+<li><code>image-board</code>: 現在の ThreadForge 画像投稿掲示板。</li>
+<li><code>file-uploader</code>: コメント、サイズ情報、削除キー、ページングを持つファイルアップローダ。</li>
+<li><code>guide-posts</code>: MUGEN やドット絵制作知識を扱う記事投稿型サイト。</li>
+<li><code>proxy-release</code>: MUGEN キャラやプラグインなどの代理公開サイト。</li>
+<li><code>materials-library</code>: 利用条件付きの素材とダウンロードを一覧できる素材庫。</li>
+</ul>
+<h2 id="legacy-からの移植方針">legacy からの移植方針</h2>
+<ul>
+<li>各新規フロントの <code>legacy/</code> は、見た目と内容の参照元として残します。</li>
+<li>初期 React アプリは、legacy の色合いと大まかなレイアウトを残しつつ、Vite でビルドできる現代的な構成にします。</li>
+<li><code>file-uploader</code> は、薄いグレーのアップロードフォームと表組みを維持します。</li>
+<li><code>guide-posts</code> は、白背景、青緑の固定ヘッダ、左メニューと記事本文の構成を維持します。</li>
+<li><code>proxy-release</code> は、暗い背景と明るい緑文字の雰囲気を維持します。</li>
+<li><code>materials-library</code> は、黒背景、淡い黄色文字、利用条件表付き素材カードを維持します。</li>
+<li>legacy の画像を使う場合は <code>new URL('../legacy/...', import.meta.url).href</code> で React 側へ取り込みます。</li>
+</ul>
+<h2 id="作業ルール">作業ルール</h2>
+<ol>
+<li>新しいフロントは <code>frontends/&lt;name&gt;/</code> の下に作ります。</li>
+<li>具体的な別フロントから直接 import しません。</li>
+<li>重複が出たら最初はローカルに持ち、再利用が確定してから <code>frontends/shared/</code> に移します。</li>
+<li>共通バックエンドの契約は <code>docs/ja/SPEC.md</code> に残します。</li>
+<li>リリーススクリプトは、どのフロントを梱包するか明示します。</li>
+</ol>
+<p>リリース例:</p>
+<pre><code class="language-powershell">npm run release:image-board
+npm run release:file-uploader</code></pre>
+<h2 id="バージョン管理">バージョン管理</h2>
+<ul>
+<li>各フロントは独立したセマンティックバージョンを持ちます。<code>image-board</code> と <code>file-uploader</code> のバージョンは一致させる必要がありません。</li>
+<li>アプリのバージョンは各 <code>frontends/&lt;frontend-id&gt;/package.json</code> を基準にし、リリースZIP名にも含めます。</li>
+<li>Gitタグは <code>image-board-v0.9.7</code>、<code>file-uploader-v0.1.0</code> のようにフロントIDを付けます。</li>
+<li>ルートのバージョンは開発ワークスペース全体の管理用とし、単体アプリのリリース番号には使いません。</li>
+<li>共通バックエンドは各アプリのリリースへ同梱します。APIに互換性のない変更が入る場合だけ、別途API互換バージョンを更新します。</li>
+</ul>
+<p>これで今のドット絵板を守りながら、新しい掲示板たちをひとつずつ育てられる状態にします。</p></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="frontend-architecture">Frontend Architecture</h1>
+<p>ThreadForge is moving toward one common backend with multiple frontend applications. The current image posting board is now treated as the first frontend, not as the only frontend.</p>
+<h2 id="current-layout">Current Layout</h2>
+<pre><code class="language-text">frontends/
+  image-board/          Current production image posting board frontend
+  file-uploader/        File uploader frontend
+  guide-posts/          Guide/article posting frontend
+  proxy-release/        MUGEN proxy release frontend
+  materials-library/    Materials library frontend
+  shared/               Shared frontend code
+server/                 Common PHP backend and SQLite storage</code></pre>
+<p><code>frontends/image-board</code> is the existing production application moved from the former <code>client/</code> directory.<br>The other frontend directories now contain first-pass React/Vite applications based on their <code>legacy/</code> site materials.</p>
+<h2 id="target-shape">Target Shape</h2>
+<ul>
+<li>Keep <code>server/</code> as the common backend for authentication, posts, replies, files, analytics, SSO, and settings.</li>
+<li>Keep backend code common, but keep DB files and uploaded-file storage separated by frontend id during development.</li>
+<li>Keep frontend-specific page flow, layout, skin, wording, and route trees inside each frontend directory.</li>
+<li>Put shared UI, hooks, types, and API helpers in <code>frontends/shared/</code> only after at least two frontends need the same code.</li>
+<li>Build and release one frontend at a time. The release script accepts a frontend id and packages that frontend with the common backend.</li>
+<li>Prefer small adapters over backend forks when a frontend needs different labels or presentation.</li>
+</ul>
+<h2 id="runtime-isolation">Runtime Isolation</h2>
+<p>Each frontend should run with its own <code>THREADFORGE_FRONTEND_ID</code> during development. Development runtime data is stored under:</p>
+<pre><code class="language-text">server/runtime/&lt;frontend-id&gt;/database.sqlite
+server/runtime/&lt;frontend-id&gt;/storage/data/</code></pre>
+<p>When a release ZIP is built, it is packaged as a single frontend app. Inside that ZIP, the same backend stores data locally:</p>
+<pre><code class="language-text">database.sqlite
+storage/data/</code></pre>
+<p>This means <code>image-board</code> and <code>file-uploader</code> do not share posts, users, settings, sessions, or uploaded files while developing locally. The release artifact for each frontend is also standalone.</p>
+<h2 id="frontends">Frontends</h2>
+<ul>
+<li><code>image-board</code>: the current ThreadForge image posting board.</li>
+<li><code>file-uploader</code>: a file upload list with comments, size metadata, delete keys, and paging.</li>
+<li><code>guide-posts</code>: an article-style posting site for MUGEN and dot-art production knowledge.</li>
+<li><code>proxy-release</code>: a proxy release site for MUGEN characters, plugins, or related packages.</li>
+<li><code>materials-library</code>: a browseable material library with downloads and usage flags.</li>
+</ul>
+<h2 id="legacy-migration">Legacy Migration</h2>
+<ul>
+<li>Each new frontend keeps the source legacy site in <code>legacy/</code> for visual and content reference.</li>
+<li>The first-pass React apps intentionally copy the color palette and broad layout from legacy while using modern components and Vite builds.</li>
+<li><code>file-uploader</code> keeps the gray table/upload-form feel.</li>
+<li><code>guide-posts</code> keeps the white page, fixed teal header, and left menu/article layout.</li>
+<li><code>proxy-release</code> keeps the dark background and bright green text.</li>
+<li><code>materials-library</code> keeps the black background, pale yellow text, and material cards with rule tables.</li>
+<li>Legacy assets can be imported into React with <code>new URL('../legacy/...', import.meta.url).href</code> when a screen needs representative images.</li>
+</ul>
+<h2 id="working-rules">Working Rules</h2>
+<ol>
+<li>Start new frontend work under its own <code>frontends/&lt;name&gt;/</code> directory.</li>
+<li>Do not import directly from another concrete frontend.</li>
+<li>If duplication appears, copy locally first; move to <code>frontends/shared/</code> when reuse is proven.</li>
+<li>Keep common backend contracts documented in <code>docs/SPEC.md</code>.</li>
+<li>Keep release scripts explicit about which frontend they package.</li>
+</ol>
+<p>Release examples:</p>
+<pre><code class="language-powershell">npm run release:image-board
+npm run release:file-uploader</code></pre>
+<h2 id="versioning">Versioning</h2>
+<ul>
+<li>Each frontend has its own semantic version. <code>image-board</code> and <code>file-uploader</code> do not need matching versions.</li>
+<li>Treat each <code>frontends/&lt;frontend-id&gt;/package.json</code> as the application version source and include that version in its release ZIP name.</li>
+<li>Prefix Git tags with the frontend id, for example <code>image-board-v0.9.7</code> and <code>file-uploader-v0.1.0</code>.</li>
+<li>Keep the root version for workspace-level development only, not as the release number for every standalone app.</li>
+<li>Bundle the common backend with each application release. Track a separate API compatibility version only when a breaking backend contract change is introduced.</li>
+</ul>
+<p>This keeps the current board recoverable while allowing each new board type to grow its own personality.</p></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

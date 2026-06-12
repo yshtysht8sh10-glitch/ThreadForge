@@ -25,5 +25,6 @@ ThreadForge は、1つの共通バックエンドの上に5つの単体フロン
 ## 現在の状態
 
 - `image-board` は現行の本番フロントで、詳細仕様を持ちます。
-- `file-uploader`、`guide-posts`、`proxy-release`、`materials-library` は legacy をもとにした初期フロントです。
+- `file-uploader` 1.0.0 は、`image-board` に続いて完成した最初の単体フロントです。
+- `guide-posts`、`proxy-release`、`materials-library` は legacy をもとにした初期フロントです。
 - バックエンドコードは共通ですが、開発中もリリース配置後もDBとストレージはフロントごとに独立します。

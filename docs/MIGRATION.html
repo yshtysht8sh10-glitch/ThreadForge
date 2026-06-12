@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>Migration / 移行 | ThreadForge</title>
+  <link rel="stylesheet" href="assets/docs.css">
+  <script src="assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="./index.html">ドキュメント</a></li><li><a href="./SPEC.html">仕様</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html">データベース</a></li><li><a href="./ARCHITECTURE.html">構成</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="./MIGRATION.html" aria-current="page">移行</a></li><li><a href="./TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="./frontends/image-board/index.html">画像掲示板</a></li><li><a href="./frontends/image-board/SPEC.html">画像掲示板仕様</a></li><li><a href="./frontends/image-board/DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">ファイルアップローダー</a></li><li><a href="./frontends/file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="./frontends/file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">指南記事</a></li><li><a href="./frontends/guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="./frontends/guide-posts/DB.html">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">代理公開</a></li><li><a href="./frontends/proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="./frontends/proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">素材ライブラリ</a></li><li><a href="./frontends/materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="./frontends/materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="./index.html">Documentation</a></li><li><a href="./SPEC.html">Specification</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html">Database</a></li><li><a href="./ARCHITECTURE.html">Architecture</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="./MIGRATION.html" aria-current="page">Migration</a></li><li><a href="./TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="./frontends/image-board/index.html">Image Board</a></li><li><a href="./frontends/image-board/SPEC.html">Image Board Spec</a></li><li><a href="./frontends/image-board/DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">File Uploader</a></li><li><a href="./frontends/file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="./frontends/file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">Guide Posts</a></li><li><a href="./frontends/guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="./frontends/guide-posts/DB.html">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">Proxy Release</a></li><li><a href="./frontends/proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="./frontends/proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">Materials Library</a></li><li><a href="./frontends/materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="./frontends/materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>Migration / 移行</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="移行メモ">移行メモ</h1>
+<h2 id="ローカルアーカイブログ">ローカルアーカイブログ</h2>
+<p>ThreadForge はローカルアーカイブ形式の <code>LOG_*.cgi</code> ファイルをインポートできます。ただし、この操作は意図的にWeb管理画面には置いていません。<code>server/db.php</code> の <code>importLocalArchiveDirectory()</code> を呼び出すローカル運用バッチ、またはローカルPHPコマンドから実行します。</p>
+<p>既定の読み込み元:</p>
+<ul>
+<li><code>data/</code></li>
+</ul>
+<p>想定レイアウト:</p>
+<pre><code class="language-text">data/
+  LOG_009359.cgi
+  LOG_009360.cgi
+  DOTIMG_009359_1.gif
+  DOTIMG_009360.png</code></pre>
+<p>インポート動作:</p>
+<ul>
+<li>各 <code>LOG_*.cgi</code> の先頭行は親スレッドになります。</li>
+<li>2行目以降はそのスレッドの返信になります。</li>
+<li>参照画像は有効なフロントエンドの <code>server/runtime/&lt;frontend-id&gt;/storage/data/</code> へコピーします。</li>
+<li>既存DB行、アップロード画像、管理設定はリセットしません。</li>
+<li>再実行時は、名前、本文、時刻が一致する投稿と返信をスキップします。</li>
+</ul>
+<p>インポートされた投稿は未知の生成済みパスワードハッシュを使います。管理は管理画面から行います。</p>
+<p>個別環境用のローカルバッチは、プロジェクトとして配布すると決めない限りコミットしません。</p>
+<h2 id="フルバックアップ復元">フルバックアップ復元</h2>
+<p>フルバックアップZIPのインポートはローカルアーカイブインポートとは異なります。これは完全復元であり、投稿、返信、ユーザー、作品登録、アクセス履歴、画像、設定をバックアップ内容で置き換えます。ログインセッションは含めません。過去バージョンのJSON形式バックアップもインポート互換として読み込めます。</p>
+<p>ThreadForge インスタンスを別環境へ移す場合はバックアップ復元を使います。既存掲示板へ過去ログを追加する場合はローカルアーカイブインポートを使います。</p>
+<h2 id="複数アーカイブフォルダの一括インポート">複数アーカイブフォルダの一括インポート</h2>
+<p><code>legacy/import_data</code> のように複数の過去ログフォルダをまとめて取り込む場合は、専用ツールを使います。</p>
+<pre><code class="language-powershell">tools\import_threadforge_archives.bat legacy\import_data</code></pre>
+<p>このツールは配下フォルダの <code>LOG_*.cgi</code> をすべて読み、親投稿の投稿日時が古い順になるようにDBへ取り込みます。返信は親投稿に紐づけて取り込みます。</p>
+<p>フォルダごとの特殊投稿判定:</p>
+<ul>
+<li><code>bbs1-999</code>: ログ内の画像名、内部フィールド、タイトルから特殊投稿マーカーを自動判定します。</li>
+<li><code>bbs10_DoteitaArchive_Doteita</code>: 通常投稿として取り込みます。</li>
+<li><code>bbs20_DoteitaArchive_gdgd</code>: 特殊投稿として取り込みます。</li>
+<li><code>bbsOO_DoteitaArchive</code>: 投稿タイトルに <code>gdgd</code> または <code>ｇｄｇｄ</code> が含まれる場合だけ特殊投稿として取り込みます。</li>
+</ul>
+<p>取り込みは非破壊です。名前、タイトル、本文、投稿日時が一致する親投稿、または名前、本文、投稿日時が一致する返信は再実行時にスキップします。実行前には管理画面からフルバックアップZIPを取得してください。</p></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="migration-notes">Migration Notes</h1>
+<h2 id="local-archive-logs">Local Archive Logs</h2>
+<p>ThreadForge can import local archive-style <code>LOG_*.cgi</code> files, but this operation is intentionally kept out of the web admin screen. Run it from a local operator batch or local PHP command that calls <code>importLocalArchiveDirectory()</code> in <code>server/db.php</code>.</p>
+<p>Default source directory:</p>
+<ul>
+<li><code>data/</code></li>
+</ul>
+<p>Expected layout:</p>
+<pre><code class="language-text">data/
+  LOG_009359.cgi
+  LOG_009360.cgi
+  DOTIMG_009359_1.gif
+  DOTIMG_009360.png</code></pre>
+<p>Import behavior:</p>
+<ul>
+<li>The first line of each <code>LOG_*.cgi</code> file becomes a top-level thread.</li>
+<li>Later lines become replies under that thread.</li>
+<li>Referenced images are copied into the active frontend's <code>server/runtime/&lt;frontend-id&gt;/storage/data/</code>.</li>
+<li>Existing DB rows, uploaded images, and admin settings are not reset.</li>
+<li>Re-running the import skips already imported posts and replies by name, content, and timestamp.</li>
+</ul>
+<p>Imported posts use generated unknown password hashes. Manage them through the admin screen.<br>The local batch used for an individual deployment should not be committed unless the project explicitly decides to ship one.</p>
+<h2 id="full-backup-restore">Full Backup Restore</h2>
+<p>The full backup ZIP import is different from local archive import. It is a full restore and replaces posts/images with the backup contents. Legacy JSON backups from earlier versions remain import-compatible.</p>
+<p>Use backup restore when moving a ThreadForge instance. Use local archive import when adding historical logs to an existing board.</p></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

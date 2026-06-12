@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>Image Board Spec / 画像掲示板仕様 | ThreadForge</title>
+  <link rel="stylesheet" href="../../assets/docs.css">
+  <script src="../../assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="../../index.html">ドキュメント</a></li><li><a href="../../SPEC.html">仕様</a></li><li><a href="../../API.html">API</a></li><li><a href="../../DB.html">データベース</a></li><li><a href="../../ARCHITECTURE.html">構成</a></li><li><a href="../../FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="../../MIGRATION.html">移行</a></li><li><a href="../../TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="./index.html">画像掲示板</a></li><li><a href="./SPEC.html" aria-current="page">画像掲示板仕様</a></li><li><a href="./DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="../file-uploader/index.html">ファイルアップローダー</a></li><li><a href="../file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="../file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="../guide-posts/index.html">指南記事</a></li><li><a href="../guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="../guide-posts/DB.html">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="../proxy-release/index.html">代理公開</a></li><li><a href="../proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="../proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="../materials-library/index.html">素材ライブラリ</a></li><li><a href="../materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="../materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="../../index.html">Documentation</a></li><li><a href="../../SPEC.html">Specification</a></li><li><a href="../../API.html">API</a></li><li><a href="../../DB.html">Database</a></li><li><a href="../../ARCHITECTURE.html">Architecture</a></li><li><a href="../../FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="../../MIGRATION.html">Migration</a></li><li><a href="../../TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="./index.html">Image Board</a></li><li><a href="./SPEC.html" aria-current="page">Image Board Spec</a></li><li><a href="./DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="../file-uploader/index.html">File Uploader</a></li><li><a href="../file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="../file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="../guide-posts/index.html">Guide Posts</a></li><li><a href="../guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="../guide-posts/DB.html">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="../proxy-release/index.html">Proxy Release</a></li><li><a href="../proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="../proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="../materials-library/index.html">Materials Library</a></li><li><a href="../materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="../materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>Image Board Spec / 画像掲示板仕様</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="image-board-仕様">image-board 仕様</h1>
+<p><a href="../../SPEC.html">仕様索引へ戻る</a></p>
+<h2 id="目的">目的</h2>
+<p><code>image-board</code> は現行の画像投稿掲示板フロントです。</p>
+<p>ドット絵板として運用してきた機能を維持しつつ、今後の複数フロント構成の1つとして扱います。</p>
+<h2 id="主要機能">主要機能</h2>
+<ul>
+<li>親投稿と返信</li>
+<li>親投稿への画像アップロード</li>
+<li>返信投稿</li>
+<li>投稿編集と削除</li>
+<li>返信付き投稿の編集画面表示</li>
+<li>検索</li>
+<li>順位/ランキング</li>
+<li>取説/マニュアルページ</li>
+<li>RSS</li>
+<li>ユーザー登録、ログイン、プロフィール編集、アイコン表示</li>
+<li>SSOログイン</li>
+<li>管理画面</li>
+<li>管理者による一括削除、復元、完全削除</li>
+<li>DB整合性チェック</li>
+<li>フルバックアップのエクスポート/インポート</li>
+<li>ローカルアーカイブ取り込み</li>
+<li>SNS連携設定と投稿プレビュー</li>
+<li>X、Bluesky、Mastodon、Misskey の反応数キャッシュ</li>
+<li>gdgd/特殊投稿モード</li>
+<li>アクセス数と投稿分析</li>
+</ul>
+<h2 id="見た目">見た目</h2>
+<ul>
+<li>黒背景</li>
+<li>ドット絵板らしいクラシックな掲示板ナビゲーション</li>
+<li>親投稿カードと返信表示</li>
+<li>画像を大きく見せるレイアウト</li>
+</ul>
+<h2 id="runtime">Runtime</h2>
+<p>開発環境:</p>
+<pre><code class="language-text">server/runtime/image-board/database.sqlite
+server/runtime/image-board/storage/data/</code></pre>
+<p>リリースZip配置先:</p>
+<pre><code class="language-text">database.sqlite
+storage/data/</code></pre>
+<h2 id="現在の状態">現在の状態</h2>
+<p>本番相当の成熟フロントです。新しい4フロントは、この <code>image-board</code> と共通バックエンドを共有しつつ、DBとストレージは独立させます。</p></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="threadforge-current-specification">ThreadForge Current Specification</h1>
+<p><a href="../../SPEC.html">Back to specification index</a></p>
+<p>ThreadForge is a lightweight, customizable thread board engine for posts, media, replies, moderation, and community archives.</p>
+<p>ThreadForge is presented as a new self-hosted board engine that can be adapted for artwork, media posts, project logs, small communities, and archives.</p>
+<h2 id="runtime-structure">Runtime Structure</h2>
+<ul>
+<li><code>frontends/image-board/</code>: React 18 + TypeScript + Vite SPA for the current image posting board</li>
+<li><code>frontends/shared/</code>: shared frontend code</li>
+<li><code>frontends/file-uploader/</code>, <code>frontends/guide-posts/</code>, <code>frontends/proxy-release/</code>, <code>frontends/materials-library/</code>: frontend app slots</li>
+<li><code>server/api.php</code>: PHP API entrypoint</li>
+<li><code>server/db.php</code>: SQLite connection, schema initialization, storage helpers</li>
+<li><code>server/runtime/&lt;frontend-id&gt;/database.sqlite</code>: runtime SQLite DB, ignored by Git</li>
+<li><code>server/runtime/&lt;frontend-id&gt;/storage/data/</code>: uploaded media, ignored by Git except <code>.gitkeep</code></li>
+<li><code>docs/</code>: project documentation</li>
+</ul>
+<h2 id="routes">Routes</h2>
+<ul>
+<li><code>/</code>: top thread list</li>
+<li><code>/thread/:id</code>: thread detail, replies, and reply form</li>
+<li><code>/thread/:id?mode=eejanaika</code>: fixed-comment reply form</li>
+<li><code>/post</code>: new top-level post form</li>
+<li><code>/search</code>: search page</li>
+<li><code>/delete</code>: delete mode</li>
+<li><code>/edit</code>: edit mode</li>
+<li><code>/edit/:id</code>: edit selected post or reply</li>
+<li><code>/admin</code>: admin page</li>
+<li><code>/manual</code>: embedded manual page</li>
+</ul>
+<h2 id="core-features">Core Features</h2>
+<ul>
+<li>Top-level thread posting</li>
+<li>Reply posting</li>
+<li>Image upload for top-level posts only</li>
+<li>Reply image upload disabled</li>
+<li>SNS posting previews and posting for top-level posts only</li>
+<li>X, Bluesky, Mastodon, and Misskey integrations are disabled by default</li>
+<li>SNS destination URL/ID storage and cached reaction display for top-level posts</li>
+<li>SNS transfer OFF mode</li>
+<li>gdgd post mode</li>
+<li>Thread display numbers are assigned only to top-level threads; replies use child reply numbers under their thread</li>
+<li>Classic board-style top navigation</li>
+<li>Top page shows up to 10 replies per thread</li>
+<li>Thread detail keeps users on the same page after submitting comments or &quot;eejanaika&quot;</li>
+<li>Soft delete with data retained internally</li>
+<li>Edit and delete using post password</li>
+<li>Admin restore/purge for soft-deleted posts</li>
+<li>Admin bulk delete without per-post passwords, including display-number range selection</li>
+<li>Admin DB integrity check</li>
+<li>Admin full backup export/import for posts, replies, edit revisions, users, claimed works, access history, images, and settings</li>
+<li>Local, non-destructive import for local archive <code>LOG_*.cgi</code> data through an operator batch or PHP command</li>
+<li>Admin settings storage for <code>config.cgi</code> and <code>skincfg.cgi</code> equivalents</li>
+<li>Admin-configurable HOME link target</li>
+<li>Admin-configurable embedded manual title and body</li>
+<li>Search by all fields, title, body, or author</li>
+<li>RSS feed</li>
+</ul>
+<h2 id="admin-features">Admin Features</h2>
+<p>The admin page uses the configured administrator password. <code>THREADFORGE_ADMIN_PASSWORD</code> is available as an optional recovery/setup override.</p>
+<p>Implemented:</p>
+<ul>
+<li>Load active and deleted posts</li>
+<li>Bulk delete selected posts or replies without individual post passwords, or select top-level display-number ranges</li>
+<li>Restore/purge deleted posts. Purge can erase post data while keeping display numbers, or remove rows and compact top-level display numbers</li>
+<li>Manage registered users: edit user information, erase user information while keeping the user number, or delete the user row and compact user numbers</li>
+<li>Check DB consistency</li>
+<li>Export full backup ZIP containing posts, replies, edit revisions, users, claimed works, access history, images, and settings</li>
+<li>Import full backup ZIP and restore DB rows/images/settings. Legacy JSON backups remain import-compatible. Login sessions are intentionally not included.</li>
+<li>Import local archive logs from a local directory without resetting existing DB rows, images, or settings</li>
+<li>Edit and save current app settings</li>
+<li>Configure the top navigation HOME link target</li>
+<li>Configure the SPA manual title and body</li>
+<li>Enable or disable each SNS integration</li>
+<li>Enable or disable gdgd posting UI</li>
+<li>Configure the gdgd posting label</li>
+<li>Change the admin password</li>
+<li>Refresh cached SNS reaction counts</li>
+<li>Show local cron path and API-key-protected scheduler URL for automated SNS reaction refresh</li>
+<li>Fresh DB defaults: gdgd posting OFF, list page size 20, SNS hashtag <code>#art</code>, all SNS integrations OFF, and SNS credential fields empty</li>
+<li>Empty or non-positive list page size means all posts are shown on one page</li>
+<li>The admin UI displays maximum upload size in KB while storing it internally as bytes</li>
+</ul>
+<p>Notes:</p>
+<ul>
+<li>The replacement maintenance function checks DB consistency and missing image references.</li>
+<li>Saved <code>config</code> and <code>skin</code> settings currently persist through the admin API.</li>
+<li><code>homePageUrl</code>, <code>manualTitle</code>, <code>manualBody</code>, SNS platform switches, <code>gdgdEnabled</code>, <code>gdgdLabel</code>, and basic colors are applied to runtime UI through the public settings API.</li>
+<li>Applying every remaining saved setting to runtime behavior and live styling is still in progress.</li>
+</ul>
+<h2 id="parent-site-sso">Parent Site SSO</h2>
+<p>ThreadForge can accept signed SSO tokens from a parent site so users logged in on the parent site can enter a child ThreadForge board.</p>
+<ul>
+<li>Enable &quot;Use SSO&quot; in board settings and configure the shared SSO secret.</li>
+<li>The shared secret is empty by default. The settings screen can generate a cryptographically secure 64-character secret after confirmation and copy it for use by the parent site. The generated value is not persisted until settings are saved.</li>
+<li>When SSO is enabled, users cannot create new accounts from the ThreadForge login screen. The login screen tells users to create accounts on the parent site instead.</li>
+<li>When SSO is enabled, the registered-user management button on the maintenance screen is disabled, so the child-site user management screen cannot be opened. User profile changes and deletion should be handled by the parent site.</li>
+<li>The parent site sends users to <code>index.html#/login?sso=&lt;token&gt;</code>.</li>
+<li>The token format is <code>base64url(payload).base64url(hmac_sha256(base64url(payload), secret))</code>.</li>
+<li>The payload must include <code>login_id</code> or <code>sub</code>, and <code>exp</code>. It may also include <code>display_name</code>, <code>post_password</code>, <code>home_url</code>, and <code>iat</code>.</li>
+<li>ThreadForge verifies the signature and expiration, then logs in the existing user or creates the user from the SSO payload.</li>
+</ul>
+<h2 id="data-model">Data Model</h2>
+<p>The main SQLite table is <code>posts</code>.</p>
+<p>Important columns:</p>
+<ul>
+<li><code>id</code></li>
+<li><code>thread_id</code></li>
+<li><code>parent_id</code></li>
+<li><code>name</code></li>
+<li><code>url</code></li>
+<li><code>title</code></li>
+<li><code>message</code></li>
+<li><code>image_path</code></li>
+<li><code>password_hash</code></li>
+<li><code>created_at</code></li>
+<li><code>deleted_at</code></li>
+<li><code>gdgd</code></li>
+<li><code>tweet_off</code></li>
+<li><code>tweet_text</code></li>
+<li><code>tweet_url</code></li>
+<li>X/Tweet statistic columns for likes, reposts, impressions</li>
+<li>Bluesky URI/CID/URL and Like/Repost/Quote counts</li>
+<li>Mastodon ID/URL and Boost/Fav counts</li>
+<li>Misskey ID/URL and reaction counts</li>
+</ul>
+<p>The <code>settings</code> table stores admin-managed configuration sections as JSON. The <code>security</code> section includes <code>adminPasswordHash</code> and <code>cronApiKey</code>.</p>
+<p>Public UI reads a safe subset of settings through <code>?action=publicSettings</code>:</p>
+<ul>
+<li><code>config.bbsTitle</code></li>
+<li><code>config.homePageUrl</code></li>
+<li><code>config.manualTitle</code></li>
+<li><code>config.manualBody</code></li>
+<li><code>config.tweetEnabled</code></li>
+<li><code>config.blueskyEnabled</code></li>
+<li><code>config.mastodonEnabled</code></li>
+<li><code>config.misskeyEnabled</code></li>
+<li><code>config.gdgdEnabled</code></li>
+<li><code>config.gdgdLabel</code></li>
+</ul>
+<h2 id="sns-posting-rules">SNS Posting Rules</h2>
+<ul>
+<li>SNS posting is controlled by one user-facing &quot;SNS transfer OFF&quot; switch on post and edit forms.</li>
+<li>Posts created with social transfer disabled show only the board metrics row; X/Bluesky/Mastodon/Misskey destination rows are hidden.</li>
+<li>The admin page separates settings for X, Bluesky, Mastodon, and Misskey.</li>
+<li>Platform credential fields are disabled while that platform is OFF.</li>
+<li>New top-level posts can be reflected to enabled SNS platforms.</li>
+<li>Top-level post edits update the board only and do not edit or repost to SNS.</li>
+<li>Replies never post to SNS and do not show SNS controls.</li>
+<li>Attached images are sent to X, Bluesky, Mastodon, and Misskey when the platform is enabled.</li>
+<li>Preview text is shown per enabled platform. The preview is read-only.</li>
+<li>Text after <code>_TWEND_</code> is excluded from SNS posting.</li>
+<li>SNS text includes a &quot;latest is here&quot; board-list link such as <code>/#post-000001</code>; the top list scrolls to the matching post anchor.</li>
+<li>If text exceeds a platform limit, ThreadForge shortens it with <code>..</code> and still submits.</li>
+<li>Current default limits are X 280, Bluesky 300, Mastodon 500, and Misskey 3000.</li>
+<li>X uses weighted character counting; the other platform previews use normal character length.</li>
+<li>Cached reaction counts are displayed as simple same-color metrics, with platform destination markers aligned by row.</li>
+<li>Cached reaction refresh can be run manually from admin maintenance, by local <code>server/cron.php</code>, by <code>server/cron.php?api_key=...</code>, or by the API endpoint <code>?action=cronRefreshSocialReactions&amp;api_key=...</code>.</li>
+<li><code>server/cron.php</code> rejects keyless browser access. URL-style schedulers can call it with the API key, and those runs are logged as <code>cron web social reaction ...</code>.</li>
+<li>Automatic reaction refresh targets all non-deleted top-level posts that have SNS post IDs.</li>
+</ul>
+<h2 id="comment-and-fixed-comment-forms">Comment and Fixed-Comment Forms</h2>
+<ul>
+<li>Comment forms use name, URL/HOME, body, and password fields.</li>
+<li>Name, body, and password are required for comments.</li>
+<li>Password is limited to 8 alphanumeric characters by UI guidance.</li>
+<li>Fixed-comment forms require a name and choose one fixed reply text.</li>
+<li>Inline comment and fixed-comment forms have close buttons. Closing a draft asks for confirmation.</li>
+<li>When an inline form is open, the thread action buttons are hidden.</li>
+</ul>
+<h2 id="storage-rules">Storage Rules</h2>
+<ul>
+<li>Uploaded images are stored under the active frontend's <code>server/runtime/&lt;frontend-id&gt;/storage/data/</code>.</li>
+<li>Runtime DB and uploaded media are excluded from Git.</li>
+<li>Backups should be made through the admin export feature.</li>
+<li>Replacing an existing post image archives the previous image file instead of deleting it immediately.</li>
+<li>Local archive import copies source images into storage and skips already imported posts/replies by matching name, content, and timestamp. It is run locally, not through the web admin screen.</li>
+<li>Release ZIPs are created with <code>tools/build_release.ps1</code>. The archive is arranged for direct upload to a public web directory with <code>index.html</code>, <code>assets/</code>, <code>api.php</code>, <code>db.php</code>, <code>cron.php</code>, and <code>storage/data/</code> at the top level. Runtime <code>database.sqlite</code>, uploaded images, and operator scripts are not included.</li>
+<li>Intentional clean initialization is done by stopping the server, deleting <code>server/runtime/&lt;frontend-id&gt;/database.sqlite</code>, and deleting files under <code>server/runtime/&lt;frontend-id&gt;/storage/data/</code>. See <code>docs/DB.md</code>.</li>
+</ul>
+<h2 id="deletion-rules">Deletion Rules</h2>
+<p>Normal deletion is soft delete:</p>
+<ul>
+<li>Posts disappear from normal UI.</li>
+<li>Data remains in DB with <code>deleted_at</code>.</li>
+<li>Admin can restore deleted posts from the restore/purge screen.</li>
+<li>Deleting a top-level thread also soft-deletes its replies.</li>
+<li>The restore/purge screen supports two destructive admin operations for deleted posts.</li>
+<li>Stage 1 purge erases content, image references, replies, SNS metadata, edit revisions, and user claims while preserving the top-level display number.</li>
+<li>Stage 2 number purge physically deletes the post row. When a top-level post is removed this way, later top-level display numbers close up.</li>
+<li>Bulk delete and restore/purge support range input such as <code>1-10, 15</code> for top-level display numbers.</li>
+</ul>
+<h2 id="user-administration">User Administration</h2>
+<p>The maintenance tab can manage registered users.</p>
+<ul>
+<li>Editing a user first shows a confirmation message. If confirmed, admin can edit login ID, display name, post password, URL/HOME, and optionally reset the login password.</li>
+<li>User edits validate duplicate login IDs and the 30-character display-name limit.</li>
+<li>User deletion has two stages.</li>
+<li>Stage 1 erases personal user information and sessions while preserving the user number.</li>
+<li>Stage 2 physically deletes the user row, clears direct post ownership references for that user, and compacts remaining user numbers.</li>
+</ul>
+<h2 id="public-naming">Public Naming</h2>
+<p>The public project name is <code>ThreadForge</code>.</p>
+<p>Public UI, package metadata, repository metadata, and public documentation should present <code>ThreadForge</code> as a new standalone product.</p>
+<h2 id="version-management">Version Management</h2>
+<p>The project version is managed with semantic versioning.</p>
+<p>Current version: <code>0.9.7</code></p>
+<p>Version references must be updated together:</p>
+<ul>
+<li><code>VERSION</code></li>
+<li><code>CHANGELOG.md</code></li>
+<li><code>frontends/image-board/package.json</code></li>
+<li><code>frontends/image-board/src/version.ts</code></li>
+</ul>
+<p>The PHP API exposes the current version through <code>?action=version</code>.</p>
+<h2 id="not-yet-fully-implemented">Not Yet Fully Implemented</h2>
+<ul>
+<li>Apply all saved <code>config.cgi</code>-equivalent settings to runtime limits.</li>
+<li>Apply all saved <code>skincfg.cgi</code>-equivalent settings to live styling.</li>
+<li>CSRF protection.</li>
+<li>Production deployment packaging.</li>
+<li>Analytics feature implementation is the next TODO.</li>
+</ul></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

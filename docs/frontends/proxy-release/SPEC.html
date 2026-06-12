@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>Proxy Release Spec / 代理公開仕様 | ThreadForge</title>
+  <link rel="stylesheet" href="../../assets/docs.css">
+  <script src="../../assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="../../index.html">ドキュメント</a></li><li><a href="../../SPEC.html">仕様</a></li><li><a href="../../API.html">API</a></li><li><a href="../../DB.html">データベース</a></li><li><a href="../../ARCHITECTURE.html">構成</a></li><li><a href="../../FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="../../MIGRATION.html">移行</a></li><li><a href="../../TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="../image-board/index.html">画像掲示板</a></li><li><a href="../image-board/SPEC.html">画像掲示板仕様</a></li><li><a href="../image-board/DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="../file-uploader/index.html">ファイルアップローダー</a></li><li><a href="../file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="../file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="../guide-posts/index.html">指南記事</a></li><li><a href="../guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="../guide-posts/DB.html">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="./index.html">代理公開</a></li><li><a href="./SPEC.html" aria-current="page">代理公開仕様</a></li><li><a href="./DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="../materials-library/index.html">素材ライブラリ</a></li><li><a href="../materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="../materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="../../index.html">Documentation</a></li><li><a href="../../SPEC.html">Specification</a></li><li><a href="../../API.html">API</a></li><li><a href="../../DB.html">Database</a></li><li><a href="../../ARCHITECTURE.html">Architecture</a></li><li><a href="../../FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="../../MIGRATION.html">Migration</a></li><li><a href="../../TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="../image-board/index.html">Image Board</a></li><li><a href="../image-board/SPEC.html">Image Board Spec</a></li><li><a href="../image-board/DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="../file-uploader/index.html">File Uploader</a></li><li><a href="../file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="../file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="../guide-posts/index.html">Guide Posts</a></li><li><a href="../guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="../guide-posts/DB.html">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="./index.html">Proxy Release</a></li><li><a href="./SPEC.html" aria-current="page">Proxy Release Spec</a></li><li><a href="./DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="../materials-library/index.html">Materials Library</a></li><li><a href="../materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="../materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>Proxy Release Spec / 代理公開仕様</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="proxy-release-仕様">proxy-release 仕様</h1>
+<p><a href="../../SPEC.html">仕様索引へ戻る</a></p>
+<h2 id="目的">目的</h2>
+<p><code>proxy-release</code> は MUGEN キャラ、プラグイン、関連パッケージの代理公開用フロントです。</p>
+<p>legacy の暗い背景と明るい緑文字の雰囲気を参考にします。</p>
+<h2 id="予定機能">予定機能</h2>
+<ul>
+<li>代理公開リリース項目の投稿</li>
+<li>説明文とダウンロード可能なアセットの表示</li>
+<li>リリース一覧と詳細表示</li>
+<li>共通バックエンドによる編集/管理</li>
+<li>他フロントから独立したDBとストレージ</li>
+</ul>
+<h2 id="見た目">見た目</h2>
+<ul>
+<li>暗い背景</li>
+<li>明るい緑文字</li>
+<li>読みやすさを保ちつつ legacy の雰囲気を残す</li>
+</ul>
+<h2 id="現在の状態">現在の状態</h2>
+<p>React/Vite の初期フロントがあります。リリース専用のデータ構造は設計中です。</p></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="proxy-release-spec">proxy-release Spec</h1>
+<p><a href="../../SPEC.html">Back to specification index</a></p>
+<h2 id="purpose">Purpose</h2>
+<p><code>proxy-release</code> is the MUGEN proxy release frontend for characters, plugins, or related packages.</p>
+<p>It is based on the legacy dark page with bright green text.</p>
+<h2 id="planned-behavior">Planned Behavior</h2>
+<ul>
+<li>Publish proxy-hosted release entries.</li>
+<li>Display release descriptions and downloadable assets.</li>
+<li>Support release lists and details.</li>
+<li>Keep moderation and editing compatible with the common backend.</li>
+<li>Keep runtime DB and storage isolated from every other frontend.</li>
+</ul>
+<h2 id="visual-direction">Visual Direction</h2>
+<ul>
+<li>Dark background.</li>
+<li>Bright green text.</li>
+<li>Legacy proxy-release atmosphere preserved where readable.</li>
+</ul>
+<h2 id="current-status">Current Status</h2>
+<p>Initial React/Vite frontend exists. Release-specific data behavior is still being designed.</p></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

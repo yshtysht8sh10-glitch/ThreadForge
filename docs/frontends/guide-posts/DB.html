@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>Guide Posts DB / 指南記事 DB | ThreadForge</title>
+  <link rel="stylesheet" href="../../assets/docs.css">
+  <script src="../../assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="../../index.html">ドキュメント</a></li><li><a href="../../SPEC.html">仕様</a></li><li><a href="../../API.html">API</a></li><li><a href="../../DB.html">データベース</a></li><li><a href="../../ARCHITECTURE.html">構成</a></li><li><a href="../../FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="../../MIGRATION.html">移行</a></li><li><a href="../../TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="../image-board/index.html">画像掲示板</a></li><li><a href="../image-board/SPEC.html">画像掲示板仕様</a></li><li><a href="../image-board/DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="../file-uploader/index.html">ファイルアップローダー</a></li><li><a href="../file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="../file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="./index.html">指南記事</a></li><li><a href="./SPEC.html">指南記事仕様</a></li><li><a href="./DB.html" aria-current="page">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="../proxy-release/index.html">代理公開</a></li><li><a href="../proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="../proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="../materials-library/index.html">素材ライブラリ</a></li><li><a href="../materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="../materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="../../index.html">Documentation</a></li><li><a href="../../SPEC.html">Specification</a></li><li><a href="../../API.html">API</a></li><li><a href="../../DB.html">Database</a></li><li><a href="../../ARCHITECTURE.html">Architecture</a></li><li><a href="../../FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="../../MIGRATION.html">Migration</a></li><li><a href="../../TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="../image-board/index.html">Image Board</a></li><li><a href="../image-board/SPEC.html">Image Board Spec</a></li><li><a href="../image-board/DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="../file-uploader/index.html">File Uploader</a></li><li><a href="../file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="../file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="./index.html">Guide Posts</a></li><li><a href="./SPEC.html">Guide Posts Spec</a></li><li><a href="./DB.html" aria-current="page">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="../proxy-release/index.html">Proxy Release</a></li><li><a href="../proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="../proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="../materials-library/index.html">Materials Library</a></li><li><a href="../materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="../materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>Guide Posts DB / 指南記事 DB</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="guide-posts-db">guide-posts DB</h1>
+<p><a href="../../DB.html">DB索引へ戻る</a></p>
+<p>フロントID: <code>guide-posts</code></p>
+<h2 id="ランタイムファイル">ランタイムファイル</h2>
+<p>開発環境:</p>
+<pre><code class="language-text">server/runtime/guide-posts/database.sqlite
+server/runtime/guide-posts/storage/data/</code></pre>
+<p>リリースZip配置先:</p>
+<pre><code class="language-text">database.sqlite
+storage/data/</code></pre>
+<h2 id="現在のスキーマ">現在のスキーマ</h2>
+<p>現時点では <code>server/db.php</code> が初期化する共通 ThreadForge SQLite スキーマを使います。</p>
+<p>想定データ:</p>
+<ul>
+<li>親投稿をガイドページまたは記事として扱う</li>
+<li>添付メディアはこのフロント専用のストレージに保存する</li>
+<li>共通設定だけで足りない場合、将来カテゴリやナビゲーション用の列/テーブルを検討する</li>
+</ul>
+<h2 id="分離ルール">分離ルール</h2>
+<p><code>guide-posts</code> は他フロントのDBやストレージを読み書きしません。</p></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="guide-posts-db">guide-posts DB</h1>
+<p><a href="../../DB.html">Back to DB index</a></p>
+<p>Frontend id: <code>guide-posts</code></p>
+<h2 id="runtime-files">Runtime Files</h2>
+<p>Development:</p>
+<pre><code class="language-text">server/runtime/guide-posts/database.sqlite
+server/runtime/guide-posts/storage/data/</code></pre>
+<p>Release ZIP deployment:</p>
+<pre><code class="language-text">database.sqlite
+storage/data/</code></pre>
+<h2 id="current-schema">Current Schema</h2>
+<p>This frontend currently uses the common ThreadForge SQLite schema initialized by <code>server/db.php</code>.</p>
+<p>The expected data shape is article/guide oriented:</p>
+<ul>
+<li>each top-level post represents a guide page or article</li>
+<li>uploaded media belongs to the guide frontend only</li>
+<li>future schema may add navigation/category fields if the common settings table is not enough</li>
+</ul>
+<h2 id="isolation-rule">Isolation Rule</h2>
+<p><code>guide-posts</code> must not read or write another frontend's DB or storage directory.</p></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

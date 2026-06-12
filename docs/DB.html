@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>Database / データベース | ThreadForge</title>
+  <link rel="stylesheet" href="assets/docs.css">
+  <script src="assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="./index.html">ドキュメント</a></li><li><a href="./SPEC.html">仕様</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html" aria-current="page">データベース</a></li><li><a href="./ARCHITECTURE.html">構成</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="./MIGRATION.html">移行</a></li><li><a href="./TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="./frontends/image-board/index.html">画像掲示板</a></li><li><a href="./frontends/image-board/SPEC.html">画像掲示板仕様</a></li><li><a href="./frontends/image-board/DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">ファイルアップローダー</a></li><li><a href="./frontends/file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="./frontends/file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">指南記事</a></li><li><a href="./frontends/guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="./frontends/guide-posts/DB.html">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">代理公開</a></li><li><a href="./frontends/proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="./frontends/proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">素材ライブラリ</a></li><li><a href="./frontends/materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="./frontends/materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="./index.html">Documentation</a></li><li><a href="./SPEC.html">Specification</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html" aria-current="page">Database</a></li><li><a href="./ARCHITECTURE.html">Architecture</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="./MIGRATION.html">Migration</a></li><li><a href="./TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="./frontends/image-board/index.html">Image Board</a></li><li><a href="./frontends/image-board/SPEC.html">Image Board Spec</a></li><li><a href="./frontends/image-board/DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">File Uploader</a></li><li><a href="./frontends/file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="./frontends/file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">Guide Posts</a></li><li><a href="./frontends/guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="./frontends/guide-posts/DB.html">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">Proxy Release</a></li><li><a href="./frontends/proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="./frontends/proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">Materials Library</a></li><li><a href="./frontends/materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="./frontends/materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>Database / データベース</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="db-ランタイムデータ">DB / ランタイムデータ</h1>
+<p>ThreadForge は共通の PHP バックエンドを使いますが、DB とアップロードファイルはフロントごとに独立させます。</p>
+<h2 id="開発環境">開発環境</h2>
+<p>開発中は <code>THREADFORGE_FRONTEND_ID</code> ごとに次の場所へ保存します。</p>
+<pre><code class="language-text">server/runtime/&lt;frontend-id&gt;/database.sqlite
+server/runtime/&lt;frontend-id&gt;/storage/data/</code></pre>
+<p>現在のフロントID:</p>
+<ul>
+<li><code>image-board</code></li>
+<li><code>file-uploader</code></li>
+<li><code>guide-posts</code></li>
+<li><code>proxy-release</code></li>
+<li><code>materials-library</code></li>
+</ul>
+<p>5つのフロントは、投稿、設定、セッション、ユーザー、アップロードファイルを共有しません。</p>
+<h2 id="リリースzip">リリースZip</h2>
+<p>リリースZipはフロント単体のソフトとして作ります。展開後は、その単体アプリ内に保存します。</p>
+<pre><code class="language-text">database.sqlite
+storage/data/</code></pre>
+<p>つまり <code>file-uploader</code> のZipと <code>image-board</code> のZipは別アプリで、それぞれ自分の <code>database.sqlite</code> を持ちます。</p>
+<h2 id="フロント別dbドキュメント">フロント別DBドキュメント</h2>
+<ul>
+<li><a href="frontends/image-board/DB.html">image-board DB</a></li>
+<li><a href="frontends/file-uploader/DB.html">file-uploader DB</a></li>
+<li><a href="frontends/guide-posts/DB.html">guide-posts DB</a></li>
+<li><a href="frontends/proxy-release/DB.html">proxy-release DB</a></li>
+<li><a href="frontends/materials-library/DB.html">materials-library DB</a></li>
+</ul>
+<h2 id="環境変数">環境変数</h2>
+<ul>
+<li><code>THREADFORGE_FRONTEND_ID</code>: 開発中のランタイム保存先を選ぶ</li>
+<li><code>THREADFORGE_DB_FILE</code>: SQLiteファイルの完全なパス</li>
+<li><code>THREADFORGE_STORAGE_DIR</code>: アップロードファイル保存ディレクトリ</li>
+<li><code>THREADFORGE_STORAGE_PUBLIC_BASE</code>: 保存ファイル公開URLの接頭辞</li>
+</ul>
+<h2 id="クリーン初期化">クリーン初期化</h2>
+<p>本当に初期化したいときだけ使います。</p>
+<p>開発環境:</p>
+<pre><code class="language-powershell">Remove-Item server\runtime\&lt;frontend-id&gt;\database.sqlite
+Get-ChildItem server\runtime\&lt;frontend-id&gt;\storage\data -File | Remove-Item</code></pre>
+<p>リリース配置先:</p>
+<pre><code class="language-powershell">Remove-Item database.sqlite
+Get-ChildItem storage\data -File | Remove-Item</code></pre></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="db-runtime-data">DB / Runtime Data</h1>
+<p>ThreadForge uses one common PHP backend, but each frontend owns its own runtime database and uploaded-file storage.</p>
+<h2 id="development-layout">Development Layout</h2>
+<p>During local development, runtime data is separated by <code>THREADFORGE_FRONTEND_ID</code>:</p>
+<pre><code class="language-text">server/runtime/&lt;frontend-id&gt;/database.sqlite
+server/runtime/&lt;frontend-id&gt;/storage/data/</code></pre>
+<p>Current frontend ids:</p>
+<ul>
+<li><code>image-board</code></li>
+<li><code>file-uploader</code></li>
+<li><code>guide-posts</code></li>
+<li><code>proxy-release</code></li>
+<li><code>materials-library</code></li>
+</ul>
+<p>The five frontends must not share DB rows, settings, sessions, users, or uploaded files.</p>
+<h2 id="release-layout">Release Layout</h2>
+<p>Release ZIPs are single-frontend apps. After extracting one ZIP, that app stores runtime data locally:</p>
+<pre><code class="language-text">database.sqlite
+storage/data/</code></pre>
+<p>This means <code>file-uploader</code> release ZIP and <code>image-board</code> release ZIP are separate applications. Each deployed app has its own <code>database.sqlite</code>.</p>
+<h2 id="frontend-db-documents">Frontend DB Documents</h2>
+<ul>
+<li><a href="frontends/image-board/DB.html">image-board DB</a></li>
+<li><a href="frontends/file-uploader/DB.html">file-uploader DB</a></li>
+<li><a href="frontends/guide-posts/DB.html">guide-posts DB</a></li>
+<li><a href="frontends/proxy-release/DB.html">proxy-release DB</a></li>
+<li><a href="frontends/materials-library/DB.html">materials-library DB</a></li>
+</ul>
+<h2 id="overrides">Overrides</h2>
+<p>Advanced overrides still work when a deployment needs explicit paths:</p>
+<ul>
+<li><code>THREADFORGE_FRONTEND_ID</code>: selects the development runtime directory</li>
+<li><code>THREADFORGE_DB_FILE</code>: exact SQLite file path</li>
+<li><code>THREADFORGE_STORAGE_DIR</code>: exact uploaded-file directory</li>
+<li><code>THREADFORGE_STORAGE_PUBLIC_BASE</code>: public URL prefix for stored files</li>
+</ul>
+<h2 id="clean-initialization">Clean Initialization</h2>
+<p>Use this only when you intentionally want a clean app.</p>
+<p>Development:</p>
+<pre><code class="language-powershell">Remove-Item server\runtime\&lt;frontend-id&gt;\database.sqlite
+Get-ChildItem server\runtime\&lt;frontend-id&gt;\storage\data -File | Remove-Item</code></pre>
+<p>Release deployment:</p>
+<pre><code class="language-powershell">Remove-Item database.sqlite
+Get-ChildItem storage\data -File | Remove-Item</code></pre></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

@@ -4,7 +4,7 @@
 
 ThreadForge is a lightweight, customizable thread board engine for posts, media, and community archives. It is designed as a fresh self-hosted board for posts, media, and community archives.
 
-The current production operation release is `0.9.7`.
+The current image-board release is `0.9.7`. The standalone file-uploader release is `1.0.0`.
 
 ## Repository Contents
 
@@ -15,9 +15,8 @@ The current production operation release is `0.9.7`.
 - `frontends/proxy-release/`: proxy release frontend
 - `frontends/materials-library/`: materials library frontend
 - `server/`: PHP API, SQLite storage, PHPUnit tests
-- `docs/`: architecture, API, DB, migration, and testing notes
-- `docs/SPEC.md`: current product specification
-- `docs/ja/SPEC.md`: Japanese product specification
+- `docs/index.html`: bilingual Japanese/English documentation
+- `docs/`: Markdown sources, generated HTML, architecture, API, DB, migration, and testing notes
 - `tools/`: release and operator scripts
 
 Local archive files and historical image/log data are kept out of this Git repository by default. They are useful as migration/reference material, but they are not required to run the current app.
@@ -136,7 +135,7 @@ Fresh installations start with the standard dark board design, gdgd/special post
 
 Release packaging and maintenance scripts live in `tools/`. They are not included in the public release ZIP.
 
-- `build_release.ps1`: builds `release/threadforge-<version>.zip`
+- `build_release.ps1`: builds `release/threadforge-<frontend-id>-<version>.zip`
 - `import_threadforge_archives.*`: imports BBSNote/local archive folders
 - `repair_imported_images.*`: reattaches correct images from legacy logs without re-importing posts
 - `update_imported_recent.*`: updates the newest imported archive entries and can insert unmatched latest posts with `--add` / `add=1`
@@ -154,15 +153,13 @@ Post edits update the board only and do not edit or repost to SNS. Cached reacti
 
 ## Documentation Map
 
-- `docs/SPEC.md`: current product specification and implementation status
+- `docs/index.html`: bilingual documentation index
+- `docs/SPEC.html`: current product specification and implementation status
 - `CHANGELOG.md`: release history
 - `CHANGELOG.ja.md`: Japanese release history
-- `docs/README.md`: documentation index
-- `docs/API.md`: PHP API reference
-- `docs/DB.md`: SQLite/runtime data, backup, import, and reset notes
-- `docs/MIGRATION.md`: local archive log import notes
-- `docs/ARCHITECTURE.md`: architecture notes
-- `docs/TESTING.md`: test strategy
+- `docs/API.html`: PHP API reference
+- `docs/DB.html`: SQLite/runtime data, backup, import, and reset notes
+- `docs/MIGRATION.html`: local archive log import notes
+- `docs/ARCHITECTURE.html`: architecture notes
+- `docs/TESTING.html`: test strategy
 - `README.ja.md`: Japanese README
-- `docs/ja/SPEC.md`: Japanese product specification
-- `docs/ja/`: Japanese documentation

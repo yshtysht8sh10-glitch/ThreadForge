@@ -12,6 +12,7 @@
 
 主なテスト:
 
+- `frontends/file-uploader/src/App.test.ts`
 - `frontends/image-board/src/api.test.ts`
 - `frontends/image-board/src/pages/HomePage.test.tsx`
 - `frontends/image-board/src/pages/PostFormPage.test.tsx`
@@ -30,6 +31,7 @@
 
 ```powershell
 npm run test:image-board
+npm run test:file-uploader
 npm run build:frontends
 ```
 
@@ -50,6 +52,7 @@ npm test
 
 - `server/tests/StorageLayerTest.php`
 - `server/tests/ApiHttpIntegrationTest.php`
+- `server/tests/UploaderApiHttpIntegrationTest.php`
 
 検証対象:
 
@@ -84,6 +87,8 @@ npm test
 - 掲示板設定の一覧の並び順。No順と投稿日順（新しい順）の切替
 - 一覧画面の年/月フィルタ。年単位、月単位、複数選択、指定期間の総投稿数表示
 - 掲示板デザインの色設定見本への即時反映、通常/特殊投稿の配色、入力欄/ボタン/注意文/統計表示の見本、保存済み設定への復帰
+- file-uploaderの拡張子/サイズ検証、設定正規化、月別集計、選択操作
+- file-uploaderのHTTPアップロード、一覧、Delkey不一致/一致、一括削除、復原、完全削除
 
 実行:
 

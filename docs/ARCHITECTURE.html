@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>Architecture / 構成 | ThreadForge</title>
+  <link rel="stylesheet" href="assets/docs.css">
+  <script src="assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="./index.html">ドキュメント</a></li><li><a href="./SPEC.html">仕様</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html">データベース</a></li><li><a href="./ARCHITECTURE.html" aria-current="page">構成</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="./MIGRATION.html">移行</a></li><li><a href="./TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="./frontends/image-board/index.html">画像掲示板</a></li><li><a href="./frontends/image-board/SPEC.html">画像掲示板仕様</a></li><li><a href="./frontends/image-board/DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">ファイルアップローダー</a></li><li><a href="./frontends/file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="./frontends/file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">指南記事</a></li><li><a href="./frontends/guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="./frontends/guide-posts/DB.html">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">代理公開</a></li><li><a href="./frontends/proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="./frontends/proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">素材ライブラリ</a></li><li><a href="./frontends/materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="./frontends/materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="./index.html">Documentation</a></li><li><a href="./SPEC.html">Specification</a></li><li><a href="./API.html">API</a></li><li><a href="./DB.html">Database</a></li><li><a href="./ARCHITECTURE.html" aria-current="page">Architecture</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="./MIGRATION.html">Migration</a></li><li><a href="./TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="./frontends/image-board/index.html">Image Board</a></li><li><a href="./frontends/image-board/SPEC.html">Image Board Spec</a></li><li><a href="./frontends/image-board/DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">File Uploader</a></li><li><a href="./frontends/file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="./frontends/file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">Guide Posts</a></li><li><a href="./frontends/guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="./frontends/guide-posts/DB.html">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">Proxy Release</a></li><li><a href="./frontends/proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="./frontends/proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">Materials Library</a></li><li><a href="./frontends/materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="./frontends/materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>Architecture / 構成</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="アーキテクチャ">アーキテクチャ</h1>
+<h2 id="現在の構成">現在の構成</h2>
+<pre><code class="language-text">frontends/image-board/ React + TypeScript + Vite
+frontends/shared/ 複数フロントで使う共通フロント部品
+frontends/*/ 追加フロント予定地
+  |
+  | HTTP JSON / multipart form-data
+  v
+server/api.php
+  |
+  +-- server/db.php
+  |     +-- server/runtime/&lt;frontend-id&gt;/database.sqlite
+  |
+  +-- server/runtime/&lt;frontend-id&gt;/storage/data/</code></pre>
+<h2 id="フロントエンド">フロントエンド</h2>
+<p><code>frontends/image-board/src/App.tsx</code> が現在の画像投稿掲示板フロントのルーティングを定義します。</p>
+<p>複数フロント構成、予定しているフロント枠、移行ルールは <code>docs/ja/FRONTEND_ARCHITECTURE.md</code> を参照してください。</p>
+<ul>
+<li><code>/</code>: <code>HomePage</code></li>
+<li><code>/thread/:id</code>: <code>ThreadPage</code></li>
+<li><code>/post</code>: <code>PostFormPage</code></li>
+<li><code>/search</code>: <code>SearchPage</code></li>
+<li><code>/edit/:id</code>: <code>EditPostPage</code></li>
+</ul>
+<p>現在の画像投稿掲示板フロントの API 呼び出しは <code>frontends/image-board/src/api.ts</code> に集約されています。</p>
+<p><code>VITE_USE_MOCK</code> が <code>true</code> または未指定の場合、フロントエンドはモックレスポンスを使います。実APIを使う場合は <code>VITE_USE_MOCK=false</code> を指定します。</p>
+<h2 id="バックエンド">バックエンド</h2>
+<p><code>server/api.php</code> は <code>action</code> パラメータで処理を振り分けます。</p>
+<p>主なアクション:</p>
+<ul>
+<li>スレッド一覧取得</li>
+<li>スレッド取得</li>
+<li>投稿取得</li>
+<li>検索</li>
+<li>投稿作成</li>
+<li>投稿更新</li>
+<li>投稿削除</li>
+<li>RSS配信</li>
+<li>管理者向け削除済み投稿一覧/復元</li>
+<li>SNSリアクション更新</li>
+</ul>
+<p>DB接続、テーブル作成、画像保存補助、JSONレスポンスは <code>server/db.php</code> にあります。</p>
+<h2 id="データの流れ">データの流れ</h2>
+<p>新規親投稿:</p>
+<ol>
+<li>フロントエンドが <code>multipart/form-data</code> を送信します。</li>
+<li>API が必須項目を検証します。</li>
+<li>パスワードをハッシュ化します。</li>
+<li>SQLite に投稿行を保存し、投稿IDを確定します。</li>
+<li>画像があれば、投稿IDを使って有効なフロントエンドの <code>server/runtime/&lt;frontend-id&gt;/storage/data/</code> に保存します。</li>
+<li>画像パスを投稿行に反映します。</li>
+<li>SNS転記が有効な場合、ON のSNSへ投稿し、転記先ID/URLを保存します。</li>
+<li>成功または失敗をJSONで返します。</li>
+</ol>
+<p>画像差し替え:</p>
+<ol>
+<li>フロントエンドが投稿ID、パスワード、差し替え画像を送信します。</li>
+<li>API がパスワードを検証します。</li>
+<li>既存画像が同じ最終ファイル名を使う場合、先に履歴名へ退避します。</li>
+<li>新しい画像を <code>postId.ext</code> として保存します。</li>
+<li>投稿行の <code>image_path</code> を更新します。</li>
+</ol>
+<p>スレッド表示:</p>
+<ol>
+<li>フロントエンドが <code>getThread</code> を呼びます。</li>
+<li>API が親投稿を取得します。</li>
+<li>同じ <code>thread_id</code> の返信を作成日時昇順で取得します。</li>
+<li><code>{ thread, replies }</code> を返します。</li>
+</ol>
+<p>削除:</p>
+<ol>
+<li>フロントエンドが投稿IDとパスワードを送信します。</li>
+<li>API がパスワードを検証します。</li>
+<li>親投稿削除では、そのスレッドと返信に <code>deleted_at</code> を設定します。</li>
+<li>返信削除では、その返信だけに <code>deleted_at</code> を設定します。</li>
+<li>DB行と画像ファイルは復元/監査用に残します。</li>
+</ol>
+<p>表示:</p>
+<ul>
+<li>一覧、スレッド、検索APIは <code>deleted_at IS NULL</code> の行だけを返します。</li>
+<li>削除済み投稿は通常UIから見えなくなります。</li>
+<li>内部データは復元や確認に使える状態で残ります。</li>
+</ul>
+<h2 id="sns転記">SNS転記</h2>
+<ul>
+<li>X、Bluesky、Mastodon、Misskey はデフォルトOFFです。</li>
+<li>管理画面では X、Bluesky、Mastodon、Misskey の設定グループを分けます。</li>
+<li>各SNSがOFFの間、そのSNSの認証情報欄は無効化されます。</li>
+<li>投稿フォームでは、有効なSNSごとに読み取り専用プレビューを表示します。</li>
+<li><code>_TWEND_</code> 以降はSNS転記対象外です。</li>
+<li><code>SNS転記OFF</code> の投稿は外部SNSへ送信しません。</li>
+<li>画像付き親投稿は、有効な場合 X、Bluesky、Mastodon、Misskey へ画像も送信します。</li>
+<li>文字数上限を超える場合、送信不可にはせず <code>..</code> で省略します。</li>
+<li>既定上限は X 280、Bluesky 300、Mastodon 500、Misskey 3000 です。</li>
+<li>X は重み付き文字数、その他は通常の文字数でプレビューします。</li>
+<li>SNS本文には掲示板一覧の当該投稿アンカーへ誘導する「最新はこちら」リンクを含めます。</li>
+<li>親投稿を編集してもSNS側は更新・再投稿しません。返信ではSNS転記を扱いません。</li>
+<li>リアクション更新は管理画面の保守タブ、<code>server/cron.php</code>、APIキー付き外部定期実行URLから実行できます。</li>
+<li>自動リアクション更新は、SNS投稿IDを持つ未削除親投稿すべてを対象にします。</li>
+<li>表示指標は X の閲覧数/いいね/リポスト、Bluesky の Like/Repost/Quote、Mastodon の Boost/Favorite、Misskey のリアクション分類です。</li>
+</ul>
+<h2 id="安全な本文表示">安全な本文表示</h2>
+<ul>
+<li>React の通常描画で HTML タグを文字列として扱います。</li>
+<li><code>LinkedText</code> が URL をリンク化します。</li>
+</ul>
+<h2 id="laravel">Laravel</h2>
+<p><code>server/laravel/</code> は将来の移行候補です。ルート、モデル、コントローラ、マイグレーションはありますが、現在の標準APIではありません。</p>
+<p>Laravel への完全移行は未実装です。</p>
+<h2 id="未実装">未実装</h2>
+<ul>
+<li>CSRF対策</li>
+<li>本文とメタデータの編集履歴</li>
+</ul></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="architecture">Architecture</h1>
+<h2 id="current-structure">Current Structure</h2>
+<pre><code class="language-text">frontends/image-board/ React + TypeScript + Vite
+frontends/shared/ shared frontend code
+frontends/*/ planned frontend applications
+  |
+  | HTTP JSON / multipart form-data
+  v
+server/api.php
+  |
+  +-- server/db.php
+  |     +-- server/runtime/&lt;frontend-id&gt;/database.sqlite
+  |
+  +-- server/runtime/&lt;frontend-id&gt;/storage/data/</code></pre>
+<h2 id="frontend">Frontend</h2>
+<p><code>frontends/image-board/src/App.tsx</code> defines routing for the current image posting board frontend.</p>
+<p>See <code>docs/FRONTEND_ARCHITECTURE.md</code> for the multi-frontend layout, planned frontend slots, and migration rules.</p>
+<ul>
+<li><code>/</code>: <code>HomePage</code></li>
+<li><code>/thread/:id</code>: <code>ThreadPage</code></li>
+<li><code>/post</code>: <code>PostFormPage</code></li>
+<li><code>/search</code>: <code>SearchPage</code></li>
+<li><code>/edit/:id</code>: <code>EditPostPage</code></li>
+</ul>
+<p>API calls are currently centralized in <code>frontends/image-board/src/api.ts</code>.</p>
+<p>When <code>VITE_USE_MOCK</code> is <code>true</code> or unset, the frontend uses mock responses. Set <code>VITE_USE_MOCK=false</code> to use the real PHP API.</p>
+<h2 id="backend">Backend</h2>
+<p><code>server/api.php</code> dispatches behavior by the <code>action</code> parameter.</p>
+<p>Main actions:</p>
+<ul>
+<li>list threads</li>
+<li>get thread</li>
+<li>get post</li>
+<li>search</li>
+<li>create post</li>
+<li>update post</li>
+<li>delete post</li>
+<li>RSS feed</li>
+<li>admin list/restore deleted posts</li>
+<li>SNS reaction refresh</li>
+</ul>
+<p>DB connection, table creation, image storage helpers, and JSON responses live in <code>server/db.php</code>.</p>
+<h2 id="data-flow">Data Flow</h2>
+<p>New top-level post:</p>
+<ol>
+<li>The frontend sends <code>multipart/form-data</code>.</li>
+<li>The API validates required fields.</li>
+<li>The password is hashed.</li>
+<li>The post row is saved to SQLite and receives an ID.</li>
+<li>If an image exists, it is stored under the active frontend's <code>server/runtime/&lt;frontend-id&gt;/storage/data/</code> using the post ID.</li>
+<li>The image path is stored on the post row.</li>
+<li>If SNS posting is enabled, the API posts to enabled platforms and stores destination IDs/URLs.</li>
+<li>JSON success or error is returned.</li>
+</ol>
+<p>Image replacement:</p>
+<ol>
+<li>The frontend sends post ID, password, and replacement image.</li>
+<li>The API validates the password.</li>
+<li>If the existing image uses the same final filename, it is archived first.</li>
+<li>The new image is stored as <code>postId.ext</code>.</li>
+<li>The post row <code>image_path</code> is updated.</li>
+</ol>
+<p>Thread display:</p>
+<ol>
+<li>The frontend calls <code>getThread</code>.</li>
+<li>The API fetches the top-level post.</li>
+<li>Replies with the same <code>thread_id</code> are fetched by ascending creation time.</li>
+<li><code>{ thread, replies }</code> is returned.</li>
+</ol>
+<p>Delete:</p>
+<ol>
+<li>The frontend sends post ID and password.</li>
+<li>The API validates the password.</li>
+<li>Top-level delete sets <code>deleted_at</code> on the thread and replies.</li>
+<li>Reply delete sets <code>deleted_at</code> only on that reply.</li>
+<li>Rows and image files remain for restore/audit.</li>
+</ol>
+<p>Display:</p>
+<ul>
+<li>List, thread, and search APIs return only rows where <code>deleted_at IS NULL</code>.</li>
+<li>Deleted posts disappear from normal UI.</li>
+<li>Internal data remains available for restore and inspection.</li>
+</ul>
+<h2 id="sns-posting">SNS Posting</h2>
+<ul>
+<li>X, Bluesky, Mastodon, and Misskey are OFF by default.</li>
+<li>The admin page has separate setting groups for X, Bluesky, Mastodon, and Misskey.</li>
+<li>Credential fields are disabled while the corresponding platform is OFF.</li>
+<li>Post forms show read-only previews for enabled platforms.</li>
+<li>Text after <code>_TWEND_</code> is excluded from SNS posting.</li>
+<li>Posts with SNS transfer OFF are saved locally and not sent to external SNS.</li>
+<li>Top-level posts with images send the image to X, Bluesky, Mastodon, and Misskey when enabled.</li>
+<li>Long text is shortened with <code>..</code> instead of blocking submission.</li>
+<li>Current default limits are X 280, Bluesky 300, Mastodon 500, and Misskey 3000.</li>
+<li>X uses weighted character counting; the other platforms use plain character length.</li>
+<li>SNS text includes a &quot;latest is here&quot; link to the board-list anchor for the post.</li>
+<li>Editing a top-level post does not update or repost to SNS. Replies never use SNS posting.</li>
+<li>Reaction refresh can be run from the admin maintenance tab, <code>server/cron.php</code>, or an API-key-protected external scheduler URL.</li>
+<li>Automatic reaction refresh targets all non-deleted top-level posts that have SNS post IDs.</li>
+<li>Displayed metrics are X impressions/likes/reposts, Bluesky likes/reposts/quotes, Mastodon boosts/favorites, and Misskey reaction buckets.</li>
+</ul>
+<h2 id="safe-text-display">Safe Text Display</h2>
+<ul>
+<li>React rendering treats HTML tags as text.</li>
+<li><code>LinkedText</code> turns URLs into links.</li>
+</ul>
+<h2 id="laravel">Laravel</h2>
+<p><code>server/laravel/</code> is a future migration placeholder. Routes, models, controllers, and migrations exist, but the current app's standard API is not the Laravel implementation.</p>
+<p>Full Laravel migration is not implemented yet.</p>
+<h2 id="not-implemented">Not Implemented</h2>
+<ul>
+<li>CSRF protection</li>
+<li>Body and metadata edit history</li>
+</ul></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

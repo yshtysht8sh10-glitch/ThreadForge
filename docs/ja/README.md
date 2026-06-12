@@ -1,6 +1,12 @@
 # ThreadForge ドキュメント
 
-[English docs](../README.md)
+人が読むドキュメントは、日本語/Englishを画面上で切り替えられるHTMLとして生成します。[`../index.html`](../index.html) を開いてください。
+
+Markdownファイルは更新しやすい原稿として残します。編集後は次のコマンドでHTMLを再生成します。
+
+```powershell
+npm run build:docs
+```
 
 このディレクトリは日本語ドキュメントの索引です。
 
@@ -41,7 +47,8 @@
 リリースZip作成やローカルアーカイブ取り込み用のスクリプトは `tools/` にあります。
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
+npm run release:image-board
+npm run release:file-uploader
 ```
 
-リリースZipはフロント単体ソフトとして作られます。開発環境では `server/runtime/<frontend-id>/...`、配置後は `database.sqlite` と `storage/data/` を使います。
+リリースZipは `release/threadforge-<frontend-id>-<version>.zip` に作られます。開発環境では `server/runtime/<frontend-id>/...`、配置後は `database.sqlite` と `storage/data/` を使います。

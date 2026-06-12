@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>Image Board DB / 画像掲示板 DB | ThreadForge</title>
+  <link rel="stylesheet" href="../../assets/docs.css">
+  <script src="../../assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="../../index.html">ドキュメント</a></li><li><a href="../../SPEC.html">仕様</a></li><li><a href="../../API.html">API</a></li><li><a href="../../DB.html">データベース</a></li><li><a href="../../ARCHITECTURE.html">構成</a></li><li><a href="../../FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="../../MIGRATION.html">移行</a></li><li><a href="../../TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="./index.html">画像掲示板</a></li><li><a href="./SPEC.html">画像掲示板仕様</a></li><li><a href="./DB.html" aria-current="page">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="../file-uploader/index.html">ファイルアップローダー</a></li><li><a href="../file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="../file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="../guide-posts/index.html">指南記事</a></li><li><a href="../guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="../guide-posts/DB.html">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="../proxy-release/index.html">代理公開</a></li><li><a href="../proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="../proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="../materials-library/index.html">素材ライブラリ</a></li><li><a href="../materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="../materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="../../index.html">Documentation</a></li><li><a href="../../SPEC.html">Specification</a></li><li><a href="../../API.html">API</a></li><li><a href="../../DB.html">Database</a></li><li><a href="../../ARCHITECTURE.html">Architecture</a></li><li><a href="../../FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="../../MIGRATION.html">Migration</a></li><li><a href="../../TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="./index.html">Image Board</a></li><li><a href="./SPEC.html">Image Board Spec</a></li><li><a href="./DB.html" aria-current="page">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="../file-uploader/index.html">File Uploader</a></li><li><a href="../file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="../file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="../guide-posts/index.html">Guide Posts</a></li><li><a href="../guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="../guide-posts/DB.html">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="../proxy-release/index.html">Proxy Release</a></li><li><a href="../proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="../proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="../materials-library/index.html">Materials Library</a></li><li><a href="../materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="../materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>Image Board DB / 画像掲示板 DB</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="image-board-db">image-board DB</h1>
+<p><a href="../../DB.html">DB索引へ戻る</a></p>
+<p>フロントID: <code>image-board</code></p>
+<h2 id="ランタイムファイル">ランタイムファイル</h2>
+<p>開発環境:</p>
+<pre><code class="language-text">server/runtime/image-board/database.sqlite
+server/runtime/image-board/storage/data/</code></pre>
+<p>リリースZip配置先:</p>
+<pre><code class="language-text">database.sqlite
+storage/data/</code></pre>
+<h2 id="現在のスキーマ">現在のスキーマ</h2>
+<p><code>image-board</code> は現行の本番相当フロントで、<code>server/db.php</code> が初期化する共通 ThreadForge SQLite スキーマを使います。</p>
+<p>主なテーブル:</p>
+<ul>
+<li><code>posts</code>: 親投稿、返信、画像パス、削除状態、SNS連携情報、閲覧数など</li>
+<li><code>users</code>: ログインID、表示名、投稿パスワード、HOME URL、アイコンなど</li>
+<li><code>user_sessions</code>: ログイントークン</li>
+<li><code>user_post_claims</code>: インポート投稿などを自分の作品として紐づける情報</li>
+<li><code>post_revisions</code>: 編集履歴</li>
+<li><code>access_counts</code>: アクセス数</li>
+<li><code>settings</code>: 管理画面から保存する設定JSON</li>
+</ul>
+<h2 id="保存ルール">保存ルール</h2>
+<ul>
+<li>投稿画像とユーザーアイコンは有効なストレージ配下へ保存します。</li>
+<li>開発環境では <code>server/runtime/image-board/storage/data/</code> を使います。</li>
+<li>リリース配置後は <code>storage/data/</code> を使います。</li>
+<li>バックアップは管理画面のフルバックアップを使います。</li>
+<li>DBとアップロード済みファイルはGit管理しません。</li>
+</ul>
+<h2 id="分離ルール">分離ルール</h2>
+<p><code>image-board</code> は他フロントのDBやストレージを読み書きしません。</p></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="db-runtime-data">DB / Runtime Data</h1>
+<p><a href="../../DB.html">Back to DB index</a></p>
+<p>The backend uses SQLite plus file storage. Backend code is shared, but runtime data is separated by frontend during development.<br>Release ZIPs are packaged as single-frontend apps, so each deployed ZIP uses local <code>database.sqlite</code> and <code>storage/data/</code>.</p>
+<h2 id="runtime-files">Runtime Files</h2>
+<p>Development runtime files:</p>
+<ul>
+<li>DB: <code>server/runtime/&lt;frontend-id&gt;/database.sqlite</code></li>
+<li>Uploaded and imported media: <code>server/runtime/&lt;frontend-id&gt;/storage/data/</code></li>
+</ul>
+<p>Packaged release runtime files:</p>
+<ul>
+<li>DB: <code>database.sqlite</code></li>
+<li>Uploaded and imported media: <code>storage/data/</code></li>
+</ul>
+<p>Both are ignored by Git. They are local runtime data, not source files.</p>
+<p>For example:</p>
+<pre><code class="language-text">server/runtime/image-board/database.sqlite
+server/runtime/image-board/storage/data/
+server/runtime/file-uploader/database.sqlite
+server/runtime/file-uploader/storage/data/</code></pre>
+<p><code>image-board</code> and <code>file-uploader</code> never share DB rows, settings, users, sessions, or uploaded files when they run with different frontend ids.</p>
+<h2 id="frontend-runtime-selection">Frontend Runtime Selection</h2>
+<p>Set <code>THREADFORGE_FRONTEND_ID</code> for each deployed frontend/API pair.</p>
+<pre><code class="language-powershell">$env:THREADFORGE_FRONTEND_ID = 'image-board'
+php -S 127.0.0.1:8000 -t server</code></pre>
+<pre><code class="language-powershell">$env:THREADFORGE_FRONTEND_ID = 'file-uploader'
+php -S 127.0.0.1:8001 -t server</code></pre>
+<p>The value is sanitized to letters, numbers, hyphens, and underscores before it is used in paths.</p>
+<p>Advanced overrides still work:</p>
+<ul>
+<li><code>THREADFORGE_DB_FILE</code>: exact SQLite file path</li>
+<li><code>THREADFORGE_STORAGE_DIR</code>: exact uploaded-file directory</li>
+<li><code>THREADFORGE_STORAGE_PUBLIC_BASE</code>: public URL prefix for stored files</li>
+</ul>
+<h2 id="initialization-behavior">Initialization Behavior</h2>
+<p><code>server/db.php</code> creates the selected SQLite file, tables, missing columns, and storage directory when the API starts. It does not delete existing rows, images, or settings.</p>
+<p>During development, do not delete <code>server/runtime/&lt;frontend-id&gt;/database.sqlite</code> or <code>server/runtime/&lt;frontend-id&gt;/storage/data/</code> unless you intentionally want a clean board. In a deployed release ZIP, do not delete <code>database.sqlite</code> or <code>storage/data/</code> unless you intentionally want a clean app.</p>
+<h2 id="posts-table">posts Table</h2>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS posts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  thread_id INTEGER NOT NULL,
+  parent_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  url TEXT,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  image_path TEXT,
+  password_hash TEXT,
+  created_at TEXT NOT NULL,
+  deleted_at TEXT,
+  gdgd INTEGER NOT NULL DEFAULT 0,
+  tweet_off INTEGER NOT NULL DEFAULT 0,
+  tweet_text TEXT,
+  tweet_url TEXT,
+  tweet_like_count INTEGER NOT NULL DEFAULT 0,
+  tweet_retweet_count INTEGER NOT NULL DEFAULT 0,
+  tweet_comment_count INTEGER NOT NULL DEFAULT 0,
+  tweet_impression_count INTEGER NOT NULL DEFAULT 0,
+  bluesky_uri TEXT,
+  bluesky_cid TEXT,
+  bluesky_url TEXT,
+  bluesky_like_count INTEGER NOT NULL DEFAULT 0,
+  bluesky_repost_count INTEGER NOT NULL DEFAULT 0,
+  bluesky_quote_count INTEGER NOT NULL DEFAULT 0,
+  mastodon_id TEXT,
+  mastodon_url TEXT,
+  mastodon_boost_count INTEGER NOT NULL DEFAULT 0,
+  mastodon_fav_count INTEGER NOT NULL DEFAULT 0,
+  misskey_id TEXT,
+  misskey_url TEXT,
+  misskey_fire_count INTEGER NOT NULL DEFAULT 0,
+  misskey_eyes_count INTEGER NOT NULL DEFAULT 0,
+  misskey_cry_count INTEGER NOT NULL DEFAULT 0,
+  misskey_thinking_count INTEGER NOT NULL DEFAULT 0,
+  misskey_party_count INTEGER NOT NULL DEFAULT 0,
+  misskey_other_count INTEGER NOT NULL DEFAULT 0,
+  user_id INTEGER,
+  view_count INTEGER NOT NULL DEFAULT 0
+)</code></pre>
+<p>Social columns store per-platform destination IDs/URLs and cached reaction counts. X keeps the <code>tweet_*</code> column names for compatibility.<br><code>user_id</code> is set only for posts/replies created while logged in. Later &quot;this is my work&quot; links are stored separately so more than one user can claim the same imported or historical post.</p>
+<h2 id="users-user-sessions-tables">users / user_sessions Tables</h2>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  login_id TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  display_name TEXT NOT NULL DEFAULT &quot;&quot;,
+  post_password TEXT NOT NULL DEFAULT &quot;&quot;,
+  home_url TEXT,
+  icon_path TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_sessions (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);</code></pre>
+<h2 id="user-post-claims-table">user_post_claims Table</h2>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS user_post_claims (
+  user_id INTEGER NOT NULL,
+  post_id INTEGER NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (user_id, post_id)
+);</code></pre>
+<p>This table links a user to a post they marked as their own. It intentionally does not make <code>post_id</code> unique, so overlapping claims are allowed.</p>
+<h2 id="post-revisions-table">post_revisions Table</h2>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS post_revisions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  post_id INTEGER NOT NULL,
+  revised_at TEXT NOT NULL
+);</code></pre>
+<p>Each successful edit inserts one row. The API exposes the count as <code>revision_count</code> and the edit timestamps as <code>revision_dates</code>; the UI displays this as <code>rev01</code>, <code>rev02</code>, etc.</p>
+<h2 id="access-counts-table">access_counts Table</h2>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS access_counts (
+  access_date TEXT PRIMARY KEY,
+  count INTEGER NOT NULL DEFAULT 0
+);</code></pre>
+<p>The frontend records one access when the app shell loads. Admin analytics can graph this as <code>accessCount</code>.</p>
+<h2 id="settings-table">settings Table</h2>
+<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+)</code></pre>
+<p>Settings are stored as JSON sections:</p>
+<ul>
+<li><code>config</code></li>
+<li><code>skin</code></li>
+<li><code>security</code></li>
+</ul>
+<p>The <code>security</code> section stores <code>adminPasswordHash</code> and <code>cronApiKey</code>. <code>cronApiKey</code> is generated automatically when missing and is used by the protected <code>cronRefreshSocialReactions</code> API for external schedulers such as GitHub Actions.</p>
+<p>When the DB is fresh and the settings table has no rows, ThreadForge uses application defaults: gdgd/special posting OFF, list page size 20, SNS hashtag <code>#art</code>, all SNS integrations OFF, and SNS credential fields empty. An empty or non-positive list page size shows all posts on one page.</p>
+<h2 id="backups">Backups</h2>
+<p>Use the admin maintenance screen full backup export button to download one ZIP file containing:</p>
+<ul>
+<li>posts and replies</li>
+<li>edit revisions</li>
+<li>users</li>
+<li>claimed works</li>
+<li>access-count history</li>
+<li>settings</li>
+<li>post images and user icons under <code>images/</code></li>
+</ul>
+<p>Login sessions are intentionally not included; users sign in again after restore.</p>
+<p>Importing this full backup ZIP is a full restore. It replaces backed-up DB rows and images, then restores settings from the backup. Legacy JSON backups from earlier versions remain import-compatible.</p>
+<h2 id="local-archive-import">Local Archive Import</h2>
+<p>Local Archive log import is operated from a local operator batch or PHP command instead of the web admin screen.</p>
+<pre><code class="language-powershell">tools\import_local_archive.bat legacy\data</code></pre>
+<p>The importer reads <code>LOG_*.cgi</code> files from a local directory, defaulting to root <code>data/</code>, and copies referenced image files into the active frontend's storage directory.</p>
+<p>This import is intentionally non-destructive:</p>
+<ul>
+<li>It does not delete existing posts.</li>
+<li>It does not delete existing images.</li>
+<li>It does not reset admin settings.</li>
+<li>Re-running it skips posts and replies already imported by matching name, content, and timestamp.</li>
+</ul>
+<p>Imported posts use generated unknown password hashes. They should be managed from the admin screen unless a password migration is implemented.</p>
+<h2 id="release-zip">Release ZIP</h2>
+<p>Create a distribution archive with:</p>
+<pre><code class="language-powershell">powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1</code></pre>
+<p>The script creates <code>release/threadforge-&lt;version&gt;.zip</code> from a whitelist of application files. The archive is arranged so the extracted contents can be uploaded directly to a rental server public directory:</p>
+<ul>
+<li><code>index.html</code></li>
+<li><code>assets/</code></li>
+<li><code>api.php</code></li>
+<li><code>db.php</code></li>
+<li><code>cron.php</code></li>
+<li><code>storage/data/.gitkeep</code></li>
+<li>documentation</li>
+</ul>
+<p>Runtime DB files, uploaded images, local PHP binaries, logs, dependency directories, operator scripts, and legacy import source data are intentionally not included. A deployed site should be updated by backing up runtime data first, then replacing application files while preserving <code>database.sqlite</code> and <code>storage/data/</code>.</p>
+<p>On a clean deployment, the next API request creates <code>database.sqlite</code> and the storage directory automatically when PHP has write permission.</p>
+<h2 id="intentional-clean-initialization">Intentional Clean Initialization</h2>
+<p>For public release or a clean local board:</p>
+<ol>
+<li>Export a backup first if you need the current data.</li>
+<li>Stop the PHP server.</li>
+<li>During development, delete <code>server/runtime/&lt;frontend-id&gt;/database.sqlite</code>. In a deployed release ZIP, delete <code>database.sqlite</code>.</li>
+<li>During development, delete files under <code>server/runtime/&lt;frontend-id&gt;/storage/data/</code>. In a deployed release ZIP, delete files under <code>storage/data/</code>. Keep the directory or recreate it later.</li>
+<li>Start the PHP server again.</li>
+</ol>
+<p>The next API request recreates the DB schema and storage directory with default settings.</p>
+<p>PowerShell example:</p>
+<pre><code class="language-powershell">Remove-Item server\database.sqlite
+Get-ChildItem server\storage\data -File | Remove-Item</code></pre>
+<p>Use this only when you truly want to reset runtime data.</p></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

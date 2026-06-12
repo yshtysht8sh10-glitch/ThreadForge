@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>API / API | ThreadForge</title>
+  <link rel="stylesheet" href="assets/docs.css">
+  <script src="assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="./index.html">ドキュメント</a></li><li><a href="./SPEC.html">仕様</a></li><li><a href="./API.html" aria-current="page">API</a></li><li><a href="./DB.html">データベース</a></li><li><a href="./ARCHITECTURE.html">構成</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="./MIGRATION.html">移行</a></li><li><a href="./TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="./frontends/image-board/index.html">画像掲示板</a></li><li><a href="./frontends/image-board/SPEC.html">画像掲示板仕様</a></li><li><a href="./frontends/image-board/DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">ファイルアップローダー</a></li><li><a href="./frontends/file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="./frontends/file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">指南記事</a></li><li><a href="./frontends/guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="./frontends/guide-posts/DB.html">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">代理公開</a></li><li><a href="./frontends/proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="./frontends/proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">素材ライブラリ</a></li><li><a href="./frontends/materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="./frontends/materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="./index.html">Documentation</a></li><li><a href="./SPEC.html">Specification</a></li><li><a href="./API.html" aria-current="page">API</a></li><li><a href="./DB.html">Database</a></li><li><a href="./ARCHITECTURE.html">Architecture</a></li><li><a href="./FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="./MIGRATION.html">Migration</a></li><li><a href="./TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="./frontends/image-board/index.html">Image Board</a></li><li><a href="./frontends/image-board/SPEC.html">Image Board Spec</a></li><li><a href="./frontends/image-board/DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="./frontends/file-uploader/index.html">File Uploader</a></li><li><a href="./frontends/file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="./frontends/file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="./frontends/guide-posts/index.html">Guide Posts</a></li><li><a href="./frontends/guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="./frontends/guide-posts/DB.html">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="./frontends/proxy-release/index.html">Proxy Release</a></li><li><a href="./frontends/proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="./frontends/proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="./frontends/materials-library/index.html">Materials Library</a></li><li><a href="./frontends/materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="./frontends/materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>API / API</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="api-リファレンス">API リファレンス</h1>
+<p>現在の API は <code>server/api.php</code> に実装されています。REST形式ではなく、<code>action</code> パラメータで処理を振り分けます。</p>
+<h2 id="共通仕様">共通仕様</h2>
+<ul>
+<li>レスポンス形式: 特記がない限り JSON</li>
+<li>文字コード: UTF-8</li>
+<li>CORS: <code>Access-Control-Allow-Origin: *</code></li>
+<li>許可メソッド: <code>GET</code>, <code>POST</code>, <code>OPTIONS</code></li>
+<li>エラー時は HTTP 400/403/404 と <code>{ &quot;success&quot;: false, &quot;message&quot;: &quot;...&quot; }</code> を返します</li>
+</ul>
+<h2 id="post-action-ssologin">POST <code>?action=ssoLogin</code></h2>
+<p>親サイトSSOトークンを検証し、ユーザーセッションを発行します。</p>
+<p>前提:</p>
+<ul>
+<li>管理画面の掲示板設定で <code>SSOを使う</code> がON</li>
+<li><code>SSO共有秘密鍵</code> または <code>THREADFORGE_SSO_SECRET</code> が設定済み</li>
+</ul>
+<p>フィールド:</p>
+<ul>
+<li><code>token</code>: 必須。<code>base64url(payload).base64url(signature)</code> 形式</li>
+</ul>
+<p>ペイロード:</p>
+<ul>
+<li><code>login_id</code> または <code>sub</code>: 必須。3-40文字の半角英数字、<code>_</code>、<code>.</code>、<code>-</code></li>
+<li><code>exp</code>: 必須。Unix時刻。有効期限</li>
+<li><code>iat</code>: 任意。Unix時刻。未来すぎる値は拒否</li>
+<li><code>display_name</code>: 任意。ユーザー表示名</li>
+<li><code>post_password</code>: 任意。投稿パスワード</li>
+<li><code>home_url</code>: 任意。URL/HOME</li>
+</ul>
+<p>成功時、既存ユーザーならそのユーザーでログインし、未登録IDならユーザーを自動作成します。</p>
+<p>レスポンス:</p>
+<pre><code class="language-json">{
+  &quot;success&quot;: true,
+  &quot;token&quot;: &quot;...&quot;,
+  &quot;user&quot;: {}
+}</code></pre>
+<h2 id="get-action-listthreads">GET <code>?action=listThreads</code></h2>
+<p>親投稿一覧を返します。</p>
+<ul>
+<li>対象: <code>parent_id = 0</code></li>
+<li>並び順: <code>created_at DESC</code></li>
+<li><code>page</code>, <code>limit</code> に対応。<code>limit</code> の最大値は100</li>
+<li>レスポンス: <code>Post[]</code></li>
+</ul>
+<h2 id="get-action-getthread-id-id">GET <code>?action=getThread&amp;id={id}</code></h2>
+<p>スレッドと返信を返します。</p>
+<ul>
+<li><code>id</code>: 親投稿ID</li>
+<li>レスポンス: <code>{ &quot;thread&quot;: Post, &quot;replies&quot;: Post[] }</code></li>
+<li>返信は <code>created_at ASC</code></li>
+</ul>
+<h2 id="get-action-getpost-id-id">GET <code>?action=getPost&amp;id={id}</code></h2>
+<p>投稿を1件返します。</p>
+<ul>
+<li><code>id</code>: 投稿ID</li>
+<li>レスポンス: <code>Post</code></li>
+</ul>
+<h2 id="get-action-search-q-query">GET <code>?action=search&amp;q={query}</code></h2>
+<p>投稿を検索します。</p>
+<ul>
+<li>対象カラム: <code>title</code>, <code>message</code>, <code>name</code></li>
+<li>検索方法: SQLite <code>LIKE</code></li>
+<li>空文字は <code>[]</code></li>
+<li>並び順: <code>created_at DESC</code></li>
+<li><code>page</code>, <code>limit</code> に対応。<code>limit</code> の最大値は100</li>
+<li>レスポンス: <code>Post[]</code></li>
+</ul>
+<h2 id="post-action-createpost">POST <code>?action=createPost</code></h2>
+<p>新規の親投稿または返信を作成します。</p>
+<p>Content-Type:</p>
+<ul>
+<li><code>multipart/form-data</code></li>
+</ul>
+<p>フィールド:</p>
+<ul>
+<li><code>name</code>: 必須</li>
+<li><code>url</code>: 任意</li>
+<li><code>title</code>: 必須</li>
+<li><code>message</code>: 必須</li>
+<li><code>password</code>: 必須</li>
+<li><code>thread_id</code>: 任意。新規親投稿では <code>0</code> または未指定</li>
+<li><code>parent_id</code>: 任意。新規親投稿では <code>0</code> または未指定</li>
+<li><code>file</code>: 任意。管理者が GIF/PNG/JPEG/JPG/BMP から許可した形式。親投稿のみ</li>
+<li><code>gdgd</code>: 任意。親投稿のみ</li>
+<li><code>tweet_off</code>: 任意。親投稿のみ。UIでは <code>SNS転記OFF</code></li>
+<li><code>source_url</code>: 任意。親投稿のみ。SNS本文に載せる掲示板一覧アンカーURL。未指定時はリクエスト元から推定</li>
+</ul>
+<p>補足:</p>
+<ul>
+<li>返信では画像、gdgd、SNS転記を扱いません。</li>
+<li>SNS転記が有効な親投稿では、管理設定でONのSNSへ投稿します。</li>
+<li>画像付き親投稿では、X、Bluesky、Mastodon、Misskey へ画像も添付します。</li>
+<li>SNS本文は <code>_TWEND_</code> より前だけを使い、SNSごとの文字数上限に合わせて <code>..</code> で省略します。</li>
+<li>SNS本文には <code>最新はこちら</code> と掲示板一覧アンカーURLを含めます。フロントエンドは <code>#post-000000</code> の仮URLを送信し、API は保存後の投稿IDで <code>000000</code> を置換します。</li>
+</ul>
+<p>成功レスポンス:</p>
+<pre><code class="language-json">{
+  &quot;success&quot;: true,
+  &quot;message&quot;: &quot;...&quot;
+}</code></pre>
+<h2 id="post-action-updatepost">POST <code>?action=updatePost</code></h2>
+<p>既存投稿を更新します。投稿時のパスワードが必要です。</p>
+<p>Content-Type:</p>
+<ul>
+<li><code>multipart/form-data</code></li>
+</ul>
+<p>フィールド:</p>
+<ul>
+<li><code>id</code>: 必須</li>
+<li><code>name</code>: 必須</li>
+<li><code>url</code>: 任意</li>
+<li><code>title</code>: 必須</li>
+<li><code>message</code>: 必須</li>
+<li><code>password</code>: 必須</li>
+<li><code>file</code>: 任意。指定時だけ画像を差し替え。既存画像は上書きせず履歴名へ退避</li>
+<li><code>gdgd</code>: 任意。親投稿のみ</li>
+<li><code>tweet_off</code>: 任意。親投稿のみ。UIでは <code>SNS転記OFF</code></li>
+</ul>
+<p>パスワード不一致時は HTTP 403 を返します。</p>
+<p>投稿更新は掲示板内だけに反映します。親投稿であっても、SNS側の既存投稿は編集せず、再投稿もしません。返信ではSNS転記を扱いません。</p>
+<h2 id="post-action-deletepost">POST <code>?action=deletePost</code></h2>
+<p>投稿をソフトデリートします。投稿時のパスワードが必要です。</p>
+<p>Content-Type:</p>
+<ul>
+<li><code>multipart/form-data</code></li>
+</ul>
+<p>フィールド:</p>
+<ul>
+<li><code>id</code>: 必須</li>
+<li><code>password</code>: 必須</li>
+</ul>
+<p>動作:</p>
+<ul>
+<li>SQLite行は削除せず、<code>deleted_at</code> を設定します。</li>
+<li>親スレッドを削除すると、その返信にも <code>deleted_at</code> を設定します。</li>
+<li>返信を削除する場合、その返信だけが対象です。</li>
+<li>画像ファイルは削除しません。</li>
+<li>一覧、スレッド、検索APIでは削除済み投稿を返しません。</li>
+</ul>
+<h2 id="get-action-rss">GET <code>?action=rss</code></h2>
+<p>削除されていない親投稿を新着順に最大30件含む RSS 2.0 XML を返します。</p>
+<h2 id="get-action-refreshsocialreactions-admin-password-password">GET <code>?action=refreshSocialReactions&amp;admin_password={password}</code></h2>
+<p>管理者向けに、保存済みSNS投稿URL/IDからリアクション数を取得してキャッシュします。</p>
+<p>対象は、SNS投稿IDを持つ未削除親投稿すべてです。</p>
+<p>取得指標:</p>
+<ul>
+<li>X: 閲覧数、いいね数、リポスト数</li>
+<li>Bluesky: Like数、Repost数、Quote数</li>
+<li>Mastodon: Boost数、Favorite数</li>
+<li>Misskey: リアクション分類</li>
+</ul>
+<h2 id="get-action-cronrefreshsocialreactions-api-key-key">GET <code>?action=cronRefreshSocialReactions&amp;api_key={key}</code></h2>
+<p>外部定期実行向けのSNSリアクション更新エンドポイントです。</p>
+<p>APIキーは管理画面に表示される <code>cronApiKey</code> を使います。GitHub Actions や外部HTTPスケジューラから呼び出す想定です。</p>
+<p>対象は <code>refreshSocialReactions</code> と同じく、SNS投稿IDを持つ未削除親投稿すべてです。</p>
+<p>ローカルサーバーのCronを使う場合は、管理画面に表示される <code>server/cron.php</code> のファイルパスをCron設定に登録します。<br><code>cron.php</code> はブラウザからそのまま開くと拒否します。外部URL型Cronで <code>cron.php</code> を直接呼ぶ場合は、<code>cron.php?api_key={key}</code> のようにAPIキーを付けます。<br>この場合もSNSリアクション更新だけを実行し、ログには <code>cron web social reaction ...</code> と記録します。</p>
+<h2 id="get-action-listdeletedposts-admin-password-password">GET <code>?action=listDeletedPosts&amp;admin_password={password}</code></h2>
+<p>管理者向けに削除済み投稿を返します。<code>admin_password</code> は設定済みの管理者パスワード、または任意の <code>THREADFORGE_ADMIN_PASSWORD</code> 環境変数と一致する必要があります。</p>
+<h2 id="get-action-listanalyticsposts-admin-password-password">GET <code>?action=listAnalyticsPosts&amp;admin_password={password}</code></h2>
+<p>アナリティクス画面向けに、未削除の親投稿をすべて返します。レスポンスは通常の <code>Post</code> 形式で、キャッシュ済みSNSリアクション数も含みます。</p>
+<h2 id="post-action-restorepost">POST <code>?action=restorePost</code></h2>
+<p>管理者向けに削除済み投稿を復元します。</p>
+<p>フィールド:</p>
+<ul>
+<li><code>id</code>: 必須</li>
+<li><code>admin_password</code>: 必須</li>
+</ul>
+<h2 id="post-action-purgepostdata">POST <code>?action=purgePostData</code></h2>
+<p>管理者向けに削除済み投稿/返信の実データを消去します。表示番号は保持します。</p>
+<p>フィールド:</p>
+<ul>
+<li><code>id</code>: 必須</li>
+<li><code>admin_password</code>: 必須</li>
+</ul>
+<p>動作:</p>
+<ul>
+<li>親投稿の場合、本文、画像、SNS情報、閲覧数、編集履歴、作品紐づけを消去し、返信も消去します。</li>
+<li>返信の場合、その返信の本文、編集履歴、作品紐づけを消去します。</li>
+<li>投稿行は残るため、親投稿の表示番号は残ります。</li>
+</ul>
+<h2 id="post-action-destroypostnumber">POST <code>?action=destroyPostNumber</code></h2>
+<p>管理者向けに投稿/返信の行そのものを完全削除します。</p>
+<p>フィールド:</p>
+<ul>
+<li><code>id</code>: 必須</li>
+<li><code>admin_password</code>: 必須</li>
+</ul>
+<p>動作:</p>
+<ul>
+<li>親投稿の場合、その親投稿と返信を物理削除します。</li>
+<li>親投稿を物理削除すると、以後の親投稿の表示番号は前詰めされます。</li>
+</ul>
+<h2 id="get-action-listadminusers-admin-password-password">GET <code>?action=listAdminUsers&amp;admin_password={password}</code></h2>
+<p>管理者向けに登録ユーザー一覧を返します。</p>
+<p>レスポンス:</p>
+<ul>
+<li><code>success</code>: true</li>
+<li><code>users</code>: 管理用ユーザー情報配列</li>
+</ul>
+<h2 id="post-action-adminupdateuser">POST <code>?action=adminUpdateUser</code></h2>
+<p>管理者向けに登録ユーザー情報を更新します。</p>
+<p>フィールド:</p>
+<ul>
+<li><code>id</code>: 必須</li>
+<li><code>admin_password</code>: 必須</li>
+<li><code>login_id</code>: 必須</li>
+<li><code>display_name</code>: 必須。30文字以内</li>
+<li><code>post_password</code>: 任意。8文字を超える場合は8文字に切り詰め</li>
+<li><code>home_url</code>: 任意</li>
+<li><code>login_password</code>: 任意。指定時だけログインパスワードを再設定</li>
+</ul>
+<h2 id="post-action-admindeleteuser">POST <code>?action=adminDeleteUser</code></h2>
+<p>管理者向けに登録ユーザーを消去します。</p>
+<p>フィールド:</p>
+<ul>
+<li><code>id</code>: 必須</li>
+<li><code>stage</code>: <code>1</code> または <code>2</code></li>
+<li><code>admin_password</code>: 必須</li>
+</ul>
+<p>動作:</p>
+<ul>
+<li><code>stage=1</code>: ユーザー情報とログインセッションを消去します。ユーザー番号は保持します。</li>
+<li><code>stage=2</code>: ユーザー行を物理削除し、残ったユーザー番号を前詰めします。</li>
+</ul>
+<h2 id="post-型">Post 型</h2>
+<pre><code class="language-ts">type Post = {
+  id: number;
+  display_no?: number;
+  reply_no?: number;
+  thread_id: number;
+  parent_id: number;
+  name: string;
+  url?: string | null;
+  title: string;
+  message: string;
+  image_path?: string | null;
+  created_at: string;
+  deleted_at?: string | null;
+  tweet_off?: boolean;
+  tweet_text?: string | null;
+  tweet_url?: string | null;
+  tweet_like_count?: number;
+  tweet_retweet_count?: number;
+  tweet_comment_count?: number;
+  tweet_impression_count?: number;
+  social_links?: {
+    x?: string | null;
+    bluesky?: string | null;
+    mastodon?: string | null;
+    misskey?: string | null;
+  };
+  social_reactions?: {
+    x?: { likes: number; reposts: number; impressions: number };
+    bluesky?: { likes: number; reposts: number; quotes: number };
+    mastodon?: { boosts: number; favs: number };
+    misskey?: {
+      fire: number;
+      eyes: number;
+      cry: number;
+      thinking: number;
+      party: number;
+      other: number;
+    };
+  };
+  replies?: Post[];
+  reply_count?: number;
+};</code></pre>
+<p><code>password_hash</code> は API レスポンスに含めません。</p>
+<h2 id="file-uploader-api">file-uploader API</h2>
+<p>次のアクションは <code>uploader_files</code> テーブルを使い、<code>file-uploader</code> フロントで有効になります。</p>
+<h3 id="get-action-uploadersettings">GET <code>?action=uploaderSettings</code></h3>
+<p>公開用のタイトル、許可拡張子、最大アップロードサイズ、デザイン色を返します。</p>
+<h3 id="get-action-listuploaderfiles">GET <code>?action=listUploaderFiles</code></h3>
+<p>有効なファイルを新しい順で返します。保存用ファイル名、元ファイル名、コメント、バイト数、作成日時、公開ダウンロードURLを含みます。</p>
+<h3 id="post-action-uploaduploaderfile">POST <code>?action=uploadUploaderFile</code></h3>
+<p>multipartフィールド:</p>
+<ul>
+<li><code>file</code>: 必須</li>
+<li><code>comment</code>: 任意</li>
+<li><code>delete_key</code>: 必須</li>
+</ul>
+<p>保存前に、設定された許可拡張子と最大サイズを検証し、Delkeyはハッシュ化して保存します。</p>
+<h3 id="post-action-deleteuploaderfile">POST <code>?action=deleteUploaderFile</code></h3>
+<p>フィールド:</p>
+<ul>
+<li><code>id</code>: 必須</li>
+<li><code>delete_key</code>: 必須</li>
+</ul>
+<p>保存済みDelkeyハッシュと一致した場合、ファイル行をソフトデリートします。</p>
+<h3 id="管理者向けアクション">管理者向けアクション</h3>
+<ul>
+<li><code>listDeletedUploaderFiles</code>: 削除済みファイル一覧</li>
+<li><code>adminDeleteUploaderFiles</code>: 有効ファイルの一括ソフトデリート</li>
+<li><code>restoreUploaderFiles</code>: 複数ファイルの復原</li>
+<li><code>purgeUploaderFiles</code>: DB行と保存ファイルの完全削除</li>
+<li><code>exportBackup</code>: DB、アップロードファイル、設定、デザインをZIPで出力</li>
+<li><code>importBackup</code>: file-uploaderフルバックアップZIPの復元</li>
+</ul>
+<p>管理者向けアクションには <code>admin_password</code> が必要です。</p>
+<h2 id="laravel-api">Laravel API</h2>
+<p><code>server/laravel/routes/api.php</code> に Laravel 版のルートがありますが、現在のフロントエンドの標準接続先ではありません。Laravel API はまだ本番仕様扱いではありません。</p>
+<h2 id="web-apiではない移行操作">Web APIではない移行操作</h2>
+<p>ローカルアーカイブ <code>LOG_*.cgi</code> インポートは、Web API と管理画面からは公開しません。ローカル運用バッチまたはPHPコマンドから <code>server/db.php</code> の <code>importLocalArchiveDirectory()</code> を直接呼び出します。</p></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="api-reference">API Reference</h1>
+<p>The current API is implemented in <code>server/api.php</code>. It is not REST-shaped; requests are routed by the <code>action</code> parameter.</p>
+<h2 id="common-behavior">Common Behavior</h2>
+<ul>
+<li>Response format: JSON unless otherwise noted</li>
+<li>Encoding: UTF-8</li>
+<li>CORS: <code>Access-Control-Allow-Origin: *</code></li>
+<li>Allowed methods: <code>GET</code>, <code>POST</code>, <code>OPTIONS</code></li>
+<li>Error responses use HTTP 400/403/404 and <code>{ &quot;success&quot;: false, &quot;message&quot;: &quot;...&quot; }</code></li>
+</ul>
+<h2 id="get-action-listthreads">GET <code>?action=listThreads</code></h2>
+<p>Returns top-level posts.</p>
+<ul>
+<li>Target: <code>parent_id = 0</code></li>
+<li>Order: <code>created_at DESC</code></li>
+<li>Supports <code>page</code> and <code>limit</code>; maximum <code>limit</code> is 100</li>
+<li>Response: <code>Post[]</code></li>
+</ul>
+<h2 id="get-action-getthread-id-id">GET <code>?action=getThread&amp;id={id}</code></h2>
+<p>Returns a thread and its replies.</p>
+<ul>
+<li><code>id</code>: top-level post ID</li>
+<li>Response: <code>{ &quot;thread&quot;: Post, &quot;replies&quot;: Post[] }</code></li>
+<li>Replies are ordered by <code>created_at ASC</code></li>
+</ul>
+<h2 id="get-action-getpost-id-id">GET <code>?action=getPost&amp;id={id}</code></h2>
+<p>Returns one post.</p>
+<ul>
+<li><code>id</code>: post ID</li>
+<li>Response: <code>Post</code></li>
+</ul>
+<h2 id="get-action-search-q-query">GET <code>?action=search&amp;q={query}</code></h2>
+<p>Searches posts.</p>
+<ul>
+<li>Target columns: <code>title</code>, <code>message</code>, <code>name</code></li>
+<li>Search method: SQLite <code>LIKE</code></li>
+<li>Empty query returns <code>[]</code></li>
+<li>Order: <code>created_at DESC</code></li>
+<li>Supports <code>page</code> and <code>limit</code>; maximum <code>limit</code> is 100</li>
+<li>Response: <code>Post[]</code></li>
+</ul>
+<h2 id="post-action-createpost">POST <code>?action=createPost</code></h2>
+<p>Creates a new top-level post or reply.</p>
+<p>Content-Type:</p>
+<ul>
+<li><code>multipart/form-data</code></li>
+</ul>
+<p>Fields:</p>
+<ul>
+<li><code>name</code>: required</li>
+<li><code>url</code>: optional</li>
+<li><code>title</code>: required</li>
+<li><code>message</code>: required</li>
+<li><code>password</code>: required</li>
+<li><code>thread_id</code>: optional. New top-level posts use <code>0</code> or omit it</li>
+<li><code>parent_id</code>: optional. New top-level posts use <code>0</code> or omit it</li>
+<li><code>file</code>: optional. Allowed formats are configured by the admin from GIF, PNG, JPEG, JPG, and BMP. Top-level posts only</li>
+<li><code>gdgd</code>: optional. Top-level posts only</li>
+<li><code>tweet_off</code>: optional. Top-level posts only. UI label is &quot;SNS transfer OFF&quot;</li>
+<li><code>source_url</code>: optional. Top-level posts only. Board-list anchor URL for SNS text. If omitted, the API derives it from the request origin</li>
+</ul>
+<p>Notes:</p>
+<ul>
+<li>Replies do not use image upload, gdgd, or SNS posting.</li>
+<li>If SNS posting is enabled for a top-level post, the API posts to enabled SNS platforms from admin settings.</li>
+<li>If a top-level post has an image, X, Bluesky, Mastodon, and Misskey receive the image when enabled.</li>
+<li>SNS text uses only content before <code>_TWEND_</code> and is shortened with <code>..</code> to fit each platform limit.</li>
+<li>SNS text includes a &quot;latest is here&quot; board-list anchor URL. The frontend sends a temporary <code>#post-000000</code> URL, and the API replaces <code>000000</code> after the real post ID is saved.</li>
+</ul>
+<p>Success response:</p>
+<pre><code class="language-json">{
+  &quot;success&quot;: true,
+  &quot;message&quot;: &quot;...&quot;
+}</code></pre>
+<h2 id="post-action-updatepost">POST <code>?action=updatePost</code></h2>
+<p>Updates an existing post. The original post password is required.</p>
+<p>Content-Type:</p>
+<ul>
+<li><code>multipart/form-data</code></li>
+</ul>
+<p>Fields:</p>
+<ul>
+<li><code>id</code>: required</li>
+<li><code>name</code>: required</li>
+<li><code>url</code>: optional</li>
+<li><code>title</code>: required</li>
+<li><code>message</code>: required</li>
+<li><code>password</code>: required</li>
+<li><code>file</code>: optional. Replaces the image only when supplied. Previous images are archived instead of overwritten</li>
+<li><code>gdgd</code>: optional. Top-level posts only</li>
+<li><code>tweet_off</code>: optional. Top-level posts only. UI label is &quot;SNS transfer OFF&quot;</li>
+</ul>
+<p>Password mismatch returns HTTP 403.</p>
+<p>Post updates affect only the board. Even for top-level posts, existing SNS posts are not edited and no repost is made. Replies never use SNS posting.</p>
+<h2 id="post-action-deletepost">POST <code>?action=deletePost</code></h2>
+<p>Soft-deletes a post. The original post password is required.</p>
+<p>Content-Type:</p>
+<ul>
+<li><code>multipart/form-data</code></li>
+</ul>
+<p>Fields:</p>
+<ul>
+<li><code>id</code>: required</li>
+<li><code>password</code>: required</li>
+</ul>
+<p>Behavior:</p>
+<ul>
+<li>SQLite rows are not removed; <code>deleted_at</code> is set.</li>
+<li>Deleting a top-level thread also sets <code>deleted_at</code> on its replies.</li>
+<li>Deleting a reply affects only that reply.</li>
+<li>Image files are not deleted.</li>
+<li>List, thread, and search APIs do not return soft-deleted posts.</li>
+</ul>
+<h2 id="get-action-rss">GET <code>?action=rss</code></h2>
+<p>Returns RSS 2.0 XML with up to 30 latest non-deleted top-level posts.</p>
+<h2 id="get-action-refreshsocialreactions-admin-password-password">GET <code>?action=refreshSocialReactions&amp;admin_password={password}</code></h2>
+<p>Admin-only action that fetches reaction counts from stored SNS post URLs/IDs and caches them.</p>
+<p>Targets are all non-deleted top-level posts that have SNS post IDs.</p>
+<p>Fetched metrics:</p>
+<ul>
+<li>X: impressions, likes, reposts</li>
+<li>Bluesky: likes, reposts, quotes</li>
+<li>Mastodon: boosts, favorites</li>
+<li>Misskey: reaction buckets</li>
+</ul>
+<h2 id="get-action-cronrefreshsocialreactions-api-key-key">GET <code>?action=cronRefreshSocialReactions&amp;api_key={key}</code></h2>
+<p>Scheduler-friendly reaction refresh endpoint for external periodic jobs.</p>
+<p>Use the <code>cronApiKey</code> shown in the admin screen. This endpoint is intended for GitHub Actions or external HTTP schedulers.</p>
+<p>Targets are the same as <code>refreshSocialReactions</code>: all non-deleted top-level posts that have SNS post IDs.</p>
+<p>For local server Cron, register the <code>server/cron.php</code> file path shown in the admin screen.<br>Opening <code>cron.php</code> without a key is rejected. External URL-style schedulers may call <code>cron.php?api_key={key}</code>; successful runs are logged as <code>cron web social reaction ...</code>.</p>
+<h2 id="get-action-listdeletedposts-admin-password-password">GET <code>?action=listDeletedPosts&amp;admin_password={password}</code></h2>
+<p>Admin-only action that returns soft-deleted posts. <code>admin_password</code> must match the configured admin password or the optional <code>THREADFORGE_ADMIN_PASSWORD</code> environment variable.</p>
+<h2 id="get-action-listanalyticsposts-admin-password-password">GET <code>?action=listAnalyticsPosts&amp;admin_password={password}</code></h2>
+<p>Admin-only action that returns all non-deleted top-level posts for the analytics screen. The response uses the normal <code>Post</code> shape, including cached social reaction totals.</p>
+<h2 id="post-action-restorepost">POST <code>?action=restorePost</code></h2>
+<p>Admin-only action that restores a soft-deleted post.</p>
+<p>Fields:</p>
+<ul>
+<li><code>id</code>: required</li>
+<li><code>admin_password</code>: required</li>
+</ul>
+<h2 id="post-action-purgepostdata">POST <code>?action=purgePostData</code></h2>
+<p>Admin-only action that erases the content of a deleted post/reply while preserving the display number.</p>
+<p>Fields:</p>
+<ul>
+<li><code>id</code>: required</li>
+<li><code>admin_password</code>: required</li>
+</ul>
+<p>Behavior:</p>
+<ul>
+<li>For a top-level post, erases content, image reference, SNS metadata, view count, edit revisions, user claims, and replies.</li>
+<li>For a reply, erases the reply content, edit revisions, and user claims.</li>
+<li>The post row remains, so the top-level display number is preserved.</li>
+</ul>
+<h2 id="post-action-destroypostnumber">POST <code>?action=destroyPostNumber</code></h2>
+<p>Admin-only action that physically removes a post/reply row.</p>
+<p>Fields:</p>
+<ul>
+<li><code>id</code>: required</li>
+<li><code>admin_password</code>: required</li>
+</ul>
+<p>Behavior:</p>
+<ul>
+<li>For a top-level post, physically removes the thread and its replies.</li>
+<li>Removing a top-level post this way compacts later top-level display numbers.</li>
+</ul>
+<h2 id="get-action-listadminusers-admin-password-password">GET <code>?action=listAdminUsers&amp;admin_password={password}</code></h2>
+<p>Admin-only action that returns registered users for maintenance.</p>
+<p>Response:</p>
+<ul>
+<li><code>success</code>: true</li>
+<li><code>users</code>: admin user records</li>
+</ul>
+<h2 id="post-action-adminupdateuser">POST <code>?action=adminUpdateUser</code></h2>
+<p>Admin-only action that updates a registered user.</p>
+<p>Fields:</p>
+<ul>
+<li><code>id</code>: required</li>
+<li><code>admin_password</code>: required</li>
+<li><code>login_id</code>: required</li>
+<li><code>display_name</code>: required, up to 30 characters</li>
+<li><code>post_password</code>: optional, truncated to 8 characters if longer</li>
+<li><code>home_url</code>: optional</li>
+<li><code>login_password</code>: optional. When present, resets the login password</li>
+</ul>
+<h2 id="post-action-admindeleteuser">POST <code>?action=adminDeleteUser</code></h2>
+<p>Admin-only action that erases or deletes a registered user.</p>
+<p>Fields:</p>
+<ul>
+<li><code>id</code>: required</li>
+<li><code>stage</code>: <code>1</code> or <code>2</code></li>
+<li><code>admin_password</code>: required</li>
+</ul>
+<p>Behavior:</p>
+<ul>
+<li><code>stage=1</code>: erases personal user information and sessions while preserving the user number.</li>
+<li><code>stage=2</code>: physically deletes the user row and compacts remaining user numbers.</li>
+</ul>
+<h2 id="post-type">Post Type</h2>
+<pre><code class="language-ts">type Post = {
+  id: number;
+  display_no?: number;
+  reply_no?: number;
+  thread_id: number;
+  parent_id: number;
+  name: string;
+  url?: string | null;
+  title: string;
+  message: string;
+  image_path?: string | null;
+  created_at: string;
+  deleted_at?: string | null;
+  tweet_off?: boolean;
+  tweet_text?: string | null;
+  tweet_url?: string | null;
+  tweet_like_count?: number;
+  tweet_retweet_count?: number;
+  tweet_comment_count?: number;
+  tweet_impression_count?: number;
+  social_links?: {
+    x?: string | null;
+    bluesky?: string | null;
+    mastodon?: string | null;
+    misskey?: string | null;
+  };
+  social_reactions?: {
+    x?: { likes: number; reposts: number; impressions: number };
+    bluesky?: { likes: number; reposts: number; quotes: number };
+    mastodon?: { boosts: number; favs: number };
+    misskey?: {
+      fire: number;
+      eyes: number;
+      cry: number;
+      thinking: number;
+      party: number;
+      other: number;
+    };
+  };
+  replies?: Post[];
+  reply_count?: number;
+};</code></pre>
+<p><code>password_hash</code> is never included in API responses.</p>
+<h2 id="file-uploader-api">file-uploader API</h2>
+<p>These actions use the <code>uploader_files</code> table and are enabled for the <code>file-uploader</code> frontend.</p>
+<h3 id="get-action-uploadersettings">GET <code>?action=uploaderSettings</code></h3>
+<p>Returns the public uploader title, allowed extensions, maximum upload size, and design colors.</p>
+<h3 id="get-action-listuploaderfiles">GET <code>?action=listUploaderFiles</code></h3>
+<p>Returns active files in newest-first order. Each row includes the generated filename, original filename, comment, byte size, creation date, and public download URL.</p>
+<h3 id="post-action-uploaduploaderfile">POST <code>?action=uploadUploaderFile</code></h3>
+<p>Multipart fields:</p>
+<ul>
+<li><code>file</code>: required</li>
+<li><code>comment</code>: optional</li>
+<li><code>delete_key</code>: required</li>
+</ul>
+<p>The API validates the configured extension allowlist and maximum size before storing the file and hashed delete key.</p>
+<h3 id="post-action-deleteuploaderfile">POST <code>?action=deleteUploaderFile</code></h3>
+<p>Fields:</p>
+<ul>
+<li><code>id</code>: required</li>
+<li><code>delete_key</code>: required</li>
+</ul>
+<p>Matching the stored delete-key hash soft-deletes the file row.</p>
+<h3 id="administrator-actions">Administrator actions</h3>
+<ul>
+<li><code>listDeletedUploaderFiles</code>: list soft-deleted files</li>
+<li><code>adminDeleteUploaderFiles</code>: soft-delete multiple active files</li>
+<li><code>restoreUploaderFiles</code>: restore multiple files</li>
+<li><code>purgeUploaderFiles</code>: physically remove rows and stored files</li>
+<li><code>exportBackup</code>: download DB, uploaded files, settings, and design as a ZIP</li>
+<li><code>importBackup</code>: restore a full uploader backup ZIP</li>
+</ul>
+<p>Administrator actions require <code>admin_password</code>.</p>
+<h2 id="laravel-api">Laravel API</h2>
+<p><code>server/laravel/routes/api.php</code> contains Laravel routes, but the current frontend does not use them as the standard API. The Laravel API is not treated as production-ready yet.</p>
+<h2 id="non-web-import-operation">Non-Web Import Operation</h2>
+<p>Local Archive <code>LOG_*.cgi</code> import is not exposed through the web API or admin screen. Run it from a local operator batch or PHP command that directly calls <code>importLocalArchiveDirectory()</code> in <code>server/db.php</code>.</p></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

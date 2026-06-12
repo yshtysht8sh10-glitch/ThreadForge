@@ -44,5 +44,15 @@ storage/data/
 
 ## Docs
 
-- [Spec](../../docs/frontends/file-uploader/SPEC.md)
-- [DB](../../docs/frontends/file-uploader/DB.md)
+- [Bilingual documentation / 日英切替ドキュメント](../../docs/frontends/file-uploader/index.html)
+- [Spec / 仕様](../../docs/frontends/file-uploader/SPEC.html)
+- [DB](../../docs/frontends/file-uploader/DB.html)
+
+## Release
+
+```powershell
+npm run test:file-uploader
+npm run release:file-uploader
+```
+
+The standalone ZIP is written to `release/threadforge-file-uploader-1.0.0.zip`.

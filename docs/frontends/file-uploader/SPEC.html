@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>File Uploader Spec / ファイルアップローダー仕様 | ThreadForge</title>
+  <link rel="stylesheet" href="../../assets/docs.css">
+  <script src="../../assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="../../index.html">ドキュメント</a></li><li><a href="../../SPEC.html">仕様</a></li><li><a href="../../API.html">API</a></li><li><a href="../../DB.html">データベース</a></li><li><a href="../../ARCHITECTURE.html">構成</a></li><li><a href="../../FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="../../MIGRATION.html">移行</a></li><li><a href="../../TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="../image-board/index.html">画像掲示板</a></li><li><a href="../image-board/SPEC.html">画像掲示板仕様</a></li><li><a href="../image-board/DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="./index.html">ファイルアップローダー</a></li><li><a href="./SPEC.html" aria-current="page">ファイルアップローダー仕様</a></li><li><a href="./DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>指南記事</h2>
+        <ul><li><a href="../guide-posts/index.html">指南記事</a></li><li><a href="../guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="../guide-posts/DB.html">指南記事 DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="../proxy-release/index.html">代理公開</a></li><li><a href="../proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="../proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="../materials-library/index.html">素材ライブラリ</a></li><li><a href="../materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="../materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="../../index.html">Documentation</a></li><li><a href="../../SPEC.html">Specification</a></li><li><a href="../../API.html">API</a></li><li><a href="../../DB.html">Database</a></li><li><a href="../../ARCHITECTURE.html">Architecture</a></li><li><a href="../../FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="../../MIGRATION.html">Migration</a></li><li><a href="../../TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="../image-board/index.html">Image Board</a></li><li><a href="../image-board/SPEC.html">Image Board Spec</a></li><li><a href="../image-board/DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="./index.html">File Uploader</a></li><li><a href="./SPEC.html" aria-current="page">File Uploader Spec</a></li><li><a href="./DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Guide Posts</h2>
+        <ul><li><a href="../guide-posts/index.html">Guide Posts</a></li><li><a href="../guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="../guide-posts/DB.html">Guide Posts DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="../proxy-release/index.html">Proxy Release</a></li><li><a href="../proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="../proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="../materials-library/index.html">Materials Library</a></li><li><a href="../materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="../materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>File Uploader Spec / ファイルアップローダー仕様</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="file-uploader-仕様">file-uploader 仕様</h1>
+<p><a href="../../SPEC.html">仕様索引へ戻る</a></p>
+<h2 id="目的">目的</h2>
+<p><code>file-uploader</code> はファイルアップローダー用の単体フロントです。</p>
+<p>legacy の灰色アップローダーUIをもとに、コンパクトなフォームと表の雰囲気を保ちます。</p>
+<h2 id="機能">機能</h2>
+<ul>
+<li>コメント付きファイルアップロード</li>
+<li>サイズ、日付、元ファイル名、ダウンロードリンク、削除操作の表示</li>
+<li>削除キー/パスワードによる削除</li>
+<li>アップロード一覧のページング</li>
+<li>ファイル選択時とPHP API保存時の両方で許可拡張子を検証</li>
+<li>ファイル選択時とPHP API保存時の両方でファイルサイズ上限を検証</li>
+<li>一括削除、復原/完全削除、設定、アナリティクス、デザイン、パスワード変更を持つ管理画面</li>
+<li>設定とデザインを個別にJSONでインポート/エクスポート</li>
+<li>保守タブでDB、アップロードファイル、設定、デザインを含むフルバックアップZIPをインポート/エクスポート</li>
+<li>デザイン設定のライブプレビューと実画面への即時反映</li>
+<li>共通 ThreadForge バックエンドの再利用</li>
+<li>他フロントから独立したDBとストレージ</li>
+</ul>
+<h2 id="見た目">見た目</h2>
+<ul>
+<li>灰色のアップロードフォームと表</li>
+<li>素のHTMLに近い密度</li>
+<li>装飾は控えめ</li>
+</ul>
+<h2 id="現在の状態">現在の状態</h2>
+<p>一覧の各ファイルには公開URLのコピーボタンと、Delkey照合を行う削除ボタンがあります。<br>スマートフォン表示では一覧をカード状に組み替え、長いコメントと元ファイル名を折り返します。</p>
+<p>バージョン1.0.0では、アップロード/一覧API、Delkey削除、管理画面の一括削除・復原・完全削除、設定、アナリティクス、デザイン変更、設定・デザインのJSON入出力、フルバックアップZIP入出力、レスポンシブ表示、専用DBテーブルまで実装済みです。</p></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="file-uploader-spec">file-uploader Spec</h1>
+<p><a href="../../SPEC.html">Back to specification index</a></p>
+<h2 id="purpose">Purpose</h2>
+<p><code>file-uploader</code> is the standalone file uploader frontend.</p>
+<p>It is based on the legacy gray uploader UI and should keep that compact table-and-form feel.</p>
+<h2 id="behavior">Behavior</h2>
+<ul>
+<li>Upload files with comments.</li>
+<li>Show file size, date, original filename, download link, and delete action.</li>
+<li>Copy an uploaded file's public URL from each list row.</li>
+<li>Support delete-key/password style deletion.</li>
+<li>Reflow list rows into readable cards on narrow screens and wrap long comments and filenames.</li>
+<li>Paginate uploaded file rows.</li>
+<li>Reject disallowed extensions when a file is selected and again in the PHP API.</li>
+<li>Reject files over the configured size when selected and again in the PHP API.</li>
+<li>Provide an administrator screen for bulk deletion, restore/purge, uploader settings, analytics, design, and password changes.</li>
+<li>Export/import uploader settings and design independently as JSON.</li>
+<li>Export/import a full backup ZIP containing the frontend DB, uploaded files, settings, and design from the maintenance tab.</li>
+<li>Apply saved uploader colors to the live page and provide a live design preview.</li>
+<li>Reuse the common ThreadForge backend where practical.</li>
+<li>Keep runtime DB and storage isolated from every other frontend.</li>
+</ul>
+<h2 id="visual-direction">Visual Direction</h2>
+<ul>
+<li>Gray uploader form and table.</li>
+<li>Simple HTML-like density.</li>
+<li>Minimal decoration.</li>
+</ul>
+<h2 id="current-status">Current Status</h2>
+<p>Version 1.0.0 implements the upload/list API, delete-key deletion, administrative bulk deletion, restore/purge, settings, analytics, design customization, independent JSON import/export, full backup ZIP import/export, responsive presentation, and the dedicated DB table.</p></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

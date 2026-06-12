@@ -20,10 +20,13 @@ server/runtime/
 server/storage/data/*
 !server/storage/data/.gitkeep
 server/tests/runtime/
+server/tests/uploader-runtime/
 server/.phpunit.result.cache
 server/laravel/
 frontends/*/vite*.log
+/vite*.log
 server/php-server*.log
+server/*-php*.log
 server/*_debug.log
 
 # Legacy/runtime data not required for the TypeScript/PHP app
