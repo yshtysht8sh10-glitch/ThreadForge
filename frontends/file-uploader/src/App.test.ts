@@ -4,6 +4,7 @@ import {
   allowedExtensionList,
   buildMonthlyAnalytics,
   formatSize,
+  homeHref,
   normalizeSettings,
   toggleId,
   validateUploadFile,
@@ -36,10 +37,18 @@ describe('file-uploader helpers', () => {
     });
 
     expect(normalized.title).toBe('ファイルアップローダー');
+    expect(normalized.homePageUrl).toBe('../');
     expect(normalized.allowedExtensions).toBe('png');
     expect(normalized.maxUploadKb).toBe(20000);
     expect(normalized.design.pageBackgroundColor).toBe('#123456');
     expect(normalized.design.buttonTextColor).toBe('#000000');
+  });
+
+  it('normalizes configured HOME URLs', () => {
+    expect(homeHref('https://example.com/home')).toBe('https://example.com/home');
+    expect(homeHref('example.com/home')).toBe('https://example.com/home');
+    expect(homeHref('/DotoEita/')).toBe('/DotoEita/');
+    expect(homeHref('../')).toBe('../');
   });
 
   it('builds monthly analytics and formats sizes', () => {

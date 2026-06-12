@@ -22,9 +22,15 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
 }
 
 $packageName = "threadforge-$FrontendId-$Version"
+$deployDirectory = switch ($FrontendId) {
+    'image-board' { '11_image_board' }
+    'file-uploader' { '12_file_uploader' }
+    default { $FrontendId.Replace('-', '_') }
+}
 $releaseDir = Join-Path $repoRoot 'release'
 $stageBase = Join-Path $releaseDir '.stage'
 $stageRoot = Join-Path $stageBase $packageName
+$appRoot = Join-Path $stageRoot $deployDirectory
 $zipPath = Join-Path $releaseDir "$packageName.zip"
 
 function Copy-ReleaseItem {
@@ -38,7 +44,7 @@ function Copy-ReleaseItem {
         return
     }
 
-    $destinationPath = Join-Path $stageRoot $Destination
+    $destinationPath = Join-Path $appRoot $Destination
     $destinationParent = Split-Path $destinationPath -Parent
     New-Item -ItemType Directory -Force -Path $destinationParent | Out-Null
     Copy-Item -LiteralPath $sourcePath -Destination $destinationPath -Recurse -Force
@@ -71,13 +77,13 @@ if ((Test-Path $stageBase) -and -not ((Resolve-Path $stageBase).Path.StartsWith(
 }
 
 Remove-Item -LiteralPath $stageBase -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force -Path $stageRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $appRoot | Out-Null
 
-Copy-Item -Path (Join-Path $frontendDir 'dist\*') -Destination $stageRoot -Recurse -Force
+Copy-Item -Path (Join-Path $frontendDir 'dist\*') -Destination $appRoot -Recurse -Force
 Copy-ReleaseItem -Source 'server\api.php' -Destination 'api.php'
 Copy-ReleaseItem -Source 'server\db.php' -Destination 'db.php'
 Copy-ReleaseItem -Source 'server\cron.php' -Destination 'cron.php'
-$storageDir = Join-Path $stageRoot 'storage\data'
+$storageDir = Join-Path $appRoot 'storage\data'
 New-Item -ItemType Directory -Force -Path $storageDir | Out-Null
 Set-Content -Path (Join-Path $storageDir '.gitkeep') -Value '' -Encoding UTF8
 Copy-ReleaseItem -Source 'docs' -Destination 'docs'
@@ -85,8 +91,8 @@ Copy-ReleaseItem -Source 'README.md' -Destination 'README.md'
 Copy-ReleaseItem -Source 'README.ja.md' -Destination 'README.ja.md'
 Copy-ReleaseItem -Source 'CHANGELOG.md' -Destination 'CHANGELOG.md'
 Copy-ReleaseItem -Source 'CHANGELOG.ja.md' -Destination 'CHANGELOG.ja.md'
-Set-Content -Path (Join-Path $stageRoot 'VERSION') -Value $Version -Encoding ASCII
-Set-Content -Path (Join-Path $stageRoot 'FRONTEND_ID') -Value $FrontendId -Encoding ASCII
+Set-Content -Path (Join-Path $appRoot 'VERSION') -Value $Version -Encoding ASCII
+Set-Content -Path (Join-Path $appRoot 'FRONTEND_ID') -Value $FrontendId -Encoding ASCII
 
 if (Test-Path $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
@@ -97,4 +103,5 @@ Remove-Item -LiteralPath $stageBase -Recurse -Force
 
 Write-Host "Created: $zipPath"
 Write-Host "Frontend: $FrontendId"
+Write-Host "Deploy directory: $deployDirectory"
 Write-Host 'Runtime DB and uploaded images are not included.'

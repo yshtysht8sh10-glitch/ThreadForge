@@ -51,4 +51,4 @@ npm run release:image-board
 npm run release:file-uploader
 ```
 
-リリースZipは `release/threadforge-<frontend-id>-<version>.zip` に作られます。開発環境では `server/runtime/<frontend-id>/...`、配置後は `database.sqlite` と `storage/data/` を使います。
+リリースZipは `release/threadforge-<frontend-id>-<version>.zip` に作られます。image-board のZipには `11_image_board/`、file-uploader のZipには `12_file_uploader/` が入り、`/DotoEita/` 直下へ配置できます。開発環境では `server/runtime/<frontend-id>/...`、配置後は各公開用ディレクトリ内の `database.sqlite` と `storage/data/` を使います。

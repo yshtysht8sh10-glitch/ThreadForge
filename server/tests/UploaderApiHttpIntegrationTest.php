@@ -34,6 +34,7 @@ final class UploaderApiHttpIntegrationTest extends TestCase
         $settings = $this->getJson(['action' => 'uploaderSettings']);
         $this->assertSame(200, $settings['status'], $settings['body']);
         $this->assertSame('ファイルアップローダー', $settings['json']['settings']['title']);
+        $this->assertSame('../', $settings['json']['settings']['homePageUrl']);
         $this->assertContains('txt', explode(' ', $settings['json']['settings']['allowedExtensions']));
 
         $path = tempnam(sys_get_temp_dir(), 'threadforge-uploader-');
@@ -83,6 +84,21 @@ final class UploaderApiHttpIntegrationTest extends TestCase
             'new_admin_password' => 'admin-secret',
         ]);
         $this->assertSame(200, $initialized['status'], $initialized['body']);
+
+        $updatedSettings = $this->postForm([
+            'action' => 'updateSettings',
+            'admin_password' => 'admin-secret',
+            'settings' => json_encode([
+                'config' => [
+                    'uploaderHomePageUrl' => 'https://example.com/home',
+                ],
+            ], JSON_UNESCAPED_SLASHES),
+        ]);
+        $this->assertSame(200, $updatedSettings['status'], $updatedSettings['body']);
+        $this->assertSame(
+            'https://example.com/home',
+            $this->getJson(['action' => 'uploaderSettings'])['json']['settings']['homePageUrl']
+        );
 
         $deletedList = $this->getJson([
             'action' => 'listDeletedUploaderFiles',

@@ -74,8 +74,8 @@
 <pre><code class="language-text">server/runtime/image-board/database.sqlite
 server/runtime/image-board/storage/data/</code></pre>
 <p>リリースZip配置先:</p>
-<pre><code class="language-text">database.sqlite
-storage/data/</code></pre>
+<pre><code class="language-text">11_image_board/database.sqlite
+11_image_board/storage/data/</code></pre>
 <h2 id="現在のスキーマ">現在のスキーマ</h2>
 <p><code>image-board</code> は現行の本番相当フロントで、<code>server/db.php</code> が初期化する共通 ThreadForge SQLite スキーマを使います。</p>
 <p>主なテーブル:</p>
@@ -259,15 +259,15 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 <h2 id="release-zip">Release ZIP</h2>
 <p>Create a distribution archive with:</p>
 <pre><code class="language-powershell">powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1</code></pre>
-<p>The script creates <code>release/threadforge-&lt;version&gt;.zip</code> from a whitelist of application files. The archive is arranged so the extracted contents can be uploaded directly to a rental server public directory:</p>
+<p>The script creates <code>release/threadforge-image-board-&lt;version&gt;.zip</code> from a whitelist of application files. The archive contains a <code>11_image_board/</code> deployment directory with:</p>
 <ul>
-<li><code>index.html</code></li>
-<li><code>assets/</code></li>
-<li><code>api.php</code></li>
-<li><code>db.php</code></li>
-<li><code>cron.php</code></li>
-<li><code>storage/data/.gitkeep</code></li>
-<li>documentation</li>
+<li><code>11_image_board/index.html</code></li>
+<li><code>11_image_board/assets/</code></li>
+<li><code>11_image_board/api.php</code></li>
+<li><code>11_image_board/db.php</code></li>
+<li><code>11_image_board/cron.php</code></li>
+<li><code>11_image_board/storage/data/.gitkeep</code></li>
+<li><code>11_image_board/docs/</code></li>
 </ul>
 <p>Runtime DB files, uploaded images, local PHP binaries, logs, dependency directories, operator scripts, and legacy import source data are intentionally not included. A deployed site should be updated by backing up runtime data first, then replacing application files while preserving <code>database.sqlite</code> and <code>storage/data/</code>.</p>
 <p>On a clean deployment, the next API request creates <code>database.sqlite</code> and the storage directory automatically when PHP has write permission.</p>

@@ -11,6 +11,7 @@ It is based on the legacy gray uploader UI and should keep that compact table-an
 ## Behavior
 
 - Upload files with comments.
+- Show a HOME link in the title bar. Administrators can configure its destination.
 - Show file size, date, original filename, download link, and delete action.
 - Copy an uploaded file's public URL from each list row.
 - Support delete-key/password style deletion.
@@ -33,4 +34,4 @@ It is based on the legacy gray uploader UI and should keep that compact table-an
 
 ## Current Status
 
-Version 1.0.0 implements the upload/list API, delete-key deletion, administrative bulk deletion, restore/purge, settings, analytics, design customization, independent JSON import/export, full backup ZIP import/export, responsive presentation, and the dedicated DB table.
+Version 1.0.0 implements the upload/list API, configurable HOME link, delete-key deletion, administrative bulk deletion, restore/purge, settings, analytics, design customization, independent JSON import/export, full backup ZIP import/export, responsive presentation, and the dedicated DB table.

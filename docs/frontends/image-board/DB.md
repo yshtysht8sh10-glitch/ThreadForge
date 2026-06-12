@@ -229,15 +229,15 @@ Create a distribution archive with:
 powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
 ```
 
-The script creates `release/threadforge-<version>.zip` from a whitelist of application files. The archive is arranged so the extracted contents can be uploaded directly to a rental server public directory:
+The script creates `release/threadforge-image-board-<version>.zip` from a whitelist of application files. The archive contains a `11_image_board/` deployment directory with:
 
-- `index.html`
-- `assets/`
-- `api.php`
-- `db.php`
-- `cron.php`
-- `storage/data/.gitkeep`
-- documentation
+- `11_image_board/index.html`
+- `11_image_board/assets/`
+- `11_image_board/api.php`
+- `11_image_board/db.php`
+- `11_image_board/cron.php`
+- `11_image_board/storage/data/.gitkeep`
+- `11_image_board/docs/`
 
 Runtime DB files, uploaded images, local PHP binaries, logs, dependency directories, operator scripts, and legacy import source data are intentionally not included. A deployed site should be updated by backing up runtime data first, then replacing application files while preserving `database.sqlite` and `storage/data/`.
 

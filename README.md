@@ -112,10 +112,10 @@ Before updating a live site, export a full backup ZIP from the admin maintenance
 
 ## Rental Server Deployment
 
-Extract the release ZIP and upload the contents of the `threadforge-<version>` directory to your rental server's public web directory.
+Extract the release ZIP and upload the included deployment directory to `/DotoEita/`.
 
 ```text
-threadforge-<version>/
+11_image_board/
   index.html
   assets/
   api.php
@@ -124,6 +124,8 @@ threadforge-<version>/
   storage/data/
   docs/
 ```
+
+The image-board ZIP contains `11_image_board/`. The file-uploader ZIP contains `12_file_uploader/`.
 
 The frontend calls `./api.php` on the same site. Runtime DB files and uploaded images are intentionally excluded from the ZIP. On first access, the SQLite DB is created automatically if PHP can write to the deployed directory.
 
@@ -135,7 +137,7 @@ Fresh installations start with the standard dark board design, gdgd/special post
 
 Release packaging and maintenance scripts live in `tools/`. They are not included in the public release ZIP.
 
-- `build_release.ps1`: builds `release/threadforge-<frontend-id>-<version>.zip`
+- `build_release.ps1`: builds `release/threadforge-<frontend-id>-<version>.zip` with the correct deployment directory (`11_image_board` or `12_file_uploader`)
 - `import_threadforge_archives.*`: imports BBSNote/local archive folders
 - `repair_imported_images.*`: reattaches correct images from legacy logs without re-importing posts
 - `update_imported_recent.*`: updates the newest imported archive entries and can insert unmatched latest posts with `--add` / `add=1`

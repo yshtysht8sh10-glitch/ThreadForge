@@ -55,7 +55,7 @@ npm run release:image-board
 npm run release:file-uploader
 ```
 
-Release ZIPs are written to `release/threadforge-<frontend-id>-<version>.zip`. Their contents are arranged for upload to a public web directory.
+Release ZIPs are written to `release/threadforge-<frontend-id>-<version>.zip`. The image-board archive contains `11_image_board/`, and the file-uploader archive contains `12_file_uploader/`, ready for upload under `/DotoEita/`.
 
 For a GitHub release, update `VERSION` and the changelog, generate and verify the ZIP, then create the matching `v<version>` tag and attach the ZIP to the GitHub Release.
 

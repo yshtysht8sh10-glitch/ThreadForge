@@ -3913,6 +3913,7 @@ function uploaderSettings(PDO $pdo): void
         'success' => true,
         'settings' => [
             'title' => $title,
+            'homePageUrl' => (string)($config['uploaderHomePageUrl'] ?? '../'),
             'allowedExtensions' => implode(' ', uploaderAllowedExtensions($config)),
             'maxUploadKb' => uploaderMaxUploadKb($config),
             'design' => uploaderDesignSettings($skin),
@@ -4305,6 +4306,7 @@ function defaultSettings(): array
         'config' => [
             'bbsTitle' => 'ThreadForge',
             'homePageUrl' => '/',
+            'uploaderHomePageUrl' => '../',
             'manualTitle' => 'ThreadForge',
             'manualBody' => defaultManualBody(),
             'tweetEnabled' => false,

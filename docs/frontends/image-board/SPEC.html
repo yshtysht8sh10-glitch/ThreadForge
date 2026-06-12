@@ -106,8 +106,8 @@
 <pre><code class="language-text">server/runtime/image-board/database.sqlite
 server/runtime/image-board/storage/data/</code></pre>
 <p>リリースZip配置先:</p>
-<pre><code class="language-text">database.sqlite
-storage/data/</code></pre>
+<pre><code class="language-text">11_image_board/database.sqlite
+11_image_board/storage/data/</code></pre>
 <h2 id="現在の状態">現在の状態</h2>
 <p>本番相当の成熟フロントです。新しい4フロントは、この <code>image-board</code> と共通バックエンドを共有しつつ、DBとストレージは独立させます。</p></article>
       <article class="docs-article" data-language-panel="en"><h1 id="threadforge-current-specification">ThreadForge Current Specification</h1>
@@ -285,7 +285,7 @@ storage/data/</code></pre>
 <li>Backups should be made through the admin export feature.</li>
 <li>Replacing an existing post image archives the previous image file instead of deleting it immediately.</li>
 <li>Local archive import copies source images into storage and skips already imported posts/replies by matching name, content, and timestamp. It is run locally, not through the web admin screen.</li>
-<li>Release ZIPs are created with <code>tools/build_release.ps1</code>. The archive is arranged for direct upload to a public web directory with <code>index.html</code>, <code>assets/</code>, <code>api.php</code>, <code>db.php</code>, <code>cron.php</code>, and <code>storage/data/</code> at the top level. Runtime <code>database.sqlite</code>, uploaded images, and operator scripts are not included.</li>
+<li>Release ZIPs are created with <code>tools/build_release.ps1</code>. The image-board archive contains the <code>11_image_board/</code> deployment directory, while file-uploader uses <code>12_file_uploader/</code>. Runtime <code>database.sqlite</code>, uploaded images, and operator scripts are not included.</li>
 <li>Intentional clean initialization is done by stopping the server, deleting <code>server/runtime/&lt;frontend-id&gt;/database.sqlite</code>, and deleting files under <code>server/runtime/&lt;frontend-id&gt;/storage/data/</code>. See <code>docs/DB.md</code>.</li>
 </ul>
 <h2 id="deletion-rules">Deletion Rules</h2>

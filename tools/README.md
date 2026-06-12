@@ -12,12 +12,12 @@ Create a distribution archive:
 powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
 ```
 
-The archive is written to `release/threadforge-<version>.zip`.
+The archive is written to `release/threadforge-<frontend-id>-<version>.zip`.
 
-The release ZIP is arranged for simple rental-server deployment. Upload the extracted `threadforge-<version>` directory contents to the public web directory.
+The release ZIP is arranged for simple rental-server deployment. Upload the extracted directory to `/DotoEita/`.
 
 ```text
-threadforge-<version>/
+11_image_board/ or 12_file_uploader/
   index.html
   assets/
   api.php

@@ -5,6 +5,7 @@ Standalone file uploader frontend.
 ## Role
 
 - Upload files with comments and delete keys.
+- Show a HOME link whose destination is configurable from the administrator settings.
 - Show upload rows with file metadata and paging.
 - Reuse the common ThreadForge backend where possible.
 - Share frontend primitives from `../shared`.
@@ -55,4 +56,4 @@ npm run test:file-uploader
 npm run release:file-uploader
 ```
 
-The standalone ZIP is written to `release/threadforge-file-uploader-1.0.0.zip`.
+The standalone ZIP is written to `release/threadforge-file-uploader-1.0.0.zip`. It contains the deployment directory `12_file_uploader/`.

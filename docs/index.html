@@ -106,7 +106,7 @@
 <p>リリースZip作成やローカルアーカイブ取り込み用のスクリプトは <code>tools/</code> にあります。</p>
 <pre><code class="language-powershell">npm run release:image-board
 npm run release:file-uploader</code></pre>
-<p>リリースZipは <code>release/threadforge-&lt;frontend-id&gt;-&lt;version&gt;.zip</code> に作られます。開発環境では <code>server/runtime/&lt;frontend-id&gt;/...</code>、配置後は <code>database.sqlite</code> と <code>storage/data/</code> を使います。</p></article>
+<p>リリースZipは <code>release/threadforge-&lt;frontend-id&gt;-&lt;version&gt;.zip</code> に作られます。image-board のZipには <code>11_image_board/</code>、file-uploader のZipには <code>12_file_uploader/</code> が入り、<code>/DotoEita/</code> 直下へ配置できます。開発環境では <code>server/runtime/&lt;frontend-id&gt;/...</code>、配置後は各公開用ディレクトリ内の <code>database.sqlite</code> と <code>storage/data/</code> を使います。</p></article>
       <article class="docs-article" data-language-panel="en"><h1 id="threadforge-docs">ThreadForge Docs</h1>
 <p>The human-facing documentation is generated as bilingual HTML. Open <a href="index.html"><code>index.html</code></a> and switch Japanese/English on the page.</p>
 <p>The Markdown files remain the maintainable source. Regenerate HTML after editing them:</p>
@@ -149,7 +149,7 @@ npm run release:file-uploader</code></pre>
 <p>Create a release ZIP:</p>
 <pre><code class="language-powershell">npm run release:image-board
 npm run release:file-uploader</code></pre>
-<p>Release ZIPs are written to <code>release/threadforge-&lt;frontend-id&gt;-&lt;version&gt;.zip</code>. Their contents are arranged for upload to a public web directory.</p>
+<p>Release ZIPs are written to <code>release/threadforge-&lt;frontend-id&gt;-&lt;version&gt;.zip</code>. The image-board archive contains <code>11_image_board/</code>, and the file-uploader archive contains <code>12_file_uploader/</code>, ready for upload under <code>/DotoEita/</code>.</p>
 <p>For a GitHub release, update <code>VERSION</code> and the changelog, generate and verify the ZIP, then create the matching <code>v&lt;version&gt;</code> tag and attach the ZIP to the GitHub Release.</p>
 <p>Import local archive logs:</p>
 <pre><code class="language-powershell">tools\import_local_archive.bat legacy\data</code></pre>

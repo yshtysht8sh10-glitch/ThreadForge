@@ -30,10 +30,10 @@ powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
 出力先:
 
 ```text
-release/threadforge-<version>.zip
+release/threadforge-<frontend-id>-<version>.zip
 ```
 
-Zip を展開し、`threadforge-<version>` ディレクトリの中身をレンタルサーバーの公開ディレクトリへアップロードします。
+Zip を展開し、image-board の `11_image_board/` または file-uploader の `12_file_uploader/` をレンタルサーバーの `/DotoEita/` へアップロードします。
 
 配布 Zip には、ビルド済みフロントエンド、PHP バックエンド、ドキュメントを含めます。DB、画像、ログ、ローカル運用ツール、旧ログデータは含めません。
 

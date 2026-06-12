@@ -185,7 +185,7 @@ Public UI reads a safe subset of settings through `?action=publicSettings`:
 - Backups should be made through the admin export feature.
 - Replacing an existing post image archives the previous image file instead of deleting it immediately.
 - Local archive import copies source images into storage and skips already imported posts/replies by matching name, content, and timestamp. It is run locally, not through the web admin screen.
-- Release ZIPs are created with `tools/build_release.ps1`. The archive is arranged for direct upload to a public web directory with `index.html`, `assets/`, `api.php`, `db.php`, `cron.php`, and `storage/data/` at the top level. Runtime `database.sqlite`, uploaded images, and operator scripts are not included.
+- Release ZIPs are created with `tools/build_release.ps1`. The image-board archive contains the `11_image_board/` deployment directory, while file-uploader uses `12_file_uploader/`. Runtime `database.sqlite`, uploaded images, and operator scripts are not included.
 - Intentional clean initialization is done by stopping the server, deleting `server/runtime/<frontend-id>/database.sqlite`, and deleting files under `server/runtime/<frontend-id>/storage/data/`. See `docs/DB.md`.
 
 ## Deletion Rules

@@ -12,6 +12,7 @@ ThreadForge follows semantic versioning while it is being prepared for public us
 - Added frontend and HTTP integration regression tests for uploader validation and lifecycle operations
 - Added frontend-selectable release packaging and the `threadforge-file-uploader-1.0.0.zip` artifact
 - Rebuilt the documentation as colored bilingual HTML with an in-page Japanese/English switch
+- Added a HOME link to file-uploader with an administrator-configurable destination
 
 ## 0.9.7 - 2026-06-07
 

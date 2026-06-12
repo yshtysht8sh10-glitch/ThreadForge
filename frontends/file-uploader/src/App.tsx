@@ -23,6 +23,7 @@ type ApiUploaderFile = {
 
 export type UploaderSettings = {
   title: string;
+  homePageUrl: string;
   allowedExtensions: string;
   maxUploadKb: number;
   design: UploaderDesign;
@@ -66,6 +67,7 @@ const defaultDesign: UploaderDesign = {
 
 const defaultSettings: UploaderSettings = {
   title: 'ファイルアップローダー',
+  homePageUrl: '../',
   allowedExtensions: 'gif bmp png jpg jpeg zip txt avi swf',
   maxUploadKb: 20000,
   design: defaultDesign,
@@ -387,6 +389,7 @@ function App() {
         settings: JSON.stringify({
           config: {
             uploaderTitle: settingsDraft.title,
+            uploaderHomePageUrl: settingsDraft.homePageUrl,
             uploaderAllowedExtensions: settingsDraft.allowedExtensions,
             uploaderMaxUploadKb: settingsDraft.maxUploadKb,
           },
@@ -426,6 +429,7 @@ function App() {
         version: 1,
         settings: {
           title: settingsDraft.title,
+          homePageUrl: settingsDraft.homePageUrl,
           allowedExtensions: settingsDraft.allowedExtensions,
           maxUploadKb: settingsDraft.maxUploadKb,
         },
@@ -468,6 +472,7 @@ function App() {
         const next = normalizeSettings({
           ...settingsDraft,
           title: imported.title,
+          homePageUrl: imported.homePageUrl,
           allowedExtensions: imported.allowedExtensions,
           maxUploadKb: imported.maxUploadKb,
         });
@@ -527,7 +532,10 @@ function App() {
   return (
     <div className="uploader-page" id="top" style={designStyle(settings.design)}>
       <section className="uploader-shell">
-        <div className="uploader-title">{renderTitle(settings.title, () => setShowAdmin(true))}</div>
+        <div className="uploader-title">
+          <span className="uploader-title-text">{renderTitle(settings.title, () => setShowAdmin(true))}</span>
+          <a className="uploader-home-link" href={homeHref(settings.homePageUrl)}>HOME</a>
+        </div>
         <div className="uploader-content">
           <form className="upload-form" id="post" onSubmit={submit}>
             <label>
@@ -658,6 +666,7 @@ function App() {
                   <form className="admin-panel admin-settings-form" onSubmit={saveSettings}>
                     <h3>設定</h3>
                     <label>アップローダータイトル名<input value={settingsDraft.title} onChange={(event) => setSettingsDraft({ ...settingsDraft, title: event.target.value })} /></label>
+                    <label>HOMEリンク先<input value={settingsDraft.homePageUrl} placeholder="../ または https://example.com/" onChange={(event) => setSettingsDraft({ ...settingsDraft, homePageUrl: event.target.value })} /></label>
                     <label>許可する拡張子<input value={settingsDraft.allowedExtensions} onChange={(event) => setSettingsDraft({ ...settingsDraft, allowedExtensions: event.target.value })} /></label>
                     <label>許可するファイルサイズ（KB）<input type="number" min="1" value={settingsDraft.maxUploadKb} onChange={(event) => setSettingsDraft({ ...settingsDraft, maxUploadKb: Number(event.target.value) || 1 })} /></label>
                     <div className="admin-import-export">
@@ -903,12 +912,24 @@ const designFields: Array<[keyof UploaderDesign, string]> = [
 export function normalizeSettings(value: Partial<UploaderSettings>): UploaderSettings {
   return {
     title: value.title || defaultSettings.title,
+    homePageUrl: typeof value.homePageUrl === 'string' && value.homePageUrl.trim() !== ''
+      ? value.homePageUrl.trim()
+      : defaultSettings.homePageUrl,
     allowedExtensions: typeof value.allowedExtensions === 'string'
       ? value.allowedExtensions
       : defaultSettings.allowedExtensions,
     maxUploadKb: Number(value.maxUploadKb) > 0 ? Number(value.maxUploadKb) : defaultSettings.maxUploadKb,
     design: { ...defaultDesign, ...(value.design || {}) },
   };
+}
+
+export function homeHref(value?: string): string {
+  const raw = (value ?? '').trim();
+  if (raw === '') return '../';
+  if (/^https?:\/\//i.test(raw) || raw.startsWith('/') || raw.startsWith('./') || raw.startsWith('../')) {
+    return raw;
+  }
+  return `https://${raw}`;
 }
 
 export function allowedExtensionList(value: string) {
@@ -975,6 +996,7 @@ async function saveDesignSettings(
       settings: JSON.stringify({
         config: {
           uploaderTitle: currentSettings.title,
+          uploaderHomePageUrl: currentSettings.homePageUrl,
           uploaderAllowedExtensions: currentSettings.allowedExtensions,
           uploaderMaxUploadKb: currentSettings.maxUploadKb,
         },

@@ -17,8 +17,8 @@ server/runtime/image-board/storage/data/
 リリースZip配置先:
 
 ```text
-database.sqlite
-storage/data/
+11_image_board/database.sqlite
+11_image_board/storage/data/
 ```
 
 ## 現在のスキーマ

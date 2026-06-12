@@ -64,10 +64,10 @@ http://127.0.0.1:5173
 
 ## レンタルサーバーへの設置
 
-配布 Zip を展開し、`threadforge-<version>` ディレクトリの中身を公開ディレクトリへアップロードします。
+配布 Zip を展開し、含まれる公開用ディレクトリを `/DotoEita/` へアップロードします。
 
 ```text
-threadforge-<version>/
+11_image_board/
   index.html
   assets/
   api.php
@@ -76,6 +76,8 @@ threadforge-<version>/
   storage/data/
   docs/
 ```
+
+image-board の Zip には `11_image_board/`、file-uploader の Zip には `12_file_uploader/` が入ります。
 
 `storage/data/` は画像保存先です。必要に応じてレンタルサーバー側で書き込み権限を付けてください。
 
