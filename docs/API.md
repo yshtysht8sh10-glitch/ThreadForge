@@ -4,6 +4,18 @@
 
 The current API is implemented in `server/api.php`. It is not REST-shaped; requests are routed by the `action` parameter.
 
+## Materials Library Actions
+
+- `materialsSettings`: public title, description, HOME, manual, grouping order, upload limits, design, tags, and terms.
+- `listMaterialItems` / `getMaterialItem`: active material catalog data.
+- `createMaterialItem`: multipart archive upload with optional preview image and terms JSON.
+- `updateMaterialItem` / `deleteMaterialItem`: logged-in ownership or post-password operation.
+- `updateMaterialProfile`: logged-in author name, icon, and default terms.
+- `listDeletedMaterialItems`, `adminDeleteMaterialItems`, `restoreMaterialItems`, `purgeMaterialItems`: admin lifecycle operations.
+- `saveMaterialCatalog`: admin tag and usage-term maintenance.
+- `assignMaterialAuthor`: admin user-ID assignment for imported or guest materials.
+- `materialAnalytics`: admin item, author, tag, storage, and monthly totals.
+
 ## Common Behavior
 
 - Response format: JSON unless otherwise noted

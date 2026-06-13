@@ -4,6 +4,15 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## materials-library 1.0.0 - 2026-06-13
+
+- Rebuilt Materials Library as an archive-first catalog grouped by tag and author
+- Added archive and preview-image posting with administrator-managed yes/no usage terms
+- Added edit, soft delete, admin bulk delete, restore, permanent purge, analytics, settings, and design screens
+- Added local login, parent-site SSO, material author profiles, icons, and default term answers
+- Kept logged-in author IDs separate from same-name guest/imported authors and added admin author-ID assignment
+- Added isolated SQLite tables, storage, full backup support, HTTP integration tests, and `15_materials_library` release packaging
+
 ## file-uploader 1.0.0 - 2026-06-12
 
 - Completed the standalone file upload, list, URL copy, delete-key deletion, and responsive mobile flows

@@ -66,48 +66,82 @@
           <button type="button" data-language-button="en">English</button>
         </div>
       </header>
-      <article class="docs-article" data-language-panel="ja"><h1 id="materials-library-仕様">materials-library 仕様</h1>
-<p><a href="../../SPEC.html">仕様索引へ戻る</a></p>
-<h2 id="目的">目的</h2>
-<p><code>materials-library</code> は制作素材提供所用のフロントです。</p>
-<p>legacy の黒背景、淡い黄色文字、素材カードと利用条件表の雰囲気を参考にします。</p>
-<h2 id="予定機能">予定機能</h2>
+      <article class="docs-article" data-language-panel="ja"><h1 id="素材庫-仕様">素材庫 仕様</h1>
+<h2 id="コンセプト">コンセプト</h2>
+<p>素材庫は保管と発見を目的としたファイル投稿システムです。圧縮ファイルが主役で、画像は内容を説明する位置付けです。Image Boardの投稿順・リアクション中心の設計とは異なり、用途タグと作者で整理します。</p>
+<h2 id="画面">画面</h2>
 <ul>
-<li>画像、エフェクト、音声、アーカイブ素材の閲覧とダウンロード</li>
-<li>作者/説明文と利用条件フラグの表示</li>
-<li>プレビュー画像の表示</li>
-<li>共通バックエンドによる編集/管理</li>
-<li>他フロントから独立したDBとストレージ</li>
+<li>HOME: 管理画面で設定したURLを開きます。</li>
+<li>一覧: 目次と、タグ・作者で整理した素材を表示します。</li>
+<li>投稿: 圧縮ファイル、説明画像、名称、備考、作者名、タグ、利用規約を登録します。</li>
+<li>削除 / 編集: 1件を選び、所有ユーザーまたは投稿パスワードで操作します。</li>
+<li>取説: 管理画面で設定した文章を表示します。</li>
+<li>ログイン: ローカルログイン、SSO、素材庫用プロフィールを扱います。</li>
+<li>管理画面: メニュー右端のリンクに見えない <code>■</code> からも開きます。</li>
 </ul>
-<h2 id="見た目">見た目</h2>
+<h2 id="作者の判別">作者の判別</h2>
 <ul>
-<li>黒背景</li>
-<li>淡い黄色文字とセクション見出し</li>
-<li>利用条件表付きの素材カード</li>
+<li>ログイン投稿はユーザーIDでまとめ、作者名は表示ラベルとして扱います。</li>
+<li>IDのない既存素材・ゲスト投稿は作者名でまとめます。</li>
+<li>同じ作者名でも、IDありとIDなしは別作者として表示します。</li>
+<li>管理者は既存素材に作者IDを割り当て、またはIDなしへ戻せます。</li>
 </ul>
-<h2 id="現在の状態">現在の状態</h2>
-<p>React/Vite の初期フロントがあります。素材専用のデータ構造は設計中です。</p></article>
-      <article class="docs-article" data-language-panel="en"><h1 id="materials-library-spec">materials-library Spec</h1>
-<p><a href="../../SPEC.html">Back to specification index</a></p>
-<h2 id="purpose">Purpose</h2>
-<p><code>materials-library</code> is the production material library frontend.</p>
-<p>It is based on the legacy black/yellow materials page with material cards and usage-rule tables.</p>
-<h2 id="planned-behavior">Planned Behavior</h2>
+<h2 id="管理">管理</h2>
 <ul>
-<li>Browse and download image, effect, sound, and archive materials.</li>
-<li>Display author/description and usage flags per material.</li>
-<li>Support preview images where available.</li>
-<li>Keep moderation and editing compatible with the common backend.</li>
-<li>Keep runtime DB and storage isolated from every other frontend.</li>
+<li>一括論理削除、復元、完全消去</li>
+<li>作者ID割当</li>
+<li>DBと素材ファイルのフルバックアップ・復元</li>
+<li>素材数、作者数、タグ数、容量、月別登録数</li>
+<li>タイトル、説明、HOME、取説、整理順、上限、拡張子</li>
+<li>タグと利用規約の追加・編集・削除</li>
+<li>配色設定</li>
+<li>管理パスワード設定・変更</li>
 </ul>
-<h2 id="visual-direction">Visual Direction</h2>
+<h2 id="配布">配布</h2>
+<p>バージョン1.0.0は <code>15_materials_library/</code> に配置します。リリースZipには実運用のDBとアップロード済みファイルを含めません。</p></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="materials-library-specification">Materials Library Specification</h1>
+<h2 id="concept">Concept</h2>
+<p>Materials Library is a file-posting application optimized for preservation and discovery. The downloadable archive is the primary asset; preview images explain the archive. Unlike Image Board, entries are grouped by purpose/tag and author instead of social posting order.</p>
+<h2 id="navigation">Navigation</h2>
 <ul>
-<li>Black background.</li>
-<li>Pale yellow text and section headers.</li>
-<li>Material cards with compact usage tables.</li>
+<li>HOME: opens the administrator-configured URL.</li>
+<li>List: grouped material catalog and table of contents.</li>
+<li>Post: registers an archive, preview image, metadata, and terms answers.</li>
+<li>Delete / Edit: operates on one selected material using ownership or a post password.</li>
+<li>Manual: displays administrator-configured text.</li>
+<li>Login: local account, SSO, and material-author preferences.</li>
+<li>Admin: also opens from the unlabelled square at the right edge of the menu.</li>
 </ul>
-<h2 id="current-status">Current Status</h2>
-<p>Initial React/Vite frontend exists. Material-specific data behavior is still being designed.</p></article>
+<h2 id="catalog-and-identity">Catalog And Identity</h2>
+<ul>
+<li>The administrator chooses <code>tag -&gt; author</code> or <code>author -&gt; tag</code>.</li>
+<li>Logged-in entries group by immutable user ID. The author name is a display label.</li>
+<li>Guest and imported entries group by author name because they have no user ID.</li>
+<li>A logged-in author and a guest author with the same displayed name remain separate.</li>
+<li>Administrators can assign or remove a user ID on an existing material.</li>
+</ul>
+<h2 id="posting">Posting</h2>
+<p>Required fields are material name, author name, tag, archive, and post password. A preview image and notes are optional. Every configured usage term is answered with yes/no and stored with the item.</p>
+<p>Logged-in users receive defaults from their material profile:</p>
+<ul>
+<li>author name</li>
+<li>icon</li>
+<li>yes/no answers for each current usage term</li>
+</ul>
+<h2 id="administration">Administration</h2>
+<ul>
+<li>Passwordless bulk soft delete after admin authentication</li>
+<li>Restore and permanent purge</li>
+<li>Author ID assignment</li>
+<li>Full DB/storage backup and restore</li>
+<li>Material count, author count, tag count, storage size, and monthly analytics</li>
+<li>Title, description, HOME, manual, grouping order, upload limits, and extensions</li>
+<li>Tag and usage-term add/edit/delete</li>
+<li>Color design settings</li>
+<li>Admin password initialization and change</li>
+</ul>
+<h2 id="release">Release</h2>
+<p>Version 1.0.0 deploys under <code>15_materials_library/</code>. Runtime DB and uploaded files are not bundled in the release Zip.</p></article>
       <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
     </main>
   </div>

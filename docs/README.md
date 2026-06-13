@@ -53,9 +53,10 @@ Create a release ZIP:
 ```powershell
 npm run release:image-board
 npm run release:file-uploader
+npm run release:materials-library
 ```
 
-Release ZIPs are written to `release/threadforge-<frontend-id>-<version>.zip`. The image-board archive contains `11_image_board/`, and the file-uploader archive contains `12_file_uploader/`, ready for upload under `/DotoEita/`.
+Release ZIPs are written to `release/threadforge-<frontend-id>-<version>.zip`. Image Board uses `11_image_board/`, File Uploader uses `12_file_uploader/`, and Materials Library uses `15_materials_library/`.
 
 For a GitHub release, update `VERSION` and the changelog, generate and verify the ZIP, then create the matching `v<version>` tag and attach the ZIP to the GitHub Release.
 

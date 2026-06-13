@@ -1,0 +1,148 @@
+export type MaterialTag = { id: number; name: string; sortOrder: number };
+export type MaterialTerm = { id: number; label: string; description: string; sortOrder: number };
+export type TermAnswer = MaterialTerm & { accepted: boolean };
+export type MaterialDesign = {
+  pageBackgroundColor: string;
+  pageTextColor: string;
+  panelBackgroundColor: string;
+  panelBorderColor: string;
+  headingBackgroundColor: string;
+  accentColor: string;
+  buttonBackgroundColor: string;
+  buttonTextColor: string;
+};
+export type MaterialSettings = {
+  title: string;
+  description: string;
+  homePageUrl: string;
+  manualBody: string;
+  groupParent: 'tag' | 'author';
+  maxArchiveKb: number;
+  maxImageKb: number;
+  allowedArchiveExtensions: string;
+  ssoEnabled: boolean;
+  design: MaterialDesign;
+};
+export type MaterialItem = {
+  id: number;
+  userId: number | null;
+  authorKey: string;
+  authorName: string;
+  authorIcon: string | null;
+  name: string;
+  notes: string;
+  tagId: number;
+  tagName: string;
+  archiveUrl: string;
+  archiveOriginalName: string;
+  archiveSizeBytes: number;
+  imageUrl: string | null;
+  imageOriginalName: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  terms: TermAnswer[];
+};
+export type User = {
+  id: number;
+  login_id: string;
+  display_name: string;
+  post_password: string;
+  home_url: string | null;
+  icon_path: string | null;
+  materials_author_name: string | null;
+  materials_default_terms: Record<string, boolean>;
+};
+
+export const apiBase = () => import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api.php';
+
+async function request<T>(action: string, values: Record<string, string> = {}, method: 'GET' | 'POST' = 'GET', body?: FormData): Promise<T> {
+  let response: Response;
+  if (method === 'GET') {
+    const url = new URL(apiBase(), window.location.href);
+    url.searchParams.set('action', action);
+    Object.entries(values).forEach(([key, value]) => url.searchParams.set(key, value));
+    response = await fetch(url);
+  } else {
+    const payload = body ?? new FormData();
+    payload.set('action', action);
+    Object.entries(values).forEach(([key, value]) => payload.set(key, value));
+    response = await fetch(apiBase(), { method: 'POST', body: payload });
+  }
+  const data = await response.json();
+  if (!response.ok || data.success === false) throw new Error(data.message || 'API request failed.');
+  return data as T;
+}
+
+export const api = {
+  settings: () => request<{ settings: MaterialSettings; tags: MaterialTag[]; terms: MaterialTerm[] }>('materialsSettings'),
+  items: () => request<{ items: MaterialItem[] }>('listMaterialItems'),
+  item: (id: number) => request<{ item: MaterialItem }>('getMaterialItem', { id: String(id) }),
+  create: (body: FormData, token: string) => request<{ message: string }>('createMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
+  update: (body: FormData, token: string) => request<{ message: string }>('updateMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
+  remove: (id: number, password: string, token: string) => request<{ message: string }>('deleteMaterialItem', {
+    id: String(id), password, ...(token ? { auth_token: token } : {}),
+  }, 'POST'),
+  login: (loginId: string, password: string) => request<{ token: string; user: User }>('loginUser', { login_id: loginId, password }, 'POST'),
+  register: (body: FormData) => request<{ token: string; user: User }>('registerUser', {}, 'POST', body),
+  sso: (token: string) => request<{ token: string; user: User }>('ssoLogin', { token }, 'POST'),
+  currentUser: (token: string) => request<{ user: User }>('currentUser', { auth_token: token }),
+  logout: (token: string) => request('logoutUser', { auth_token: token }, 'POST'),
+  updateProfile: (body: FormData, token: string) => request<{ user: User }>('updateMaterialProfile', { auth_token: token }, 'POST', body),
+  adminStatus: () => request<{ adminPasswordConfigured: boolean }>('adminStatus'),
+  getAdmin: (password: string) => request<{ settings: { config: Record<string, unknown>; skin: Record<string, unknown> } }>('getSettings', { admin_password: password }),
+  updateSettings: (password: string, settings: unknown) => request<{ message: string }>('updateSettings', {
+    admin_password: password, settings: JSON.stringify(settings),
+  }, 'POST'),
+  saveCatalog: (password: string, tags: MaterialTag[], terms: MaterialTerm[]) => request<{ message: string }>('saveMaterialCatalog', {
+    admin_password: password, tags: JSON.stringify(tags), terms: JSON.stringify(terms),
+  }, 'POST'),
+  deleted: (password: string) => request<{ items: MaterialItem[] }>('listDeletedMaterialItems', { admin_password: password }),
+  adminDelete: (password: string, ids: number[]) => request<{ message: string }>('adminDeleteMaterialItems', {
+    admin_password: password, ids: ids.join(','),
+  }, 'POST'),
+  restore: (password: string, ids: number[]) => request<{ message: string }>('restoreMaterialItems', {
+    admin_password: password, ids: ids.join(','),
+  }, 'POST'),
+  purge: (password: string, ids: number[]) => request<{ message: string }>('purgeMaterialItems', {
+    admin_password: password, ids: ids.join(','),
+  }, 'POST'),
+  users: (password: string) => request<{ users: Array<{ id: number; login_id: string; display_name: string }> }>('listAdminUsers', { admin_password: password }),
+  assignAuthor: (password: string, id: number, userId: string, authorName: string) => request<{ message: string }>('assignMaterialAuthor', {
+    admin_password: password, id: String(id), user_id: userId, author_name: authorName,
+  }, 'POST'),
+  analytics: (password: string) => request<{ summary: Record<string, string>; months: Array<Record<string, string>> }>('materialAnalytics', { admin_password: password }),
+  changeAdminPassword: (password: string, next: string) => request<{ message: string }>('changeAdminPassword', {
+    admin_password: password, new_admin_password: next, new_admin_password_confirm: next,
+  }, 'POST'),
+  initializeAdminPassword: (next: string) => request<{ message: string }>('initializeAdminPassword', {
+    new_admin_password: next, new_admin_password_confirm: next,
+  }, 'POST'),
+};
+
+export function mediaUrl(path: string | null) {
+  return path ? new URL(path, new URL(apiBase(), window.location.href)).toString() : null;
+}
+
+export function homeHref(value: string) {
+  const trimmed = value.trim();
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith('/') || trimmed.startsWith('.')) return trimmed || './';
+  return trimmed ? `https://${trimmed}` : './';
+}
+
+export function groupMaterials(items: MaterialItem[], parent: 'tag' | 'author') {
+  const outer = new Map<string, { label: string; groups: Map<string, { label: string; items: MaterialItem[] }> }>();
+  items.forEach((item) => {
+    const outerKey = parent === 'tag' ? `tag:${item.tagId}` : item.authorKey;
+    const outerLabel = parent === 'tag' ? item.tagName : item.authorName;
+    const innerKey = parent === 'tag' ? item.authorKey : `tag:${item.tagId}`;
+    const innerLabel = parent === 'tag' ? item.authorName : item.tagName;
+    if (!outer.has(outerKey)) outer.set(outerKey, { label: outerLabel, groups: new Map() });
+    const group = outer.get(outerKey)!;
+    if (!group.groups.has(innerKey)) group.groups.set(innerKey, { label: innerLabel, items: [] });
+    group.groups.get(innerKey)!.items.push(item);
+  });
+  return [...outer.entries()].map(([key, value]) => ({
+    key, label: value.label, groups: [...value.groups.entries()].map(([innerKey, group]) => ({ key: innerKey, ...group })),
+  }));
+}

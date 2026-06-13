@@ -1,12 +1,13 @@
-# materials-library
+# 素材庫
 
-制作素材提供所用のフロントです。
+圧縮ファイルを主役として、用途タグと作者で整理する配布素材保管庫です。
 
 - [仕様](SPEC.md)
 - [DB](DB.md)
-- フロント実装: `frontends/materials-library/`
+- フロントエンド: `frontends/materials-library/`
+- 配布先: `15_materials_library/`
 
-開発環境ランタイム:
+開発時のランタイム:
 
 ```text
 server/runtime/materials-library/database.sqlite

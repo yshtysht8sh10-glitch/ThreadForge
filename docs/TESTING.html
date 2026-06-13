@@ -220,10 +220,15 @@ npm test</code></pre>
 <li>Admin design live preview and reset to persisted values</li>
 <li>file-uploader extension/size validation, settings normalization, analytics aggregation, and selection helpers</li>
 <li>file-uploader HTTP upload, list, delete-key rejection/acceptance, administrator restore, bulk delete, and purge</li>
+<li>materials-library grouping helpers and archive-size/upload-extension formatting</li>
+<li>materials-library HTTP posting, ID/guest author separation, soft delete, restore, and permanent purge</li>
 </ul>
 <p>Run:</p>
 <pre><code class="language-powershell">cd server
 .\.php\php.exe .\vendor\bin\phpunit</code></pre>
+<p>Focused materials-library checks:</p>
+<pre><code class="language-powershell">npm run test:materials-library
+server\.php\php.exe server\vendor\bin\phpunit server\tests\MaterialsApiHttpIntegrationTest.php</code></pre>
 <h2 id="laravel-skeleton">Laravel Skeleton</h2>
 <p>Additional Laravel-side feature tests are scaffolded under:</p>
 <ul>

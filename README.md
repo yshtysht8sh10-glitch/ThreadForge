@@ -13,7 +13,7 @@ The current image-board release is `0.9.7`. The standalone file-uploader release
 - `frontends/file-uploader/`: file uploader frontend
 - `frontends/guide-posts/`: MUGEN and dot-art guide posting frontend
 - `frontends/proxy-release/`: proxy release frontend
-- `frontends/materials-library/`: materials library frontend
+- `frontends/materials-library/`: production archive-first materials library
 - `server/`: PHP API, SQLite storage, PHPUnit tests
 - `docs/index.html`: bilingual Japanese/English documentation
 - `docs/`: Markdown sources, generated HTML, architecture, API, DB, migration, and testing notes
@@ -126,6 +126,7 @@ Extract the release ZIP and upload the included deployment directory to `/DotoEi
 ```
 
 The image-board ZIP contains `11_image_board/`. The file-uploader ZIP contains `12_file_uploader/`.
+The materials-library ZIP contains `15_materials_library/`.
 
 The frontend calls `./api.php` on the same site. Runtime DB files and uploaded images are intentionally excluded from the ZIP. On first access, the SQLite DB is created automatically if PHP can write to the deployed directory.
 
@@ -137,7 +138,7 @@ Fresh installations start with the standard dark board design, gdgd/special post
 
 Release packaging and maintenance scripts live in `tools/`. They are not included in the public release ZIP.
 
-- `build_release.ps1`: builds `release/threadforge-<frontend-id>-<version>.zip` with the correct deployment directory (`11_image_board` or `12_file_uploader`)
+- `build_release.ps1`: builds `release/threadforge-<frontend-id>-<version>.zip` with the frontend-specific deployment directory
 - `import_threadforge_archives.*`: imports BBSNote/local archive folders
 - `repair_imported_images.*`: reattaches correct images from legacy logs without re-importing posts
 - `update_imported_recent.*`: updates the newest imported archive entries and can insert unmatched latest posts with `--add` / `add=1`

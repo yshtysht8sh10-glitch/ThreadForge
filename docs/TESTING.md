@@ -79,12 +79,21 @@ Covered behavior:
 - Admin design live preview and reset to persisted values
 - file-uploader extension/size validation, settings normalization, analytics aggregation, and selection helpers
 - file-uploader HTTP upload, list, delete-key rejection/acceptance, administrator restore, bulk delete, and purge
+- materials-library grouping helpers and archive-size/upload-extension formatting
+- materials-library HTTP posting, ID/guest author separation, soft delete, restore, and permanent purge
 
 Run:
 
 ```powershell
 cd server
 .\.php\php.exe .\vendor\bin\phpunit
+```
+
+Focused materials-library checks:
+
+```powershell
+npm run test:materials-library
+server\.php\php.exe server\vendor\bin\phpunit server\tests\MaterialsApiHttpIntegrationTest.php
 ```
 
 ## Laravel Skeleton

@@ -25,6 +25,7 @@ $packageName = "threadforge-$FrontendId-$Version"
 $deployDirectory = switch ($FrontendId) {
     'image-board' { '11_image_board' }
     'file-uploader' { '12_file_uploader' }
+    'materials-library' { '15_materials_library' }
     default { $FrontendId.Replace('-', '_') }
 }
 $releaseDir = Join-Path $repoRoot 'release'

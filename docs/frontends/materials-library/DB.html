@@ -66,46 +66,45 @@
           <button type="button" data-language-button="en">English</button>
         </div>
       </header>
-      <article class="docs-article" data-language-panel="ja"><h1 id="materials-library-db">materials-library DB</h1>
-<p><a href="../../DB.html">DB索引へ戻る</a></p>
-<p>フロントID: <code>materials-library</code></p>
-<h2 id="ランタイムファイル">ランタイムファイル</h2>
-<p>開発環境:</p>
+      <article class="docs-article" data-language-panel="ja"><h1 id="素材庫-db">素材庫 DB</h1>
+<p>フロントエンドIDは <code>materials-library</code> です。</p>
+<h2 id="保存先">保存先</h2>
+<p>開発時:</p>
 <pre><code class="language-text">server/runtime/materials-library/database.sqlite
 server/runtime/materials-library/storage/data/</code></pre>
-<p>リリースZip配置先:</p>
-<pre><code class="language-text">database.sqlite
-storage/data/</code></pre>
-<h2 id="現在のスキーマ">現在のスキーマ</h2>
-<p>現時点では <code>server/db.php</code> が初期化する共通 ThreadForge SQLite スキーマを使います。</p>
-<p>想定データ:</p>
+<p>配布版:</p>
+<pre><code class="language-text">15_materials_library/database.sqlite
+15_materials_library/storage/data/</code></pre>
+<h2 id="テーブル">テーブル</h2>
 <ul>
-<li>親投稿を素材または素材グループとして扱う</li>
-<li>ファイルとプレビュー画像はこのフロント専用ストレージに保存する</li>
-<li>必要になれば利用条件/ライセンス用フィールドを追加する</li>
+<li><code>material_items</code>: 素材・画像・作者・タグ・パスワード・論理削除状態</li>
+<li><code>material_tags</code>: 管理者が編集する用途タグ</li>
+<li><code>material_terms</code>: 管理者が編集する利用規約</li>
+<li><code>material_item_terms</code>: 各素材の規約ごとの○×</li>
+<li><code>users</code>: 共通ユーザー情報と素材庫用作者名・規約初期値</li>
 </ul>
-<h2 id="分離ルール">分離ルール</h2>
-<p><code>materials-library</code> は他フロントのDBやストレージを読み書きしません。</p></article>
-      <article class="docs-article" data-language-panel="en"><h1 id="materials-library-db">materials-library DB</h1>
-<p><a href="../../DB.html">Back to DB index</a></p>
-<p>Frontend id: <code>materials-library</code></p>
-<h2 id="runtime-files">Runtime Files</h2>
-<p>Development:</p>
+<p><code>user_id</code> がある素材はID単位、ない素材は作者名単位でまとめます。同名でもIDあり・なしは統合しません。</p>
+<p>差し替え前のファイルは履歴名で保持します。論理削除ではファイルを残し、管理者の完全消去で削除します。フルバックアップZipにはSQLite DBと <code>storage/data/</code> の全ファイルを含めます。</p></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="materials-library-database">Materials Library Database</h1>
+<p>Frontend ID: <code>materials-library</code></p>
+<h2 id="runtime">Runtime</h2>
 <pre><code class="language-text">server/runtime/materials-library/database.sqlite
 server/runtime/materials-library/storage/data/</code></pre>
-<p>Release ZIP deployment:</p>
-<pre><code class="language-text">database.sqlite
-storage/data/</code></pre>
-<h2 id="current-schema">Current Schema</h2>
-<p>This frontend currently uses the common ThreadForge SQLite schema initialized by <code>server/db.php</code>.</p>
-<p>The expected data shape is material-card oriented:</p>
+<p>Packaged deployment:</p>
+<pre><code class="language-text">15_materials_library/database.sqlite
+15_materials_library/storage/data/</code></pre>
+<h2 id="tables">Tables</h2>
 <ul>
-<li>each top-level post represents a downloadable material or material group</li>
-<li>uploaded files and preview images are stored under this frontend's storage</li>
-<li>future schema may add usage flags/license fields if the common post/settings data is not enough</li>
+<li><code>material_items</code>: archive/image paths, metadata, owner user ID, password hash, timestamps, and soft-delete state.</li>
+<li><code>material_tags</code>: administrator-managed purpose categories and ordering.</li>
+<li><code>material_terms</code>: administrator-managed usage terms and descriptions.</li>
+<li><code>material_item_terms</code>: yes/no answer snapshot for each item and term.</li>
+<li><code>users</code>: shared login records plus <code>materials_author_name</code> and JSON <code>materials_default_terms</code>.</li>
 </ul>
-<h2 id="isolation-rule">Isolation Rule</h2>
-<p><code>materials-library</code> must not read or write another frontend's DB or storage directory.</p></article>
+<p><code>material_items.user_id</code> is nullable. Non-null values define author identity by user ID. Null values define author identity by <code>author_name</code>; therefore an ID author and a guest author with the same name do not merge.</p>
+<h2 id="files">Files</h2>
+<p>Archives use <code>material-&lt;id&gt;-archive.&lt;ext&gt;</code>. Preview images use <code>material-&lt;id&gt;-image.&lt;ext&gt;</code>. Replacements archive the previous file with a timestamp. Soft deletion retains all files; permanent purge removes them.</p>
+<p>Full backup Zip includes <code>database.sqlite</code> and every file under <code>storage/data/</code>.</p></article>
       <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
     </main>
   </div>

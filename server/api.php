@@ -79,6 +79,48 @@ function handleApiRequest(): void
         case 'purgeUploaderFiles':
             purgeUploaderFiles($pdo);
             break;
+        case 'materialsSettings':
+            materialsSettings($pdo);
+            break;
+        case 'listMaterialItems':
+            listMaterialItems($pdo);
+            break;
+        case 'getMaterialItem':
+            getMaterialItem($pdo);
+            break;
+        case 'createMaterialItem':
+            createMaterialItem($pdo);
+            break;
+        case 'updateMaterialItem':
+            updateMaterialItem($pdo);
+            break;
+        case 'deleteMaterialItem':
+            deleteMaterialItem($pdo);
+            break;
+        case 'listDeletedMaterialItems':
+            listDeletedMaterialItems($pdo);
+            break;
+        case 'adminDeleteMaterialItems':
+            adminDeleteMaterialItems($pdo);
+            break;
+        case 'restoreMaterialItems':
+            restoreMaterialItems($pdo);
+            break;
+        case 'purgeMaterialItems':
+            purgeMaterialItems($pdo);
+            break;
+        case 'saveMaterialCatalog':
+            saveMaterialCatalog($pdo);
+            break;
+        case 'assignMaterialAuthor':
+            assignMaterialAuthor($pdo);
+            break;
+        case 'materialAnalytics':
+            materialAnalytics($pdo);
+            break;
+        case 'updateMaterialProfile':
+            updateMaterialProfile($pdo);
+            break;
         case 'adminStatus':
             adminStatus($pdo);
             break;
@@ -3448,6 +3490,8 @@ function addReferencedBackupImages(PDO $pdo, ZipArchive $zip, array &$addedImage
     $queries = [
         'SELECT image_path AS path FROM posts WHERE image_path IS NOT NULL AND image_path <> ""',
         'SELECT icon_path AS path FROM users WHERE icon_path IS NOT NULL AND icon_path <> ""',
+        'SELECT archive_path AS path FROM material_items WHERE archive_path IS NOT NULL AND archive_path <> ""',
+        'SELECT image_path AS path FROM material_items WHERE image_path IS NOT NULL AND image_path <> ""',
     ];
     foreach ($queries as $sql) {
         $stmt = $pdo->query($sql);
@@ -3669,7 +3713,11 @@ function restoreSqliteBackup(string $path): void
     try {
         $test = new PDO('sqlite:' . $tempDb);
         $test->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $requiredTable = FRONTEND_ID === 'file-uploader' ? 'uploader_files' : 'posts';
+        $requiredTable = match (FRONTEND_ID) {
+            'file-uploader' => 'uploader_files',
+            'materials-library' => 'material_items',
+            default => 'posts',
+        };
         $test->query('SELECT COUNT(*) FROM ' . $requiredTable)->fetchColumn();
         $test = null;
     } catch (Throwable) {
@@ -3729,6 +3777,8 @@ function normalizeRestoredSqliteImagePaths(): void
     $targets = [
         ['table' => 'posts', 'column' => 'image_path'],
         ['table' => 'users', 'column' => 'icon_path'],
+        ['table' => 'material_items', 'column' => 'archive_path'],
+        ['table' => 'material_items', 'column' => 'image_path'],
     ];
     foreach ($targets as $target) {
         $table = $target['table'];
@@ -4300,6 +4350,545 @@ function changeAdminPassword(PDO $pdo): void
     jsonResponse(['success' => true, 'message' => '管理パスワードを変更しました。']);
 }
 
+function materialsSettings(PDO $pdo): void
+{
+    $settings = loadSettings($pdo);
+    $config = $settings['config'] ?? [];
+    $skin = $settings['skin'] ?? [];
+    $tags = $pdo->query('SELECT id, name, sort_order FROM material_tags ORDER BY sort_order, id')->fetchAll(PDO::FETCH_ASSOC);
+    $terms = $pdo->query('SELECT id, label, description, sort_order FROM material_terms ORDER BY sort_order, id')->fetchAll(PDO::FETCH_ASSOC);
+    jsonResponse([
+        'success' => true,
+        'settings' => [
+            'title' => (string)($config['materialsTitle'] ?? '■素材庫■'),
+            'description' => (string)($config['materialsDescription'] ?? '制作に役立つ素材を、用途と作者ごとに整理して保管しています。'),
+            'homePageUrl' => (string)($config['materialsHomePageUrl'] ?? '../'),
+            'manualBody' => (string)($config['materialsManualBody'] ?? materialsDefaultManualBody()),
+            'groupParent' => in_array(($config['materialsGroupParent'] ?? 'tag'), ['tag', 'author'], true) ? (string)$config['materialsGroupParent'] : 'tag',
+            'maxArchiveKb' => max(1, (int)($config['materialsMaxArchiveKb'] ?? 102400)),
+            'maxImageKb' => max(1, (int)($config['materialsMaxImageKb'] ?? 10240)),
+            'allowedArchiveExtensions' => (string)($config['materialsAllowedArchiveExtensions'] ?? 'zip 7z rar'),
+            'ssoEnabled' => toBoolFlag($config['ssoEnabled'] ?? false),
+            'design' => [
+                'pageBackgroundColor' => (string)($skin['materialsPageBackgroundColor'] ?? '#050505'),
+                'pageTextColor' => (string)($skin['materialsPageTextColor'] ?? '#f2f2f2'),
+                'panelBackgroundColor' => (string)($skin['materialsPanelBackgroundColor'] ?? '#111820'),
+                'panelBorderColor' => (string)($skin['materialsPanelBorderColor'] ?? '#6c7787'),
+                'headingBackgroundColor' => (string)($skin['materialsHeadingBackgroundColor'] ?? '#59636f'),
+                'accentColor' => (string)($skin['materialsAccentColor'] ?? '#8fb0ff'),
+                'buttonBackgroundColor' => (string)($skin['materialsButtonBackgroundColor'] ?? '#3974ee'),
+                'buttonTextColor' => (string)($skin['materialsButtonTextColor'] ?? '#ffffff'),
+            ],
+        ],
+        'tags' => array_map(static fn(array $row): array => [
+            'id' => (int)$row['id'], 'name' => (string)$row['name'], 'sortOrder' => (int)$row['sort_order'],
+        ], $tags),
+        'terms' => array_map(static fn(array $row): array => [
+            'id' => (int)$row['id'], 'label' => (string)$row['label'],
+            'description' => (string)$row['description'], 'sortOrder' => (int)$row['sort_order'],
+        ], $terms),
+    ]);
+}
+
+function materialsDefaultManualBody(): string
+{
+    return "素材庫では、圧縮ファイルを主役として配布素材を保管します。\n\n"
+        . "投稿時は素材ファイル、説明画像、名称、作者名、タグ、利用規約への回答を登録してください。\n"
+        . "ログイン投稿はユーザーID単位、ゲスト投稿は作者名単位で一覧に整理されます。\n"
+        . "編集・削除には投稿パスワード、または投稿したユーザーでのログインが必要です。";
+}
+
+function listMaterialItems(PDO $pdo): void
+{
+    $stmt = $pdo->query(
+        'SELECT m.*, t.name AS tag_name, u.icon_path AS user_icon_path, u.login_id AS user_login_id
+         FROM material_items m JOIN material_tags t ON t.id = m.tag_id
+         LEFT JOIN users u ON u.id = m.user_id
+         WHERE m.deleted_at IS NULL
+         ORDER BY t.sort_order, t.id, lower(m.author_name), m.name, m.id'
+    );
+    jsonResponse(['success' => true, 'items' => array_map(
+        fn(array $row): array => buildMaterialItem($pdo, $row),
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+    )]);
+}
+
+function getMaterialItem(PDO $pdo): void
+{
+    $id = filter_var($_GET['id'] ?? $_POST['id'] ?? null, FILTER_VALIDATE_INT);
+    $item = $id ? findMaterialItem($pdo, (int)$id, false) : null;
+    if (!$item) {
+        jsonResponse(['success' => false, 'message' => '素材が見つかりません。'], 404);
+    }
+    jsonResponse(['success' => true, 'item' => buildMaterialItem($pdo, $item)]);
+}
+
+function buildMaterialItem(PDO $pdo, array $row): array
+{
+    $termStmt = $pdo->prepare(
+        'SELECT t.id, t.label, t.description, mit.accepted
+         FROM material_item_terms mit JOIN material_terms t ON t.id = mit.term_id
+         WHERE mit.item_id = :item_id ORDER BY t.sort_order, t.id'
+    );
+    $termStmt->execute([':item_id' => (int)$row['id']]);
+    $userId = isset($row['user_id']) ? (int)$row['user_id'] : null;
+    return [
+        'id' => (int)$row['id'],
+        'userId' => $userId,
+        'authorKey' => $userId ? 'user:' . $userId : 'guest:' . (string)$row['author_name'],
+        'authorName' => (string)$row['author_name'],
+        'authorIcon' => publicStoragePath($row['user_icon_path'] ?? null),
+        'name' => (string)$row['name'],
+        'notes' => (string)$row['notes'],
+        'tagId' => (int)$row['tag_id'],
+        'tagName' => (string)$row['tag_name'],
+        'archiveUrl' => publicStoragePath((string)$row['archive_path']),
+        'archiveOriginalName' => (string)$row['archive_original_name'],
+        'archiveSizeBytes' => (int)$row['archive_size_bytes'],
+        'imageUrl' => publicStoragePath($row['image_path'] ?? null),
+        'imageOriginalName' => $row['image_original_name'] ?? null,
+        'createdAt' => (string)$row['created_at'],
+        'updatedAt' => (string)$row['updated_at'],
+        'deletedAt' => $row['deleted_at'] ?? null,
+        'terms' => array_map(static fn(array $term): array => [
+            'id' => (int)$term['id'], 'label' => (string)$term['label'],
+            'description' => (string)$term['description'], 'accepted' => (bool)$term['accepted'],
+        ], $termStmt->fetchAll(PDO::FETCH_ASSOC)),
+    ];
+}
+
+function findMaterialItem(PDO $pdo, int $id, bool $includeDeleted = true): ?array
+{
+    $sql = 'SELECT m.*, t.name AS tag_name, u.icon_path AS user_icon_path, u.login_id AS user_login_id
+            FROM material_items m JOIN material_tags t ON t.id = m.tag_id
+            LEFT JOIN users u ON u.id = m.user_id WHERE m.id = :id';
+    if (!$includeDeleted) {
+        $sql .= ' AND m.deleted_at IS NULL';
+    }
+    $stmt = $pdo->prepare($sql . ' LIMIT 1');
+    $stmt->execute([':id' => $id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    return $row ?: null;
+}
+
+function createMaterialItem(PDO $pdo): void
+{
+    ensureMaterialsFrontend();
+    $user = optionalUser($pdo);
+    $name = normalizeString((string)($_POST['name'] ?? ''));
+    $authorName = normalizeString((string)($_POST['author_name'] ?? ''));
+    $notes = normalizeString((string)($_POST['notes'] ?? ''));
+    $tagId = filter_var($_POST['tag_id'] ?? null, FILTER_VALIDATE_INT);
+    $password = trim((string)($_POST['password'] ?? ($user['post_password'] ?? '')));
+    $archive = $_FILES['archive'] ?? null;
+    $image = $_FILES['image'] ?? null;
+    if ($authorName === '' && $user) {
+        $authorName = normalizeString((string)($user['materials_author_name'] ?? $user['display_name'] ?? ''));
+    }
+    if ($name === '' || $authorName === '' || !$tagId || $password === '') {
+        jsonResponse(['success' => false, 'message' => '名称、作者名、タグ、投稿パスワードは必須です。'], 400);
+    }
+    requireMaterialTag($pdo, (int)$tagId);
+    validateMaterialUpload($pdo, $archive, 'archive');
+    if (is_array($image) && (int)($image['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        validateMaterialUpload($pdo, $image, 'image');
+    }
+    $now = currentTimestamp();
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare(
+            'INSERT INTO material_items
+             (user_id, author_name, name, notes, tag_id, archive_path, archive_original_name, archive_size_bytes,
+              image_path, image_original_name, password_hash, created_at, updated_at)
+             VALUES (:user_id, :author_name, :name, :notes, :tag_id, "", :archive_original_name, :archive_size_bytes,
+              null, null, :password_hash, :created_at, :updated_at)'
+        );
+        $stmt->execute([
+            ':user_id' => $user ? (int)$user['id'] : null,
+            ':author_name' => $authorName, ':name' => $name, ':notes' => $notes, ':tag_id' => (int)$tagId,
+            ':archive_original_name' => basename((string)$archive['name']),
+            ':archive_size_bytes' => (int)$archive['size'],
+            ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            ':created_at' => $now, ':updated_at' => $now,
+        ]);
+        $id = (int)$pdo->lastInsertId();
+        $archivePath = saveMaterialUpload($archive, $id, 'archive');
+        $imagePath = null;
+        $imageName = null;
+        if (is_array($image) && (int)($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            $imagePath = saveMaterialUpload($image, $id, 'image');
+            $imageName = basename((string)$image['name']);
+        }
+        $pdo->prepare('UPDATE material_items SET archive_path = :archive_path, image_path = :image_path, image_original_name = :image_name WHERE id = :id')
+            ->execute([':archive_path' => $archivePath, ':image_path' => $imagePath, ':image_name' => $imageName, ':id' => $id]);
+        replaceMaterialTerms($pdo, $id, materialTermAnswersFromRequest());
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $exception;
+    }
+    jsonResponse(['success' => true, 'message' => '素材を登録しました。']);
+}
+
+function updateMaterialItem(PDO $pdo): void
+{
+    ensureMaterialsFrontend();
+    $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+    $item = $id ? findMaterialItem($pdo, (int)$id, false) : null;
+    if (!$item) {
+        jsonResponse(['success' => false, 'message' => '素材が見つかりません。'], 404);
+    }
+    requireMaterialOwner($pdo, $item);
+    $name = normalizeString((string)($_POST['name'] ?? $item['name']));
+    $authorName = normalizeString((string)($_POST['author_name'] ?? $item['author_name']));
+    $notes = normalizeString((string)($_POST['notes'] ?? $item['notes']));
+    $tagId = filter_var($_POST['tag_id'] ?? $item['tag_id'], FILTER_VALIDATE_INT);
+    if ($name === '' || $authorName === '' || !$tagId) {
+        jsonResponse(['success' => false, 'message' => '名称、作者名、タグは必須です。'], 400);
+    }
+    requireMaterialTag($pdo, (int)$tagId);
+    $archivePath = (string)$item['archive_path'];
+    $archiveName = (string)$item['archive_original_name'];
+    $archiveSize = (int)$item['archive_size_bytes'];
+    $imagePath = $item['image_path'] ?? null;
+    $imageName = $item['image_original_name'] ?? null;
+    if (isset($_FILES['archive']) && (int)($_FILES['archive']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        validateMaterialUpload($pdo, $_FILES['archive'], 'archive');
+        $archivePath = saveMaterialUpload($_FILES['archive'], (int)$id, 'archive');
+        $archiveName = basename((string)$_FILES['archive']['name']);
+        $archiveSize = (int)$_FILES['archive']['size'];
+    }
+    if (isset($_FILES['image']) && (int)($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        validateMaterialUpload($pdo, $_FILES['image'], 'image');
+        $imagePath = saveMaterialUpload($_FILES['image'], (int)$id, 'image');
+        $imageName = basename((string)$_FILES['image']['name']);
+    }
+    $pdo->prepare(
+        'UPDATE material_items SET author_name = :author_name, name = :name, notes = :notes, tag_id = :tag_id,
+         archive_path = :archive_path, archive_original_name = :archive_name, archive_size_bytes = :archive_size,
+         image_path = :image_path, image_original_name = :image_name, updated_at = :updated_at WHERE id = :id'
+    )->execute([
+        ':author_name' => $authorName, ':name' => $name, ':notes' => $notes, ':tag_id' => (int)$tagId,
+        ':archive_path' => $archivePath, ':archive_name' => $archiveName, ':archive_size' => $archiveSize,
+        ':image_path' => $imagePath, ':image_name' => $imageName, ':updated_at' => currentTimestamp(), ':id' => (int)$id,
+    ]);
+    if (isset($_POST['terms'])) {
+        replaceMaterialTerms($pdo, (int)$id, materialTermAnswersFromRequest());
+    }
+    jsonResponse(['success' => true, 'message' => '素材を更新しました。']);
+}
+
+function deleteMaterialItem(PDO $pdo): void
+{
+    $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+    $item = $id ? findMaterialItem($pdo, (int)$id, false) : null;
+    if (!$item) {
+        jsonResponse(['success' => false, 'message' => '素材が見つかりません。'], 404);
+    }
+    requireMaterialOwner($pdo, $item);
+    $pdo->prepare('UPDATE material_items SET deleted_at = :deleted_at WHERE id = :id')
+        ->execute([':deleted_at' => currentTimestamp(), ':id' => (int)$id]);
+    jsonResponse(['success' => true, 'message' => '素材を削除しました。']);
+}
+
+function requireMaterialOwner(PDO $pdo, array $item): void
+{
+    $user = optionalUser($pdo);
+    if ($user && (int)($item['user_id'] ?? 0) === (int)$user['id']) {
+        return;
+    }
+    $password = (string)($_POST['password'] ?? '');
+    if ($password === '' || !password_verify($password, (string)$item['password_hash'])) {
+        jsonResponse(['success' => false, 'message' => '投稿パスワードが違います。'], 403);
+    }
+}
+
+function listDeletedMaterialItems(PDO $pdo): void
+{
+    requireAdmin();
+    $stmt = $pdo->query(
+        'SELECT m.*, t.name AS tag_name, u.icon_path AS user_icon_path, u.login_id AS user_login_id
+         FROM material_items m JOIN material_tags t ON t.id = m.tag_id
+         LEFT JOIN users u ON u.id = m.user_id WHERE m.deleted_at IS NOT NULL ORDER BY m.deleted_at DESC, m.id DESC'
+    );
+    jsonResponse(['success' => true, 'items' => array_map(
+        fn(array $row): array => buildMaterialItem($pdo, $row),
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+    )]);
+}
+
+function adminDeleteMaterialItems(PDO $pdo): void
+{
+    requireAdmin();
+    $ids = materialIdsFromRequest();
+    $stmt = $pdo->prepare('UPDATE material_items SET deleted_at = :deleted_at WHERE id = :id');
+    foreach ($ids as $id) {
+        $stmt->execute([':deleted_at' => currentTimestamp(), ':id' => $id]);
+    }
+    jsonResponse(['success' => true, 'message' => count($ids) . '件を削除しました。']);
+}
+
+function restoreMaterialItems(PDO $pdo): void
+{
+    requireAdmin();
+    $ids = materialIdsFromRequest();
+    $stmt = $pdo->prepare('UPDATE material_items SET deleted_at = null WHERE id = :id');
+    foreach ($ids as $id) {
+        $stmt->execute([':id' => $id]);
+    }
+    jsonResponse(['success' => true, 'message' => count($ids) . '件を復元しました。']);
+}
+
+function purgeMaterialItems(PDO $pdo): void
+{
+    requireAdmin();
+    $ids = materialIdsFromRequest();
+    foreach ($ids as $id) {
+        $item = findMaterialItem($pdo, $id);
+        if (!$item || ($item['deleted_at'] ?? null) === null) {
+            continue;
+        }
+        foreach (['archive_path', 'image_path'] as $column) {
+            $path = (string)($item[$column] ?? '');
+            if ($path !== '' && is_file($path)) {
+                @unlink($path);
+            }
+        }
+        $pdo->prepare('DELETE FROM material_item_terms WHERE item_id = :id')->execute([':id' => $id]);
+        $pdo->prepare('DELETE FROM material_items WHERE id = :id')->execute([':id' => $id]);
+    }
+    jsonResponse(['success' => true, 'message' => '選択した削除済み素材を完全消去しました。']);
+}
+
+function saveMaterialCatalog(PDO $pdo): void
+{
+    requireAdmin();
+    $tags = json_decode((string)($_POST['tags'] ?? '[]'), true);
+    $terms = json_decode((string)($_POST['terms'] ?? '[]'), true);
+    if (!is_array($tags) || !is_array($terms)) {
+        jsonResponse(['success' => false, 'message' => 'タグまたは利用規約の形式が正しくありません。'], 400);
+    }
+    $pdo->beginTransaction();
+    try {
+        $seenTags = upsertMaterialTags($pdo, $tags);
+        if ($seenTags === []) {
+            throw new RuntimeException('タグを1件以上登録してください。');
+        }
+        deleteUnusedCatalogRows($pdo, 'material_tags', 'tag_id', 'material_items', $seenTags);
+        $seenTerms = upsertMaterialTerms($pdo, $terms);
+        deleteUnusedCatalogRows($pdo, 'material_terms', 'term_id', 'material_item_terms', $seenTerms);
+        $pdo->commit();
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        jsonResponse(['success' => false, 'message' => $exception->getMessage()], 400);
+    }
+    jsonResponse(['success' => true, 'message' => 'タグと利用規約を保存しました。']);
+}
+
+function upsertMaterialTags(PDO $pdo, array $tags): array
+{
+    $seen = [];
+    foreach ($tags as $index => $tag) {
+        $name = normalizeString((string)($tag['name'] ?? ''));
+        if ($name === '') continue;
+        $id = filter_var($tag['id'] ?? null, FILTER_VALIDATE_INT);
+        if ($id) {
+            $pdo->prepare('UPDATE material_tags SET name = :name, sort_order = :sort_order WHERE id = :id')
+                ->execute([':name' => $name, ':sort_order' => $index, ':id' => (int)$id]);
+            $seen[] = (int)$id;
+        } else {
+            $pdo->prepare('INSERT INTO material_tags (name, sort_order, created_at) VALUES (:name, :sort_order, :created_at)')
+                ->execute([':name' => $name, ':sort_order' => $index, ':created_at' => currentTimestamp()]);
+            $seen[] = (int)$pdo->lastInsertId();
+        }
+    }
+    return $seen;
+}
+
+function upsertMaterialTerms(PDO $pdo, array $terms): array
+{
+    $seen = [];
+    foreach ($terms as $index => $term) {
+        $label = normalizeString((string)($term['label'] ?? ''));
+        if ($label === '') continue;
+        $description = normalizeString((string)($term['description'] ?? ''));
+        $id = filter_var($term['id'] ?? null, FILTER_VALIDATE_INT);
+        if ($id) {
+            $pdo->prepare('UPDATE material_terms SET label = :label, description = :description, sort_order = :sort_order WHERE id = :id')
+                ->execute([':label' => $label, ':description' => $description, ':sort_order' => $index, ':id' => (int)$id]);
+            $seen[] = (int)$id;
+        } else {
+            $pdo->prepare('INSERT INTO material_terms (label, description, sort_order, created_at) VALUES (:label, :description, :sort_order, :created_at)')
+                ->execute([':label' => $label, ':description' => $description, ':sort_order' => $index, ':created_at' => currentTimestamp()]);
+            $seen[] = (int)$pdo->lastInsertId();
+        }
+    }
+    return $seen;
+}
+
+function deleteUnusedCatalogRows(PDO $pdo, string $table, string $referenceColumn, string $referenceTable, array $ids): void
+{
+    if ($ids === []) {
+        $pdo->exec("DELETE FROM {$table} WHERE id NOT IN (SELECT DISTINCT {$referenceColumn} FROM {$referenceTable})");
+        return;
+    }
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $pdo->prepare("DELETE FROM {$table} WHERE id NOT IN ({$placeholders}) AND id NOT IN (SELECT DISTINCT {$referenceColumn} FROM {$referenceTable})")
+        ->execute($ids);
+}
+
+function assignMaterialAuthor(PDO $pdo): void
+{
+    requireAdmin();
+    $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+    $userIdRaw = trim((string)($_POST['user_id'] ?? ''));
+    $userId = $userIdRaw === '' ? null : filter_var($userIdRaw, FILTER_VALIDATE_INT);
+    if (!$id || ($userIdRaw !== '' && !$userId)) {
+        jsonResponse(['success' => false, 'message' => '素材IDまたは作者IDが正しくありません。'], 400);
+    }
+    if ($userId && !findUserById($pdo, (int)$userId)) {
+        jsonResponse(['success' => false, 'message' => '指定したユーザーが見つかりません。'], 404);
+    }
+    $authorName = normalizeString((string)($_POST['author_name'] ?? ''));
+    $fields = 'user_id = :user_id';
+    $params = [':user_id' => $userId ? (int)$userId : null, ':id' => (int)$id, ':updated_at' => currentTimestamp()];
+    if ($authorName !== '') {
+        $fields .= ', author_name = :author_name';
+        $params[':author_name'] = $authorName;
+    }
+    $pdo->prepare('UPDATE material_items SET ' . $fields . ', updated_at = :updated_at WHERE id = :id')->execute($params);
+    jsonResponse(['success' => true, 'message' => '素材の作者IDを更新しました。']);
+}
+
+function materialAnalytics(PDO $pdo): void
+{
+    requireAdmin();
+    $summary = $pdo->query(
+        'SELECT COUNT(*) AS total_items, COALESCE(SUM(archive_size_bytes), 0) AS total_bytes,
+         COUNT(DISTINCT tag_id) AS used_tags,
+         COUNT(DISTINCT CASE WHEN user_id IS NULL THEN "guest:" || author_name ELSE "user:" || user_id END) AS authors
+         FROM material_items WHERE deleted_at IS NULL'
+    )->fetch(PDO::FETCH_ASSOC);
+    $months = $pdo->query(
+        'SELECT substr(created_at, 1, 7) AS month, COUNT(*) AS count, SUM(archive_size_bytes) AS size_bytes
+         FROM material_items GROUP BY substr(created_at, 1, 7) ORDER BY month DESC'
+    )->fetchAll(PDO::FETCH_ASSOC);
+    jsonResponse(['success' => true, 'summary' => $summary, 'months' => $months]);
+}
+
+function updateMaterialProfile(PDO $pdo): void
+{
+    $user = requireUser($pdo);
+    $authorName = normalizeString((string)($_POST['author_name'] ?? $user['display_name']));
+    $defaults = json_decode((string)($_POST['default_terms'] ?? '{}'), true);
+    if ($authorName === '' || !is_array($defaults)) {
+        jsonResponse(['success' => false, 'message' => '作者名または利用規約の初期値が正しくありません。'], 400);
+    }
+    $iconPath = $user['icon_path'] ?? null;
+    if (isset($_FILES['icon']) && (int)($_FILES['icon']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $iconPath = saveUploadedUserIcon($_FILES['icon'], (int)$user['id']);
+    }
+    $pdo->prepare(
+        'UPDATE users SET materials_author_name = :author_name, materials_default_terms = :default_terms,
+         icon_path = :icon_path, updated_at = :updated_at WHERE id = :id'
+    )->execute([
+        ':author_name' => $authorName,
+        ':default_terms' => json_encode($defaults, JSON_UNESCAPED_UNICODE),
+        ':icon_path' => $iconPath, ':updated_at' => currentTimestamp(), ':id' => (int)$user['id'],
+    ]);
+    jsonResponse(['success' => true, 'user' => buildUser(findUserById($pdo, (int)$user['id']))]);
+}
+
+function ensureMaterialsFrontend(): void
+{
+    if (FRONTEND_ID !== 'materials-library' && !isPackagedSingleFrontendApp()) {
+        jsonResponse(['success' => false, 'message' => 'このAPIはmaterials-library専用です。'], 403);
+    }
+}
+
+function requireMaterialTag(PDO $pdo, int $id): void
+{
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM material_tags WHERE id = :id');
+    $stmt->execute([':id' => $id]);
+    if ((int)$stmt->fetchColumn() === 0) {
+        jsonResponse(['success' => false, 'message' => '指定したタグが見つかりません。'], 400);
+    }
+}
+
+function validateMaterialUpload(PDO $pdo, mixed $file, string $kind): void
+{
+    if (!is_array($file) || (int)($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file((string)($file['tmp_name'] ?? ''))) {
+        jsonResponse(['success' => false, 'message' => $kind === 'archive' ? '素材ファイルを選択してください。' : '説明画像を受信できませんでした。'], 400);
+    }
+    $config = loadSettings($pdo)['config'] ?? [];
+    $extension = strtolower((string)pathinfo((string)$file['name'], PATHINFO_EXTENSION));
+    if ($kind === 'archive') {
+        $allowed = preg_split('/[\s,;]+/', strtolower((string)($config['materialsAllowedArchiveExtensions'] ?? 'zip 7z rar'))) ?: [];
+        $limit = max(1, (int)($config['materialsMaxArchiveKb'] ?? 102400)) * 1024;
+    } else {
+        $allowed = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+        $limit = max(1, (int)($config['materialsMaxImageKb'] ?? 10240)) * 1024;
+    }
+    if (!in_array($extension, $allowed, true)) {
+        jsonResponse(['success' => false, 'message' => '許可されていないファイル形式です。'], 400);
+    }
+    if ((int)$file['size'] > $limit) {
+        jsonResponse(['success' => false, 'message' => 'ファイルサイズが上限を超えています。'], 400);
+    }
+}
+
+function saveMaterialUpload(array $file, int $id, string $kind): string
+{
+    $extension = strtolower((string)pathinfo((string)$file['name'], PATHINFO_EXTENSION));
+    $name = 'material-' . $id . '-' . $kind . '.' . $extension;
+    $destination = STORAGE_DIR . '/' . $name;
+    if (is_file($destination)) {
+        @rename($destination, STORAGE_DIR . '/material-' . $id . '-' . $kind . '-' . date('YmdHis') . '.' . $extension);
+    }
+    if (!move_uploaded_file((string)$file['tmp_name'], $destination)) {
+        jsonResponse(['success' => false, 'message' => 'ファイルを保存できませんでした。'], 500);
+    }
+    return $destination;
+}
+
+function materialTermAnswersFromRequest(): array
+{
+    $answers = json_decode((string)($_POST['terms'] ?? '{}'), true);
+    return is_array($answers) ? $answers : [];
+}
+
+function replaceMaterialTerms(PDO $pdo, int $itemId, array $answers): void
+{
+    $pdo->prepare('DELETE FROM material_item_terms WHERE item_id = :item_id')->execute([':item_id' => $itemId]);
+    $insert = $pdo->prepare('INSERT INTO material_item_terms (item_id, term_id, accepted) VALUES (:item_id, :term_id, :accepted)');
+    foreach ($answers as $rawId => $accepted) {
+        $id = filter_var($rawId, FILTER_VALIDATE_INT);
+        if ($id) {
+            $insert->execute([':item_id' => $itemId, ':term_id' => (int)$id, ':accepted' => toBoolFlag($accepted) ? 1 : 0]);
+        }
+    }
+}
+
+function materialIdsFromRequest(): array
+{
+    $raw = $_POST['ids'] ?? [];
+    if (is_string($raw)) {
+        $raw = explode(',', $raw);
+    }
+    $ids = array_values(array_unique(array_filter(array_map(
+        static fn($value): int => (int)(filter_var($value, FILTER_VALIDATE_INT) ?: 0),
+        is_array($raw) ? $raw : []
+    ))));
+    if ($ids === []) {
+        jsonResponse(['success' => false, 'message' => '対象を選択してください。'], 400);
+    }
+    return $ids;
+}
+
 function defaultSettings(): array
 {
     return [
@@ -4307,6 +4896,14 @@ function defaultSettings(): array
             'bbsTitle' => 'ThreadForge',
             'homePageUrl' => '/',
             'uploaderHomePageUrl' => '../',
+            'materialsTitle' => '■素材庫■',
+            'materialsDescription' => '制作に役立つ素材を、用途と作者ごとに整理して保管しています。',
+            'materialsHomePageUrl' => '../',
+            'materialsManualBody' => materialsDefaultManualBody(),
+            'materialsGroupParent' => 'tag',
+            'materialsMaxArchiveKb' => 102400,
+            'materialsMaxImageKb' => 10240,
+            'materialsAllowedArchiveExtensions' => 'zip 7z rar',
             'manualTitle' => 'ThreadForge',
             'manualBody' => defaultManualBody(),
             'tweetEnabled' => false,
@@ -4371,6 +4968,14 @@ function defaultSettings(): array
             'dangerColor' => '#ff7c7c',
             'warningColor' => '#ffd36a',
             'successColor' => '#8dff8d',
+            'materialsPageBackgroundColor' => '#050505',
+            'materialsPageTextColor' => '#f2f2f2',
+            'materialsPanelBackgroundColor' => '#111820',
+            'materialsPanelBorderColor' => '#6c7787',
+            'materialsHeadingBackgroundColor' => '#59636f',
+            'materialsAccentColor' => '#8fb0ff',
+            'materialsButtonBackgroundColor' => '#3974ee',
+            'materialsButtonTextColor' => '#ffffff',
         ],
         'security' => [
             'adminPasswordHash' => '',

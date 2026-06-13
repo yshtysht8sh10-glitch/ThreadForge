@@ -372,6 +372,18 @@
 <p>ローカルアーカイブ <code>LOG_*.cgi</code> インポートは、Web API と管理画面からは公開しません。ローカル運用バッチまたはPHPコマンドから <code>server/db.php</code> の <code>importLocalArchiveDirectory()</code> を直接呼び出します。</p></article>
       <article class="docs-article" data-language-panel="en"><h1 id="api-reference">API Reference</h1>
 <p>The current API is implemented in <code>server/api.php</code>. It is not REST-shaped; requests are routed by the <code>action</code> parameter.</p>
+<h2 id="materials-library-actions">Materials Library Actions</h2>
+<ul>
+<li><code>materialsSettings</code>: public title, description, HOME, manual, grouping order, upload limits, design, tags, and terms.</li>
+<li><code>listMaterialItems</code> / <code>getMaterialItem</code>: active material catalog data.</li>
+<li><code>createMaterialItem</code>: multipart archive upload with optional preview image and terms JSON.</li>
+<li><code>updateMaterialItem</code> / <code>deleteMaterialItem</code>: logged-in ownership or post-password operation.</li>
+<li><code>updateMaterialProfile</code>: logged-in author name, icon, and default terms.</li>
+<li><code>listDeletedMaterialItems</code>, <code>adminDeleteMaterialItems</code>, <code>restoreMaterialItems</code>, <code>purgeMaterialItems</code>: admin lifecycle operations.</li>
+<li><code>saveMaterialCatalog</code>: admin tag and usage-term maintenance.</li>
+<li><code>assignMaterialAuthor</code>: admin user-ID assignment for imported or guest materials.</li>
+<li><code>materialAnalytics</code>: admin item, author, tag, storage, and monthly totals.</li>
+</ul>
 <h2 id="common-behavior">Common Behavior</h2>
 <ul>
 <li>Response format: JSON unless otherwise noted</li>

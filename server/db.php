@@ -25,7 +25,14 @@ if (!defined('STORAGE_PUBLIC_BASE')) {
 
 function resolveFrontendId(): string
 {
-    $raw = trim((string)(getenv('THREADFORGE_FRONTEND_ID') ?: 'image-board'));
+    $raw = trim((string)(getenv('THREADFORGE_FRONTEND_ID') ?: ''));
+    $frontendIdFile = __DIR__ . '/FRONTEND_ID';
+    if ($raw === '' && basename(__DIR__) !== 'server' && is_file($frontendIdFile)) {
+        $raw = trim((string)file_get_contents($frontendIdFile));
+    }
+    if ($raw === '') {
+        $raw = 'image-board';
+    }
     $frontendId = strtolower((string)preg_replace('/[^a-zA-Z0-9_-]+/', '-', $raw));
     $frontendId = trim($frontendId, '-_');
     return $frontendId === '' ? 'image-board' : $frontendId;
@@ -187,6 +194,54 @@ function initializeDatabase(PDO $pdo): void
         )'
     );
 
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS material_tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+        )'
+    );
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS material_terms (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            label TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT "",
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+        )'
+    );
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS material_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            author_name TEXT NOT NULL,
+            name TEXT NOT NULL,
+            notes TEXT NOT NULL DEFAULT "",
+            tag_id INTEGER NOT NULL,
+            archive_path TEXT NOT NULL,
+            archive_original_name TEXT NOT NULL,
+            archive_size_bytes INTEGER NOT NULL DEFAULT 0,
+            image_path TEXT,
+            image_original_name TEXT,
+            password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            deleted_at TEXT
+        )'
+    );
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS material_item_terms (
+            item_id INTEGER NOT NULL,
+            term_id INTEGER NOT NULL,
+            accepted INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (item_id, term_id)
+        )'
+    );
+
     ensureColumnExists($pdo, 'posts', 'deleted_at', 'TEXT');
     ensureColumnExists($pdo, 'posts', 'url', 'TEXT');
     ensureColumnExists($pdo, 'posts', 'gdgd', 'INTEGER NOT NULL DEFAULT 0');
@@ -218,8 +273,11 @@ function initializeDatabase(PDO $pdo): void
     ensureColumnExists($pdo, 'posts', 'user_id', 'INTEGER');
     ensureColumnExists($pdo, 'posts', 'view_count', 'INTEGER NOT NULL DEFAULT 0');
     ensureColumnExists($pdo, 'users', 'last_login_at', 'TEXT');
+    ensureColumnExists($pdo, 'users', 'materials_author_name', 'TEXT');
+    ensureColumnExists($pdo, 'users', 'materials_default_terms', 'TEXT NOT NULL DEFAULT "{}"');
 
     ensureDatabaseIndexes($pdo);
+    ensureMaterialCatalogDefaults($pdo);
 
     if (!is_dir(STORAGE_DIR)) {
         mkdir(STORAGE_DIR, 0775, true);
@@ -238,6 +296,10 @@ function ensureDatabaseIndexes(PDO $pdo): void
         'CREATE INDEX IF NOT EXISTS idx_user_post_claims_post_user ON user_post_claims(post_id, user_id)',
         'CREATE INDEX IF NOT EXISTS idx_post_revisions_post_revised ON post_revisions(post_id, revised_at)',
         'CREATE INDEX IF NOT EXISTS idx_uploader_files_deleted_created ON uploader_files(deleted_at, created_at, id)',
+        'CREATE INDEX IF NOT EXISTS idx_material_items_tag_deleted_author ON material_items(tag_id, deleted_at, author_name, id)',
+        'CREATE INDEX IF NOT EXISTS idx_material_items_user_deleted ON material_items(user_id, deleted_at, id)',
+        'CREATE INDEX IF NOT EXISTS idx_material_items_deleted_created ON material_items(deleted_at, created_at, id)',
+        'CREATE INDEX IF NOT EXISTS idx_material_item_terms_item ON material_item_terms(item_id, term_id)',
     ];
 
     foreach ($indexes as $sql) {
@@ -317,6 +379,36 @@ function publicStoragePath(?string $path): ?string
         return null;
     }
     return rtrim(STORAGE_PUBLIC_BASE, '/') . '/' . $basename;
+}
+
+function ensureMaterialCatalogDefaults(PDO $pdo): void
+{
+    if ((int)$pdo->query('SELECT COUNT(*) FROM material_tags')->fetchColumn() === 0) {
+        $stmt = $pdo->prepare('INSERT INTO material_tags (name, sort_order, created_at) VALUES (:name, :sort_order, :created_at)');
+        foreach (['エフェクト素材', 'キャラクタースプライト素材', 'ドット絵素材', '音声・ボイス素材', 'テンプレート・その他'] as $index => $name) {
+            $stmt->execute([':name' => $name, ':sort_order' => $index, ':created_at' => currentTimestamp()]);
+        }
+    }
+    if ((int)$pdo->query('SELECT COUNT(*) FROM material_terms')->fetchColumn() === 0) {
+        $stmt = $pdo->prepare(
+            'INSERT INTO material_terms (label, description, sort_order, created_at)
+             VALUES (:label, :description, :sort_order, :created_at)'
+        );
+        $defaults = [
+            ['改変', '素材を改変して利用できるか'],
+            ['二次配布', '素材を含むデータを再配布できるか'],
+            ['Readmeへの記載', '利用時に作者・配布元の記載が必要か'],
+            ['商用利用', '商用作品で利用できるか'],
+        ];
+        foreach ($defaults as $index => [$label, $description]) {
+            $stmt->execute([
+                ':label' => $label,
+                ':description' => $description,
+                ':sort_order' => $index,
+                ':created_at' => currentTimestamp(),
+            ]);
+        }
+    }
 }
 
 function buildBoardReactions(array $row): array
@@ -1295,6 +1387,8 @@ function buildUser(?array $user): ?array
         'post_password' => (string)($user['post_password'] ?? ''),
         'home_url' => $user['home_url'] ?? null,
         'icon_path' => publicStoragePath($user['icon_path'] ?? null),
+        'materials_author_name' => $user['materials_author_name'] ?? null,
+        'materials_default_terms' => json_decode((string)($user['materials_default_terms'] ?? '{}'), true) ?: [],
     ];
 }
 

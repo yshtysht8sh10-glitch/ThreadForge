@@ -20,7 +20,7 @@ ThreadForge は、作品投稿、画像、返信、簡単リアクション、�
 - `frontends/file-uploader/`: ファイルアップローダ用フロント
 - `frontends/guide-posts/`: MUGEN/ドット絵制作指南ページ投稿所予定地
 - `frontends/proxy-release/`: MUGENキャラ代理公開所予定地
-- `frontends/materials-library/`: 制作素材提供所予定地
+- `frontends/materials-library/`: 圧縮ファイルを用途と作者で整理する素材庫
 - `server/`: PHP API、SQLite、サーバー側処理
 - `docs/index.html`: 日本語/English切替式ドキュメント
 - `docs/`: Markdown原稿、生成HTML、仕様、API、DB、運用、テスト関連資料
@@ -77,7 +77,8 @@ http://127.0.0.1:5173
   docs/
 ```
 
-image-board の Zip には `11_image_board/`、file-uploader の Zip には `12_file_uploader/` が入ります。
+image-board の Zip には `11_image_board/`、file-uploader の Zip には `12_file_uploader/`、
+materials-library の Zip には `15_materials_library/` が入ります。
 
 `storage/data/` は画像保存先です。必要に応じてレンタルサーバー側で書き込み権限を付けてください。
 
@@ -125,6 +126,7 @@ image-board の Zip には `11_image_board/`、file-uploader の Zip には `12_
 ```powershell
 npm run release:image-board
 npm run release:file-uploader
+npm run release:materials-library
 ```
 
 出力先:

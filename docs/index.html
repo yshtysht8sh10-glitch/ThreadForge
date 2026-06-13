@@ -148,8 +148,9 @@ npm run release:file-uploader</code></pre>
 <p>Release packaging and local archive import scripts live in <code>tools/</code>. These are maintainer/operator tools, so the root README keeps only deployment-oriented instructions.</p>
 <p>Create a release ZIP:</p>
 <pre><code class="language-powershell">npm run release:image-board
-npm run release:file-uploader</code></pre>
-<p>Release ZIPs are written to <code>release/threadforge-&lt;frontend-id&gt;-&lt;version&gt;.zip</code>. The image-board archive contains <code>11_image_board/</code>, and the file-uploader archive contains <code>12_file_uploader/</code>, ready for upload under <code>/DotoEita/</code>.</p>
+npm run release:file-uploader
+npm run release:materials-library</code></pre>
+<p>Release ZIPs are written to <code>release/threadforge-&lt;frontend-id&gt;-&lt;version&gt;.zip</code>. Image Board uses <code>11_image_board/</code>, File Uploader uses <code>12_file_uploader/</code>, and Materials Library uses <code>15_materials_library/</code>.</p>
 <p>For a GitHub release, update <code>VERSION</code> and the changelog, generate and verify the ZIP, then create the matching <code>v&lt;version&gt;</code> tag and attach the ZIP to the GitHub Release.</p>
 <p>Import local archive logs:</p>
 <pre><code class="language-powershell">tools\import_local_archive.bat legacy\data</code></pre>
