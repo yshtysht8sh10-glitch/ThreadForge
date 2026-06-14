@@ -48,21 +48,21 @@ export type UploaderDesign = {
 
 type AdminTab = 'bulk-delete' | 'deleted' | 'settings' | 'design' | 'analytics' | 'maintenance';
 
-const defaultDesign: UploaderDesign = {
-  pageBackgroundColor: '#eeeeee',
-  pageTextColor: '#000000',
-  linkColor: '#0000ff',
-  shellBackgroundColor: '#2a2a2a',
-  contentBackgroundColor: '#ffffff',
-  formBackgroundColor: '#eeeeee',
-  titleStartColor: '#f7f7f7',
-  titleEndColor: '#d8d8d8',
-  tableHeaderColor: '#eeeeee',
-  borderColor: '#808080',
-  buttonBackgroundColor: '#f5f5f5',
-  buttonTextColor: '#000000',
-  activeTabColor: '#8eb4e3',
-  errorColor: '#9b1c1c',
+export const defaultDesign: UploaderDesign = {
+  pageBackgroundColor: '#0b0d10',
+  pageTextColor: '#eef1f4',
+  linkColor: '#8fb7e8',
+  shellBackgroundColor: '#12171d',
+  contentBackgroundColor: '#151b22',
+  formBackgroundColor: '#1c232c',
+  titleStartColor: '#626b76',
+  titleEndColor: '#4f5863',
+  tableHeaderColor: '#59636f',
+  borderColor: '#707b88',
+  buttonBackgroundColor: '#3974ee',
+  buttonTextColor: '#ffffff',
+  activeTabColor: '#315f9e',
+  errorColor: '#ff8585',
 };
 
 const defaultSettings: UploaderSettings = {
@@ -151,6 +151,7 @@ function App() {
   const [adminMessage, setAdminMessage] = useState('');
   const [adminError, setAdminError] = useState('');
   const [settingsDraft, setSettingsDraft] = useState(settings);
+  const [savedSettings, setSavedSettings] = useState(settings);
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [newAdminPasswordConfirm, setNewAdminPasswordConfirm] = useState('');
   const [initialAdminPassword, setInitialAdminPassword] = useState('');
@@ -174,6 +175,7 @@ function App() {
       apiGet<{ files: ApiUploaderFile[] }>('listUploaderFiles'),
     ]).then(([settingResponse, fileResponse]) => {
       setSettings(normalizeSettings(settingResponse.settings));
+      setSavedSettings(normalizeSettings(settingResponse.settings));
       setRows(mapUploaderFiles(fileResponse.files));
     }).catch(() => {
       // Keep the local preview data available while the backend is offline.
@@ -385,7 +387,6 @@ function App() {
   async function saveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAdminError('');
-    setSettings(settingsDraft);
     try {
       await apiPost('updateSettings', {
         admin_password: adminPassword,
@@ -399,6 +400,8 @@ function App() {
           skin: uploaderSkinPayload(settingsDraft.design),
         }),
       });
+      setSettings(settingsDraft);
+      setSavedSettings(settingsDraft);
       setAdminMessage('設定を保存しました。');
     } catch (error) {
       setAdminError((error as Error).message);
@@ -757,8 +760,20 @@ function App() {
                         const next = { ...settingsDraft, design: defaultDesign };
                         setSettingsDraft(next);
                         setSettings(next);
-                      }}>初期色へ戻す</button>
-                      <button type="button" onClick={() => saveDesignSettings(settingsDraft, adminPassword, setAdminMessage, setAdminError)}>保存</button>
+                        setAdminMessage('デザインをデフォルトに戻しました。保存するまでは確定しません。');
+                      }}>デフォルトに戻す</button>
+                      <button type="button" onClick={() => {
+                        const next = { ...settingsDraft, design: { ...savedSettings.design } };
+                        setSettingsDraft(next);
+                        setSettings(next);
+                        setAdminMessage('デザインを編集前の状態に戻しました。');
+                      }}>編集前に戻す</button>
+                      <button type="button" onClick={async () => {
+                        if (await saveDesignSettings(settingsDraft, adminPassword, setAdminMessage, setAdminError)) {
+                          setSavedSettings(settingsDraft);
+                          setSettings(settingsDraft);
+                        }
+                      }}>保存</button>
                     </div>
                   </section>
                 )}
@@ -991,7 +1006,7 @@ async function saveDesignSettings(
   adminPassword: string,
   setMessage: (message: string) => void,
   setError: (message: string) => void,
-) {
+): Promise<boolean> {
   setError('');
   try {
     await apiPost('updateSettings', {
@@ -1007,8 +1022,10 @@ async function saveDesignSettings(
       }),
     });
     setMessage('デザインを保存しました。');
+    return true;
   } catch (error) {
     setError((error as Error).message);
+    return false;
   }
 }
 

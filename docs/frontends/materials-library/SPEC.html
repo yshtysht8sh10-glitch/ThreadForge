@@ -73,7 +73,7 @@
 <ul>
 <li>HOME: 管理画面で設定したURLを開きます。</li>
 <li>一覧: 目次と、タグ・作者で整理した素材を表示します。</li>
-<li>投稿: 圧縮ファイル、説明画像、名称、備考、作者名、タグ、利用規約を登録します。</li>
+<li>投稿: 圧縮ファイル、説明画像または試聴用MP3、名称、備考、作者名、タグ、利用規約を登録します。</li>
 <li>削除 / 編集: 1件を選び、所有ユーザーまたは投稿パスワードで操作します。</li>
 <li>取説: 管理画面で設定した文章を表示します。</li>
 <li>ログイン: ローカルログイン、SSO、素材庫用プロフィールを扱います。</li>
@@ -85,6 +85,16 @@
 <li>IDのない既存素材・ゲスト投稿は作者名でまとめます。</li>
 <li>同じ作者名でも、IDありとIDなしは別作者として表示します。</li>
 <li>管理者は既存素材に作者IDを割り当て、またはIDなしへ戻せます。</li>
+<li>目次にはタグと作者の双方を表示し、該当位置へ移動できます。</li>
+<li>投稿数が2件以下の隣接作者は、1行に収まる範囲で横並びにします。</li>
+</ul>
+<h2 id="素材カードと音声">素材カードと音声</h2>
+<ul>
+<li>カード内は、画像または音声、素材名、ダウンロード、サイズ/区分、利用規約、備考の順です。</li>
+<li>画像は縦横比を維持し、長い素材名とファイル名は省略表示とツールチップで全文を確認できます。</li>
+<li>新しく追加され、まだ回答されていない利用規約は <code>?</code> と表示します。</li>
+<li>音声・ボイス素材では説明画像の代わりに複数のMP3を添付し、一覧で個別に試聴できます。</li>
+<li>画面右下には常時「上に戻る」を表示します。</li>
 </ul>
 <h2 id="管理">管理</h2>
 <ul>
@@ -94,7 +104,8 @@
 <li>素材数、作者数、タグ数、容量、月別登録数</li>
 <li>タイトル、説明、HOME、取説、整理順、上限、拡張子</li>
 <li>タグと利用規約の追加・編集・削除</li>
-<li>配色設定</li>
+<li>legacyを意識した配色設定</li>
+<li>デフォルト戻しと編集前戻しは即時プレビューし、保存ボタンを押すまでDBへ保存しない</li>
 <li>管理パスワード設定・変更</li>
 </ul>
 <h2 id="配布">配布</h2>
@@ -106,7 +117,7 @@
 <ul>
 <li>HOME: opens the administrator-configured URL.</li>
 <li>List: grouped material catalog and table of contents.</li>
-<li>Post: registers an archive, preview image, metadata, and terms answers.</li>
+<li>Post: registers an archive, preview image or preview MP3 files, metadata, and terms answers.</li>
 <li>Delete / Edit: operates on one selected material using ownership or a post password.</li>
 <li>Manual: displays administrator-configured text.</li>
 <li>Login: local account, SSO, and material-author preferences.</li>
@@ -119,6 +130,16 @@
 <li>Guest and imported entries group by author name because they have no user ID.</li>
 <li>A logged-in author and a guest author with the same displayed name remain separate.</li>
 <li>Administrators can assign or remove a user ID on an existing material.</li>
+<li>The table of contents links both tags and authors.</li>
+<li>Adjacent authors with two or fewer items share a row when their complete groups fit.</li>
+</ul>
+<h2 id="cards-and-audio">Cards And Audio</h2>
+<ul>
+<li>Card order is preview, material name, download, size/category, usage terms, and notes.</li>
+<li>Images retain their aspect ratio. Long material and archive names use ellipsis with full text in a tooltip.</li>
+<li>A newly added usage term without an answer displays <code>?</code>.</li>
+<li>Audio/voice categories accept multiple MP3 preview files and show a separate player for each file.</li>
+<li>A fixed Back to Top button remains available at the lower right.</li>
 </ul>
 <h2 id="posting">Posting</h2>
 <p>Required fields are material name, author name, tag, archive, and post password. A preview image and notes are optional. Every configured usage term is answered with yes/no and stored with the item.</p>
@@ -137,7 +158,8 @@
 <li>Material count, author count, tag count, storage size, and monthly analytics</li>
 <li>Title, description, HOME, manual, grouping order, upload limits, and extensions</li>
 <li>Tag and usage-term add/edit/delete</li>
-<li>Color design settings</li>
+<li>Legacy-inspired color design settings</li>
+<li>Reset and undo update the live preview immediately but persist only after Save</li>
 <li>Admin password initialization and change</li>
 </ul>
 <h2 id="release">Release</h2>

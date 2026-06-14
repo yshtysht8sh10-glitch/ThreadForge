@@ -23,12 +23,14 @@ It is based on the legacy gray uploader UI and should keep that compact table-an
 - Export/import uploader settings and design independently as JSON.
 - Export/import a full backup ZIP containing the frontend DB, uploaded files, settings, and design from the maintenance tab.
 - Apply saved uploader colors to the live page and provide a live design preview.
+- Provide a gray dark default theme plus Reset to Default and Undo Editing actions.
+- Reset and undo update only the live preview; the database changes only when Save is pressed.
 - Reuse the common ThreadForge backend where practical.
 - Keep runtime DB and storage isolated from every other frontend.
 
 ## Visual Direction
 
-- Gray uploader form and table.
+- Gray dark uploader form and table aligned with Image Board and Materials Library.
 - Simple HTML-like density.
 - Minimal decoration.
 

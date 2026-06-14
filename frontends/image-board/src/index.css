@@ -1,7 +1,7 @@
 :root {
   color-scheme: dark;
-  background-color: #000;
-  color: #fff;
+  background-color: var(--board-bg, #0b0d10);
+  color: var(--board-text, #eef1f4);
   font-family: 'MS PGothic', 'Osaka', 'Hiragino Kaku Gothic ProN', system-ui, sans-serif;
   --primary-button-bg: #256dff;
   --primary-button-hover-bg: #1457df;
@@ -21,11 +21,11 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #000;
+  background: var(--board-bg, #0b0d10);
 }
 
 a {
-  color: #48a5ff;
+  color: var(--board-link, #8fb7e8);
   text-decoration: none;
 }
 
@@ -37,12 +37,14 @@ a:hover {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background: var(--board-bg, #0b0d10);
+  color: var(--board-text, #eef1f4);
 }
 
 .app-header,
 .app-footer {
   padding: 0.75rem 1rem;
-  background: #000;
+  background: var(--board-bg, #0b0d10);
 }
 
 .app-header {
@@ -75,7 +77,7 @@ nav {
 
 .board-nav a,
 .nav-link-button {
-  color: #fff;
+  color: var(--board-text, #eef1f4);
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -657,26 +659,26 @@ img.thumbnail {
 }
 
 .board-thread {
-  border: 1px solid #a23dff;
-  background: #000;
+  border: 1px solid var(--normal-frame, #858f9b);
+  background: var(--board-bg, #0b0d10);
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
 }
 
 .board-thread.board-thread-gdgd {
-  border-color: #6dffc0;
+  border-color: var(--gdgd-frame, #6e9f8c);
 }
 
 .board-thread.board-thread-gdgd .board-thread-title {
-  background: #228f89;
+  background: var(--gdgd-header, #477968);
 }
 
 .board-thread-title {
   margin: 0;
   padding: 0.35rem 1rem;
-  background: #6f069a;
-  color: #fff;
+  background: var(--normal-header, #626c78);
+  color: var(--normal-text, #fff);
   font-size: 1.15rem;
   font-weight: 800;
   line-height: 1.25;
@@ -3047,37 +3049,37 @@ button.post-reset-button:hover {
   margin: 0 auto;
   padding: var(--post-form-y) var(--post-form-x);
   background: var(--panel-bg);
-  border: 1px solid #a23dff;
+  border: 1px solid var(--normal-frame, #858f9b);
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
-  color: #9ed8ff;
+  color: var(--panel-label);
   font-size: 0.86rem;
   font-weight: 700;
 }
 
 .post-form-page.post-form-gdgd {
-  border-color: #6dffc0;
+  border-color: var(--gdgd-frame, #6e9f8c);
 }
 
 .post-form-page.post-form-gdgd .post-form-title {
-  background: #228f89;
+  background: var(--gdgd-header, #477968);
 }
 
 .edit-post-card {
-  border-color: #a23dff;
+  border-color: var(--normal-frame, #858f9b);
 }
 
 .edit-post-card h1 {
-  background: #7b009f;
+  background: var(--normal-header, #626c78);
 }
 
 .edit-post-card.edit-post-card-gdgd {
-  border-color: #6dffc0;
+  border-color: var(--gdgd-frame, #6e9f8c);
 }
 
 .edit-post-card.edit-post-card-gdgd h1 {
-  background: #228f89;
+  background: var(--gdgd-header, #477968);
 }
 
 .edit-post-card.edit-post-card-reply {
@@ -3100,8 +3102,8 @@ button.post-reset-button:hover {
   gap: 0.75rem;
   margin: calc(var(--post-form-y) * -1) calc(var(--post-form-x) * -1) 1rem;
   padding: 0.35rem var(--post-form-x);
-  background: #6f069a;
-  color: #fff;
+  background: var(--normal-header, #626c78);
+  color: var(--normal-text, #fff);
   font-size: 1.15rem;
   font-weight: 800;
   line-height: 1.25;

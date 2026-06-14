@@ -29,3 +29,14 @@ server/runtime/materials-library/storage/data/
 `user_id` がある素材はID単位、ない素材は作者名単位でまとめます。同名でもIDあり・なしは統合しません。
 
 差し替え前のファイルは履歴名で保持します。論理削除ではファイルを残し、管理者の完全消去で削除します。フルバックアップZipにはSQLite DBと `storage/data/` の全ファイルを含めます。
+
+## 旧素材庫のインポート
+
+`Sozaiko.html`、`zip/` 内の圧縮ファイル、`img/` 内のプレビューを読み込みます。旧フォルダのファイルは移動・削除せず、素材庫ランタイムへコピーします。
+
+```powershell
+tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko --dry-run
+tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko
+```
+
+各素材には一意な `material_items.legacy_source` を記録するため、同じコマンドを再実行しても二重登録されません。ユーザーIDのない旧素材は作者名単位でまとめます。HTMLのリンク誤記はプレビューと同名の圧縮ファイルがあれば補正し、HTMLに未掲載の圧縮ファイルも補完登録します。

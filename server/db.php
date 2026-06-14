@@ -227,6 +227,7 @@ function initializeDatabase(PDO $pdo): void
             image_path TEXT,
             image_original_name TEXT,
             password_hash TEXT NOT NULL,
+            legacy_source TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             deleted_at TEXT
@@ -239,6 +240,18 @@ function initializeDatabase(PDO $pdo): void
             term_id INTEGER NOT NULL,
             accepted INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY (item_id, term_id)
+        )'
+    );
+
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS material_media (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER NOT NULL,
+            path TEXT NOT NULL,
+            original_name TEXT NOT NULL,
+            size_bytes INTEGER NOT NULL DEFAULT 0,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
         )'
     );
 
@@ -275,6 +288,7 @@ function initializeDatabase(PDO $pdo): void
     ensureColumnExists($pdo, 'users', 'last_login_at', 'TEXT');
     ensureColumnExists($pdo, 'users', 'materials_author_name', 'TEXT');
     ensureColumnExists($pdo, 'users', 'materials_default_terms', 'TEXT NOT NULL DEFAULT "{}"');
+    ensureColumnExists($pdo, 'material_items', 'legacy_source', 'TEXT');
 
     ensureDatabaseIndexes($pdo);
     ensureMaterialCatalogDefaults($pdo);
@@ -299,7 +313,9 @@ function ensureDatabaseIndexes(PDO $pdo): void
         'CREATE INDEX IF NOT EXISTS idx_material_items_tag_deleted_author ON material_items(tag_id, deleted_at, author_name, id)',
         'CREATE INDEX IF NOT EXISTS idx_material_items_user_deleted ON material_items(user_id, deleted_at, id)',
         'CREATE INDEX IF NOT EXISTS idx_material_items_deleted_created ON material_items(deleted_at, created_at, id)',
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_material_items_legacy_source ON material_items(legacy_source)',
         'CREATE INDEX IF NOT EXISTS idx_material_item_terms_item ON material_item_terms(item_id, term_id)',
+        'CREATE INDEX IF NOT EXISTS idx_material_media_item_sort ON material_media(item_id, sort_order, id)',
     ];
 
     foreach ($indexes as $sql) {

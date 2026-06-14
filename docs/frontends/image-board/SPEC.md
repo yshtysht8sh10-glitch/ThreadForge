@@ -58,6 +58,8 @@ ThreadForge is presented as a new self-hosted board engine that can be adapted f
 - Admin-configurable embedded manual title and body
 - Search by all fields, title, body, or author
 - RSS feed
+- Gray-based dark theme by default
+- Admin design reset and undo update the live preview immediately but do not persist until Save is pressed
 
 ## Admin Features
 

@@ -74,7 +74,11 @@
 <li>編集、論理削除、一括削除、復元、完全消去、分析、設定、デザイン画面を追加</li>
 <li>ローカルログイン、親サイトSSO、作者名、アイコン、利用規約初期値に対応</li>
 <li>同名でもログイン作者IDとゲスト・既存作者を分離し、管理者による作者ID割当を追加</li>
+<li>旧 <code>05_Sozaiko</code> の圧縮ファイル、プレビュー、作者、カテゴリ、備考、利用条件を重複なく移行するインポーターを追加</li>
 <li>独立SQLite、独立ストレージ、フルバックアップ、HTTP統合テスト、<code>15_materials_library</code> 配布Zipに対応</li>
+<li>legacy調の標準配色、作者目次、少数作者の横並び、カード項目整列、上に戻るボタンを追加</li>
+<li>音声・ボイス素材の複数MP3投稿・再生と、旧素材音声の追加インポートに対応</li>
+<li>image-board、file-uploader、materials-library のデザイン初期化・編集前戻しを保存前プレビューとして統一</li>
 </ul>
 <h2 id="file-uploader-1-0-0-2026-06-12">file-uploader 1.0.0 - 2026-06-12</h2>
 <ul>
@@ -86,6 +90,7 @@
 <li>ドキュメントを色付きの日英統合HTMLへ変更し、ページ上で言語を切り替え可能に変更</li>
 <li>file-uploaderにHOMEリンクを追加し、管理画面からリンク先を設定可能に変更</li>
 <li>サブディレクトリ配置時にアップロードファイルのURLがサイト直下を指す問題を修正</li>
+<li>Image Board / Materials Library と統一した灰色ダークテーマと、保存前のデザイン初期化・編集前戻しを追加</li>
 </ul>
 <h2 id="0-9-7-2026-06-07">0.9.7 - 2026-06-07</h2>
 <ul>
@@ -178,7 +183,11 @@
 <li>Added edit, soft delete, admin bulk delete, restore, permanent purge, analytics, settings, and design screens</li>
 <li>Added local login, parent-site SSO, material author profiles, icons, and default term answers</li>
 <li>Kept logged-in author IDs separate from same-name guest/imported authors and added admin author-ID assignment</li>
+<li>Added an idempotent legacy <code>05_Sozaiko</code> importer for archives, previews, authors, categories, notes, and usage terms</li>
 <li>Added isolated SQLite tables, storage, full backup support, HTTP integration tests, and <code>15_materials_library</code> release packaging</li>
+<li>Added legacy-inspired default colors, author index links, compact author rows, aligned card fields, and a fixed Back to Top action</li>
+<li>Added multiple MP3 previews for audio/voice materials and audio migration from the legacy library</li>
+<li>Unified design reset and undo across Image Board, File Uploader, and Materials Library as unsaved live previews</li>
 </ul>
 <h2 id="file-uploader-1-0-0-2026-06-12">file-uploader 1.0.0 - 2026-06-12</h2>
 <ul>
@@ -190,6 +199,7 @@
 <li>Rebuilt the documentation as colored bilingual HTML with an in-page Japanese/English switch</li>
 <li>Added a HOME link to file-uploader with an administrator-configurable destination</li>
 <li>Fixed uploaded file URLs when file-uploader is deployed in a subdirectory</li>
+<li>Added a gray dark layout aligned with the other frontends and unsaved design reset/undo previews</li>
 </ul>
 <h2 id="0-9-7-2026-06-07">0.9.7 - 2026-06-07</h2>
 <ul>

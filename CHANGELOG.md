@@ -11,7 +11,11 @@ ThreadForge follows semantic versioning while it is being prepared for public us
 - Added edit, soft delete, admin bulk delete, restore, permanent purge, analytics, settings, and design screens
 - Added local login, parent-site SSO, material author profiles, icons, and default term answers
 - Kept logged-in author IDs separate from same-name guest/imported authors and added admin author-ID assignment
+- Added an idempotent legacy `05_Sozaiko` importer for archives, previews, authors, categories, notes, and usage terms
 - Added isolated SQLite tables, storage, full backup support, HTTP integration tests, and `15_materials_library` release packaging
+- Added legacy-inspired default colors, author index links, compact author rows, aligned card fields, and a fixed Back to Top action
+- Added multiple MP3 previews for audio/voice materials and audio migration from the legacy library
+- Unified design reset and undo across Image Board, File Uploader, and Materials Library as unsaved live previews
 
 ## file-uploader 1.0.0 - 2026-06-12
 
@@ -23,6 +27,7 @@ ThreadForge follows semantic versioning while it is being prepared for public us
 - Rebuilt the documentation as colored bilingual HTML with an in-page Japanese/English switch
 - Added a HOME link to file-uploader with an administrator-configurable destination
 - Fixed uploaded file URLs when file-uploader is deployed in a subdirectory
+- Added a gray dark layout aligned with the other frontends and unsaved design reset/undo previews
 
 ## 0.9.7 - 2026-06-07
 

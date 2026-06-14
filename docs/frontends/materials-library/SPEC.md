@@ -8,7 +8,7 @@ Materials Library is a file-posting application optimized for preservation and d
 
 - HOME: opens the administrator-configured URL.
 - List: grouped material catalog and table of contents.
-- Post: registers an archive, preview image, metadata, and terms answers.
+- Post: registers an archive, preview image or preview MP3 files, metadata, and terms answers.
 - Delete / Edit: operates on one selected material using ownership or a post password.
 - Manual: displays administrator-configured text.
 - Login: local account, SSO, and material-author preferences.
@@ -21,6 +21,16 @@ Materials Library is a file-posting application optimized for preservation and d
 - Guest and imported entries group by author name because they have no user ID.
 - A logged-in author and a guest author with the same displayed name remain separate.
 - Administrators can assign or remove a user ID on an existing material.
+- The table of contents links both tags and authors.
+- Adjacent authors with two or fewer items share a row when their complete groups fit.
+
+## Cards And Audio
+
+- Card order is preview, material name, download, size/category, usage terms, and notes.
+- Images retain their aspect ratio. Long material and archive names use ellipsis with full text in a tooltip.
+- A newly added usage term without an answer displays `?`.
+- Audio/voice categories accept multiple MP3 preview files and show a separate player for each file.
+- A fixed Back to Top button remains available at the lower right.
 
 ## Posting
 
@@ -41,7 +51,8 @@ Logged-in users receive defaults from their material profile:
 - Material count, author count, tag count, storage size, and monthly analytics
 - Title, description, HOME, manual, grouping order, upload limits, and extensions
 - Tag and usage-term add/edit/delete
-- Color design settings
+- Legacy-inspired color design settings
+- Reset and undo update the live preview immediately but persist only after Save
 - Admin password initialization and change
 
 ## Release

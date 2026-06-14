@@ -63,6 +63,8 @@ final class MaterialsApiHttpIntegrationTest extends TestCase
         $listed = $this->getJson(['action' => 'listMaterialItems']);
         $this->assertSame(200, $listed['status'], $listed['body']);
         $this->assertCount(2, $listed['json']['items']);
+        $this->assertCount(1, $listed['json']['items'][0]['media']);
+        $this->assertSame('sample.mp3', $listed['json']['items'][0]['media'][0]['originalName']);
         $keys = array_column($listed['json']['items'], 'authorKey');
         $this->assertContains('guest:Same Author', $keys);
         $this->assertContains('user:' . $registered['json']['user']['id'], $keys);
@@ -117,6 +119,8 @@ final class MaterialsApiHttpIntegrationTest extends TestCase
         $zipPath = $path . '.zip';
         rename($path, $zipPath);
         file_put_contents($zipPath, 'test archive');
+        $audioPath = $path . '.mp3';
+        file_put_contents($audioPath, 'test audio');
         try {
             $response = $this->postForm([
                 'action' => 'createMaterialItem',
@@ -128,9 +132,11 @@ final class MaterialsApiHttpIntegrationTest extends TestCase
                 'password' => 'postkey',
                 'terms' => json_encode([$termId => true]),
                 'archive' => new CURLFile($zipPath, 'application/zip', 'sample.zip'),
+                'audio[0]' => new CURLFile($audioPath, 'audio/mpeg', 'sample.mp3'),
             ]);
         } finally {
             @unlink($zipPath);
+            @unlink($audioPath);
         }
         $this->assertSame(200, $response['status'], $response['body']);
         $items = $this->getJson(['action' => 'listMaterialItems'])['json']['items'];

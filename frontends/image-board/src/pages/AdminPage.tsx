@@ -1,5 +1,5 @@
 import { CSSProperties, FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { AdminUser, api, apiBase, mediaUrl, type SocialLogLine } from '../api';
+import { AdminUser, api, apiBase, DEFAULT_IMAGE_BOARD_SKIN, mediaUrl, type SocialLogLine } from '../api';
 import { Post } from '../types';
 import SelectableThreadList from '../components/SelectableThreadList';
 import PeriodFilter, { filterPostsByPeriods, periodsFromPosts } from '../components/PeriodFilter';
@@ -470,6 +470,18 @@ const AdminPage = () => {
       skin: { ...savedSettings.skin },
     });
     setStatus('掲示板デザインを保存済みの設定に戻しました。');
+    setError(null);
+  };
+
+  const resetDesignToDefaults = () => {
+    if (!settings) {
+      return;
+    }
+    setSettings({
+      config: { ...settings.config },
+      skin: { ...settings.skin, ...DEFAULT_IMAGE_BOARD_SKIN },
+    });
+    setStatus('掲示板デザインをデフォルトに戻しました。保存するまでは確定しません。');
     setError(null);
   };
 
@@ -1071,6 +1083,7 @@ const AdminPage = () => {
               <div className="admin-settings-intro">
                 <p>投稿枠や背景など、見た目に関する設定をここで調整できます。</p>
                 <div className="button-row align-right">
+                  <button type="button" className="secondary" onClick={resetDesignToDefaults}>デフォルトに戻す</button>
                   <button type="button" className="secondary" onClick={resetDesignSettings}>編集前に戻す</button>
                   <button type="button" onClick={saveSettings}>設定を保存</button>
                 </div>

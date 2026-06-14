@@ -42,7 +42,7 @@ describe('file-uploader helpers', () => {
     expect(normalized.allowedExtensions).toBe('png');
     expect(normalized.maxUploadKb).toBe(20000);
     expect(normalized.design.pageBackgroundColor).toBe('#123456');
-    expect(normalized.design.buttonTextColor).toBe('#000000');
+    expect(normalized.design.buttonTextColor).toBe('#ffffff');
   });
 
   it('normalizes configured HOME URLs', () => {

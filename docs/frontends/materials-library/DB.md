@@ -31,3 +31,16 @@ Packaged deployment:
 Archives use `material-<id>-archive.<ext>`. Preview images use `material-<id>-image.<ext>`. Replacements archive the previous file with a timestamp. Soft deletion retains all files; permanent purge removes them.
 
 Full backup Zip includes `database.sqlite` and every file under `storage/data/`.
+
+## Legacy Sozaiko import
+
+The importer reads `Sozaiko.html`, archives under `zip/`, and previews under `img/`.
+It copies files into the Materials Library runtime and never moves or deletes the legacy source.
+
+```powershell
+tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko --dry-run
+tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko
+```
+
+Each imported row records a unique `material_items.legacy_source`. Running the command again skips existing rows.
+Entries without a user ID are grouped by their legacy author name. HTML link typos are repaired when a matching preview/file stem exists, and archive files missing from the HTML are imported as supplemented entries.

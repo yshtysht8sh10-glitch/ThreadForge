@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { CSSProperties, useEffect, useState } from 'react';
 import { Link, Route, Routes } from 'react-router-dom';
 import { api, DEFAULT_PUBLIC_SETTINGS, PublicSettings } from './api';
 import { AuthProvider, useAuth } from './auth';
@@ -40,7 +40,7 @@ const AppShell = () => {
   }, []);
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" style={boardDesignStyle(publicSettings.skin ?? {})}>
       <header className="app-header">
         <nav className="board-nav" aria-label="メインメニュー">
           <span className="nav-square" aria-hidden="true">■</span>
@@ -91,6 +91,38 @@ const AppShell = () => {
     </div>
   );
 };
+
+function boardDesignStyle(skin: Record<string, string>): CSSProperties {
+  const value = { ...DEFAULT_PUBLIC_SETTINGS.skin, ...skin } as Record<string, string>;
+  return {
+    '--board-bg': value.backgroundColor,
+    '--board-text': value.pageTextColor,
+    '--board-link': value.linkColor,
+    '--panel-bg': value.panelBackgroundColor,
+    '--panel-title-bg': value.panelTitleBackgroundColor,
+    '--panel-border': value.panelBorderColor,
+    '--panel-label': value.labelColor,
+    '--panel-field-bg': value.inputBackgroundColor,
+    '--board-input-text': value.inputTextColor,
+    '--primary-button-bg': value.buttonBackgroundColor,
+    '--primary-button-border': value.buttonBorderColor,
+    '--board-button-text': value.buttonTextColor,
+    '--secondary-button-bg': value.secondaryButtonBackgroundColor,
+    '--secondary-button-text': value.secondaryButtonTextColor,
+    '--secondary-button-border': value.secondaryButtonBorderColor,
+    '--normal-frame': value.normalFrameColor,
+    '--normal-header': value.normalHeaderColor,
+    '--normal-text': value.normalTextColor,
+    '--gdgd-frame': value.gdgdFrameColor,
+    '--gdgd-header': value.gdgdHeaderColor,
+    '--gdgd-text': value.gdgdTextColor,
+    '--reply-border': value.replyBorderColor,
+    '--quick-reaction-bg': value.quickReactionButtonBackgroundColor,
+    '--danger-color': value.dangerColor,
+    '--warning-color': value.warningColor,
+    '--success-color': value.successColor,
+  } as CSSProperties;
+}
 
 const App = () => (
   <AuthProvider>

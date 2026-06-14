@@ -1,5 +1,5 @@
 import { CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { api, apiBase, groupMaterials, homeHref, MaterialItem, MaterialSettings, MaterialTag, MaterialTerm, mediaUrl, User } from './api';
+import { api, apiBase, defaultMaterialDesign, groupMaterials, homeHref, MaterialDesign, MaterialItem, MaterialSettings, MaterialTag, MaterialTerm, mediaUrl, packAuthorGroups, User } from './api';
 
 type Page = 'list' | 'post' | 'delete' | 'edit' | 'manual' | 'login' | 'admin';
 type AdminTab = 'items' | 'deleted' | 'maintenance' | 'analytics' | 'settings' | 'design';
@@ -16,6 +16,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [previewDesign, setPreviewDesign] = useState<MaterialDesign | null>(null);
 
   const reload = async () => {
     const [settingsResponse, itemResponse] = await Promise.all([api.settings(), api.items()]);
@@ -44,14 +45,16 @@ function App() {
   }, [token]);
 
   const navigate = (next: Page) => {
+    if (next !== 'admin') setPreviewDesign(null);
     window.location.hash = next === 'list' ? '#/' : `#/${next}`;
     setPage(next);
     window.scrollTo({ top: 0 });
   };
 
   if (!settings) return <main className="loading">素材庫を読み込んでいます...</main>;
-  const style = designVariables(settings);
-  const common = { settings, tags, terms, items, token, user, setUser, setToken, reload, navigate, setNotice, setError };
+  const visibleSettings = previewDesign ? { ...settings, design: previewDesign } : settings;
+  const style = designVariables(visibleSettings);
+  const common = { settings, tags, terms, items, token, user, setUser, setToken, reload, navigate, setNotice, setError, setPreviewDesign };
 
   return (
     <div className="materials-app" style={style}>
@@ -67,6 +70,7 @@ function App() {
         {page === 'login' && <LoginPage {...common} />}
         {page === 'admin' && <AdminPage {...common} />}
       </main>
+      <button className="back-to-top" type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>上に戻る</button>
     </div>
   );
 }
@@ -96,6 +100,7 @@ type CommonProps = {
   settings: MaterialSettings; tags: MaterialTag[]; terms: MaterialTerm[]; items: MaterialItem[];
   token: string; user: User | null; setUser: (user: User | null) => void; setToken: (token: string) => void;
   reload: () => Promise<void>; navigate: (page: Page) => void; setNotice: (message: string) => void; setError: (message: string) => void;
+  setPreviewDesign: (design: MaterialDesign | null) => void;
 };
 
 function LibraryPage({ settings, items }: CommonProps) {
@@ -107,21 +112,39 @@ function LibraryPage({ settings, items }: CommonProps) {
         <p>{settings.description}</p>
       </section>
       <nav className="catalog-index" aria-label="素材目次">
-        {groups.map((group) => <a key={group.key} href={`#group-${slug(group.key)}`}>{group.label}</a>)}
+        {groups.map((group) => <span className="catalog-index-group" key={group.key}>
+          <a href={`#group-${slug(group.key)}`}>{group.label}</a>
+          {group.groups.map((inner) => <a className="author-index-link" key={inner.key} href={`#author-${slug(group.key)}-${slug(inner.key)}`}>{inner.label}</a>)}
+        </span>)}
       </nav>
       {groups.length === 0 && <Empty>登録された素材はありません。</Empty>}
-      {groups.map((group) => (
+      {settings.groupingParent === 'author'
+        ? packAuthorGroups(groups.map((group) => ({
+          ...group,
+          items: group.groups.flatMap((inner) => inner.items),
+        }))).map((row, rowIndex) => <div className="author-row author-parent-row" key={rowIndex}>
+          {row.map((group) => renderCatalogGroup(group))}
+        </div>)
+        : groups.map((group) => (
+          renderCatalogGroup(group)
+        ))}
+    </>
+  );
+}
+
+function renderCatalogGroup(group: ReturnType<typeof groupMaterials>[number]) {
+  return (
         <section className="catalog-section" id={`group-${slug(group.key)}`} key={group.key}>
           <h2>{group.label}</h2>
-          {group.groups.map((inner) => (
-            <div className="catalog-subsection" key={inner.key}>
-              <h3>{inner.label}</h3>
-              <div className="material-grid">{inner.items.map((item) => <MaterialCard item={item} key={item.id} />)}</div>
-            </div>
-          ))}
+          {packAuthorGroups(group.groups).map((row, rowIndex) => <div className="author-row" key={rowIndex}>
+            {row.map((inner) => (
+              <div className="catalog-subsection" id={`author-${slug(group.key)}-${slug(inner.key)}`} key={inner.key}>
+                <h3>{inner.label}</h3>
+                <div className="material-grid">{inner.items.map((item) => <MaterialCard item={item} key={item.id} />)}</div>
+              </div>
+            ))}
+          </div>)}
         </section>
-      ))}
-    </>
   );
 }
 
@@ -130,20 +153,17 @@ function MaterialCard({ item, selectable, selected, onSelect }: { item: Material
     <article className={`material-card ${selected ? 'selected' : ''}`}>
       {selectable && <input className="card-select" type="radio" checked={selected} onChange={onSelect} aria-label={`${item.name}を選択`} />}
       <div className="material-image">
-        {item.imageUrl ? <img src={mediaUrl(item.imageUrl) ?? ''} alt={`${item.name}の説明画像`} loading="lazy" /> : <span>NO IMAGE</span>}
+        {item.imageUrl ? <img src={mediaUrl(item.imageUrl) ?? ''} alt={`${item.name}の説明画像`} loading="lazy" /> :
+          (item.media ?? []).length ? <div className="audio-preview">{(item.media ?? []).map((media) => <label key={media.id} title={media.originalName}><span>{media.originalName}</span><audio controls preload="none" src={mediaUrl(media.url) ?? ''} /></label>)}</div> : <span>NO IMAGE</span>}
       </div>
       <div className="material-card-body">
-        <h4>{item.name}</h4>
-        <p className="author-line">
-          {item.authorIcon && <img src={mediaUrl(item.authorIcon) ?? ''} alt="" />}
-          作者: {item.authorName}{item.userId ? <span className="id-badge">ID</span> : <span className="guest-badge">NAME</span>}
-        </p>
-        {item.notes && <p className="notes">{item.notes}</p>}
-        <dl className="terms-table">
-          {item.terms.map((term) => <div key={term.id}><dt>{term.label}</dt><dd className={term.accepted ? 'yes' : 'no'}>{term.accepted ? '○' : '×'}</dd></div>)}
-        </dl>
-        <a className="download-button" href={mediaUrl(item.archiveUrl) ?? '#'} download>{item.archiveOriginalName}</a>
+        <h4 title={item.name}>{item.name}</h4>
+        <a className="download-button" title={item.archiveOriginalName} href={mediaUrl(item.archiveUrl) ?? '#'} download>{item.archiveOriginalName}</a>
         <small>{formatBytes(item.archiveSizeBytes)} / {item.tagName}</small>
+        <dl className="terms-table">
+          {item.terms.map((term) => <div key={term.id}><dt>{term.label}</dt><dd className={term.accepted === null ? 'unknown' : term.accepted ? 'yes' : 'no'}>{term.accepted === null ? '?' : term.accepted ? '○' : '×'}</dd></div>)}
+        </dl>
+        {item.notes && <p className="notes">{item.notes}</p>}
       </div>
     </article>
   );
@@ -158,12 +178,20 @@ function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
   const [password, setPassword] = useState(user?.post_password ?? '');
   const [archive, setArchive] = useState<File | null>(null);
   const [image, setImage] = useState<File | null>(null);
-  const [answers, setAnswers] = useState<Record<string, boolean>>(() => {
+  const [audioFiles, setAudioFiles] = useState<File[]>([]);
+  const [answers, setAnswers] = useState<Record<string, boolean | null>>(() => {
     if (item) return Object.fromEntries(item.terms.map((term) => [String(term.id), term.accepted]));
-    return Object.fromEntries(terms.map((term) => [String(term.id), Boolean(user?.materials_default_terms?.[String(term.id)])]));
+    return Object.fromEntries(terms.map((term) => [
+      String(term.id),
+      Object.prototype.hasOwnProperty.call(user?.materials_default_terms ?? {}, String(term.id))
+        ? Boolean(user?.materials_default_terms?.[String(term.id)])
+        : null,
+    ]));
   });
   const [busy, setBusy] = useState(false);
   const preview = useMemo(() => image ? URL.createObjectURL(image) : null, [image]);
+  const selectedTag = tags.find((tag) => String(tag.id) === tagId);
+  const isAudioTag = /音声|ボイス/.test(selectedTag?.name ?? '');
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
   const submit = async (event: FormEvent) => {
@@ -174,6 +202,7 @@ function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
     body.set('password', password); body.set('terms', JSON.stringify(answers));
     if (archive) body.set('archive', archive);
     if (image) body.set('image', image);
+    audioFiles.forEach((file) => body.append('audio[]', file));
     if (item) body.set('id', String(item.id));
     try {
       const response = mode === 'create' ? await api.create(body, token) : await api.update(body, token);
@@ -196,8 +225,11 @@ function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
         <label>素材ファイル（{props.settings.allowedArchiveExtensions}）
           <input type="file" required={mode === 'create'} accept={acceptExtensions(props.settings.allowedArchiveExtensions)} onChange={(event) => setArchive(event.target.files?.[0] ?? null)} />
         </label>
-        <label>説明用画像<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={(event) => setImage(event.target.files?.[0] ?? null)} /></label>
-        {(preview || item?.imageUrl) && <img className="form-preview" src={preview ?? mediaUrl(item?.imageUrl ?? null) ?? ''} alt="説明画像プレビュー" />}
+        {isAudioTag
+          ? <label>試聴用MP3（複数選択可）<input type="file" accept="audio/mpeg,.mp3" multiple onChange={(event) => setAudioFiles(Array.from(event.target.files ?? []))} /></label>
+          : <label>説明用画像<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={(event) => setImage(event.target.files?.[0] ?? null)} /></label>}
+        {!isAudioTag && (preview || item?.imageUrl) && <img className="form-preview" src={preview ?? mediaUrl(item?.imageUrl ?? null) ?? ''} alt="説明画像プレビュー" />}
+        {isAudioTag && (item?.media ?? []).map((media) => <audio className="form-audio" key={media.id} controls src={mediaUrl(media.url) ?? ''} />)}
         <fieldset className="terms-editor"><legend>利用規約</legend>
           {terms.map((term) => <div className="term-choice" key={term.id}>
             <span><strong>{term.label}</strong><small>{term.description}</small></span>
@@ -325,6 +357,7 @@ function AdminPage(props: CommonProps) {
   const [selected, setSelected] = useState<number[]>([]);
   const [deleted, setDeleted] = useState<MaterialItem[]>([]);
   const [adminSettings, setAdminSettings] = useState<{ config: Record<string, unknown>; skin: Record<string, unknown> } | null>(null);
+  const [savedAdminSettings, setSavedAdminSettings] = useState<{ config: Record<string, unknown>; skin: Record<string, unknown> } | null>(null);
   const [draftTags, setDraftTags] = useState(props.tags);
   const [draftTerms, setDraftTerms] = useState(props.terms);
   const [users, setUsers] = useState<Array<{ id: number; login_id: string; display_name: string }>>([]);
@@ -337,7 +370,7 @@ function AdminPage(props: CommonProps) {
     const [settingsResponse, deletedResponse, userResponse, analyticsResponse] = await Promise.all([
       api.getAdmin(value), api.deleted(value), api.users(value), api.analytics(value),
     ]);
-    setAdminSettings(settingsResponse.settings); setDeleted(deletedResponse.items); setUsers(userResponse.users);
+    setAdminSettings(settingsResponse.settings); setSavedAdminSettings(structuredClone(settingsResponse.settings)); setDeleted(deletedResponse.items); setUsers(userResponse.users);
     setAnalytics(analyticsResponse); setAuthenticated(true); localStorage.setItem(ADMIN_KEY, value); props.setError('');
   };
   const authenticate = async (event: FormEvent) => {
@@ -359,6 +392,8 @@ function AdminPage(props: CommonProps) {
   };
   const saveSettings = async () => {
     await runAdmin(() => api.updateSettings(password, adminSettings));
+    setSavedAdminSettings(structuredClone(adminSettings));
+    props.setPreviewDesign(null);
   };
   const config = adminSettings.config;
   const skin = adminSettings.skin;
@@ -427,8 +462,23 @@ function AdminPage(props: CommonProps) {
         }
       }} /></>}
       {tab === 'design' && <Panel title="デザイン">
-        <div className="color-grid">{designFields.map(([key, label]) => <label key={key}>{label}<span className="color-input"><input type="color" value={String(skin[key] ?? '#000000')} onChange={(e) => setAdminSettings({ ...adminSettings, skin: { ...skin, [key]: e.target.value } })} /><input value={String(skin[key] ?? '')} onChange={(e) => setAdminSettings({ ...adminSettings, skin: { ...skin, [key]: e.target.value } })} /></span></label>)}</div>
-        <div className="actions"><button onClick={saveSettings}>デザインを保存</button></div>
+        <p>変更は画面へ即時反映されます。保存ボタンを押すまではDBへ保存されません。</p>
+        <div className="color-grid">{designFields.map(([key, label]) => <label key={key}>{label}<span className="color-input"><input type="color" value={String(skin[key] ?? '#000000')} onChange={(e) => updateMaterialDesign(key, e.target.value, adminSettings, setAdminSettings, props.setPreviewDesign)} /><input value={String(skin[key] ?? '')} onChange={(e) => updateMaterialDesign(key, e.target.value, adminSettings, setAdminSettings, props.setPreviewDesign)} /></span></label>)}</div>
+        <div className="actions">
+          <button className="secondary" onClick={() => {
+            const next = { ...adminSettings, skin: { ...skin, ...materialDesignSkin(defaultMaterialDesign) } };
+            setAdminSettings(next); props.setPreviewDesign(defaultMaterialDesign);
+            props.setNotice('デザインをデフォルトに戻しました。保存するまでは確定しません。');
+          }}>デフォルトに戻す</button>
+          <button className="secondary" onClick={() => {
+            if (!savedAdminSettings) return;
+            const restored = structuredClone(savedAdminSettings);
+            setAdminSettings(restored);
+            props.setPreviewDesign(materialDesignFromSkin(restored.skin));
+            props.setNotice('デザインを編集前の状態に戻しました。');
+          }}>編集前に戻す</button>
+          <button onClick={saveSettings}>デザインを保存</button>
+        </div>
       </Panel>}
     </>
   );
@@ -484,6 +534,26 @@ const designFields: Array<[string, string]> = [
   ['materialsHeadingBackgroundColor', '見出し背景'], ['materialsAccentColor', 'アクセント'],
   ['materialsButtonBackgroundColor', 'ボタン背景'], ['materialsButtonTextColor', 'ボタン文字'],
 ];
+function materialDesignSkin(design: MaterialDesign): Record<string, string> {
+  return Object.fromEntries(Object.entries(design).map(([key, value]) => [`materials${key[0].toUpperCase()}${key.slice(1)}`, value]));
+}
+function materialDesignFromSkin(skin: Record<string, unknown>): MaterialDesign {
+  return Object.fromEntries(Object.entries(defaultMaterialDesign).map(([key, fallback]) => [
+    key,
+    String(skin[`materials${key[0].toUpperCase()}${key.slice(1)}`] ?? fallback),
+  ])) as MaterialDesign;
+}
+function updateMaterialDesign(
+  key: string,
+  value: string,
+  settings: { config: Record<string, unknown>; skin: Record<string, unknown> },
+  setSettings: (settings: { config: Record<string, unknown>; skin: Record<string, unknown> }) => void,
+  setPreview: (design: MaterialDesign | null) => void,
+) {
+  const next = { ...settings, skin: { ...settings.skin, [key]: value } };
+  setSettings(next);
+  setPreview(materialDesignFromSkin(next.skin));
+}
 async function importBackup(password: string, file: File | null, reload: () => Promise<void>, notice: (message: string) => void, error: (message: string) => void) {
   if (!file) { error('バックアップZipを選択してください。'); return; }
   const body = new FormData(); body.set('action', 'importBackup'); body.set('admin_password', password); body.set('backup', file);

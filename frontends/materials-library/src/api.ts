@@ -1,6 +1,7 @@
 export type MaterialTag = { id: number; name: string; sortOrder: number };
 export type MaterialTerm = { id: number; label: string; description: string; sortOrder: number };
-export type TermAnswer = MaterialTerm & { accepted: boolean };
+export type TermAnswer = MaterialTerm & { accepted: boolean | null };
+export type MaterialMedia = { id: number; url: string; originalName: string; sizeBytes: number };
 export type MaterialDesign = {
   pageBackgroundColor: string;
   pageTextColor: string;
@@ -23,6 +24,16 @@ export type MaterialSettings = {
   ssoEnabled: boolean;
   design: MaterialDesign;
 };
+export const defaultMaterialDesign: MaterialDesign = {
+  pageBackgroundColor: '#000000',
+  pageTextColor: '#f4f4f4',
+  panelBackgroundColor: '#101010',
+  panelBorderColor: '#777777',
+  headingBackgroundColor: '#65008f',
+  accentColor: '#79b7ff',
+  buttonBackgroundColor: '#3974ee',
+  buttonTextColor: '#ffffff',
+};
 export type MaterialItem = {
   id: number;
   userId: number | null;
@@ -42,6 +53,7 @@ export type MaterialItem = {
   updatedAt: string;
   deletedAt: string | null;
   terms: TermAnswer[];
+  media: MaterialMedia[];
 };
 export type User = {
   id: number;
@@ -145,4 +157,28 @@ export function groupMaterials(items: MaterialItem[], parent: 'tag' | 'author') 
   return [...outer.entries()].map(([key, value]) => ({
     key, label: value.label, groups: [...value.groups.entries()].map(([innerKey, group]) => ({ key: innerKey, ...group })),
   }));
+}
+
+export function packAuthorGroups<T extends { items: MaterialItem[] }>(groups: T[]): T[][] {
+  const rows: T[][] = [];
+  let current: T[] = [];
+  let itemCount = 0;
+  groups.forEach((group) => {
+    if (group.items.length > 2) {
+      if (current.length) rows.push(current);
+      rows.push([group]);
+      current = [];
+      itemCount = 0;
+      return;
+    }
+    if (current.length && itemCount + group.items.length > 4) {
+      rows.push(current);
+      current = [];
+      itemCount = 0;
+    }
+    current.push(group);
+    itemCount += group.items.length;
+  });
+  if (current.length) rows.push(current);
+  return rows;
 }

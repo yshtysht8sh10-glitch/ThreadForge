@@ -42,6 +42,17 @@ On first access, ThreadForge creates the SQLite DB automatically when PHP has wr
 
 Set `THREADFORGE_FRONTEND_ID` per frontend/API pair when multiple frontends are deployed. For example, use `image-board` for the image posting board and `file-uploader` for the file uploader.
 
+## Legacy Materials Library Import
+
+Preview the old `05_Sozaiko` collection, then import it into the Materials Library runtime:
+
+```powershell
+tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko --dry-run
+tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko
+```
+
+The source files are copied, not moved. Re-running the importer is safe because every imported archive has a unique legacy source key.
+
 ## Local Archive Import
 
 Import local archive logs into the current SQLite DB:

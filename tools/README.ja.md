@@ -2,6 +2,17 @@
 
 [English tools guide](README.md)
 
+## 旧素材庫のインポート
+
+旧 `05_Sozaiko` の内容を確認してから、素材庫ランタイムへ取り込みます。
+
+```powershell
+tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko --dry-run
+tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko
+```
+
+元ファイルは移動せずコピーします。旧素材ごとに一意な出典キーを保存するため、再実行しても二重登録されません。
+
 ## フロントエンドごとのDB分離
 
 バックエンドコードは共通ですが、DBとアップロードファイルは `THREADFORGE_FRONTEND_ID` ごとに分かれます。

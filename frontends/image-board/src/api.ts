@@ -57,6 +57,36 @@ export type PublicSettings = {
     ssoEnabled?: boolean;
     listOrder?: 'number' | 'createdAt' | string;
   };
+  skin?: Record<string, string>;
+};
+
+export const DEFAULT_IMAGE_BOARD_SKIN = {
+  normalFrameColor: '#858f9b',
+  gdgdFrameColor: '#6e9f8c',
+  backgroundColor: '#0b0d10',
+  pageTextColor: '#eef1f4',
+  linkColor: '#8fb7e8',
+  panelBackgroundColor: '#151b22',
+  panelTitleBackgroundColor: '#59636f',
+  panelBorderColor: '#707b88',
+  labelColor: '#aac4df',
+  inputBackgroundColor: '#2d333b',
+  inputTextColor: '#ffffff',
+  buttonBackgroundColor: '#3974ee',
+  buttonTextColor: '#ffffff',
+  buttonBorderColor: '#8fb0ff',
+  secondaryButtonBackgroundColor: '#303640',
+  secondaryButtonTextColor: '#ffffff',
+  secondaryButtonBorderColor: '#778291',
+  normalHeaderColor: '#626c78',
+  normalTextColor: '#ffffff',
+  gdgdHeaderColor: '#477968',
+  gdgdTextColor: '#ffffff',
+  replyBorderColor: '#737d89',
+  quickReactionButtonBackgroundColor: '#303640',
+  dangerColor: '#ff8585',
+  warningColor: '#f0cf78',
+  successColor: '#8bd39a',
 };
 
 export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
@@ -152,6 +182,7 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSettings = {
       '- 作者アイコンや作者ページから、そのユーザーが投稿した作品と、自分の作品として紐づけた作品を確認できます。',
     ].join('\n'),
   },
+  skin: DEFAULT_IMAGE_BOARD_SKIN,
 };
 
 export const DEFAULT_ADMIN_SETTINGS = {
@@ -181,34 +212,7 @@ export const DEFAULT_ADMIN_SETTINGS = {
     maxImageWidth: 1280,
     maxImageHeight: 960,
   },
-  skin: {
-    normalFrameColor: '#a23dff',
-    gdgdFrameColor: '#6dffc0',
-    backgroundColor: '#000000',
-    pageTextColor: '#ffffff',
-    linkColor: '#58a6ff',
-    panelBackgroundColor: '#101821',
-    panelTitleBackgroundColor: '#5b6572',
-    panelBorderColor: '#738196',
-    labelColor: '#8fc0ff',
-    inputBackgroundColor: '#30343a',
-    inputTextColor: '#ffffff',
-    buttonBackgroundColor: '#3f74ff',
-    buttonTextColor: '#ffffff',
-    buttonBorderColor: '#8fb0ff',
-    secondaryButtonBackgroundColor: '#2f333b',
-    secondaryButtonTextColor: '#ffffff',
-    secondaryButtonBorderColor: '#7a8495',
-    normalHeaderColor: '#7f00a8',
-    normalTextColor: '#ffffff',
-    gdgdHeaderColor: '#39988a',
-    gdgdTextColor: '#ffffff',
-    replyBorderColor: '#7a8495',
-    quickReactionButtonBackgroundColor: '#30343b',
-    dangerColor: '#ff7c7c',
-    warningColor: '#ffd36a',
-    successColor: '#8dff8d',
-  },
+  skin: DEFAULT_IMAGE_BOARD_SKIN,
 };
 
 export function apiBase(): string {

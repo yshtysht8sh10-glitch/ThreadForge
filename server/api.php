@@ -3492,6 +3492,7 @@ function addReferencedBackupImages(PDO $pdo, ZipArchive $zip, array &$addedImage
         'SELECT icon_path AS path FROM users WHERE icon_path IS NOT NULL AND icon_path <> ""',
         'SELECT archive_path AS path FROM material_items WHERE archive_path IS NOT NULL AND archive_path <> ""',
         'SELECT image_path AS path FROM material_items WHERE image_path IS NOT NULL AND image_path <> ""',
+        'SELECT path FROM material_media WHERE path IS NOT NULL AND path <> ""',
     ];
     foreach ($queries as $sql) {
         $stmt = $pdo->query($sql);
@@ -3779,6 +3780,7 @@ function normalizeRestoredSqliteImagePaths(): void
         ['table' => 'users', 'column' => 'icon_path'],
         ['table' => 'material_items', 'column' => 'archive_path'],
         ['table' => 'material_items', 'column' => 'image_path'],
+        ['table' => 'material_media', 'column' => 'path'],
     ];
     foreach ($targets as $target) {
         $table = $target['table'];
@@ -3919,6 +3921,7 @@ function publicSettings(PDO $pdo): void
 {
     $settings = loadSettings($pdo);
     $config = $settings['config'] ?? [];
+    $skin = $settings['skin'] ?? [];
 
     jsonResponse([
         'success' => true,
@@ -3945,8 +3948,19 @@ function publicSettings(PDO $pdo): void
                 'ssoEnabled' => toBoolFlag($config['ssoEnabled'] ?? false),
                 'listOrder' => listThreadOrder($settings),
             ],
+            'skin' => imageBoardPublicSkin($skin),
         ],
     ]);
+}
+
+function imageBoardPublicSkin(array $skin): array
+{
+    $defaults = imageBoardDefaultSkin();
+    $result = [];
+    foreach ($defaults as $key => $default) {
+        $result[$key] = (string)($skin[$key] ?? $default);
+    }
+    return $result;
 }
 
 function uploaderSettings(PDO $pdo): void
@@ -4251,27 +4265,32 @@ function uploaderFileValidationError(string $filename, int $sizeBytes, array $co
 
 function uploaderDesignSettings(array $skin): array
 {
-    $defaults = [
-        'pageBackgroundColor' => '#eeeeee',
-        'pageTextColor' => '#000000',
-        'linkColor' => '#0000ff',
-        'shellBackgroundColor' => '#2a2a2a',
-        'contentBackgroundColor' => '#ffffff',
-        'formBackgroundColor' => '#eeeeee',
-        'titleStartColor' => '#f7f7f7',
-        'titleEndColor' => '#d8d8d8',
-        'tableHeaderColor' => '#eeeeee',
-        'borderColor' => '#808080',
-        'buttonBackgroundColor' => '#f5f5f5',
-        'buttonTextColor' => '#000000',
-        'activeTabColor' => '#8eb4e3',
-        'errorColor' => '#9b1c1c',
-    ];
+    $defaults = uploaderDefaultDesign();
     $result = [];
     foreach ($defaults as $key => $default) {
         $result[$key] = (string)($skin['uploader' . ucfirst($key)] ?? $default);
     }
     return $result;
+}
+
+function uploaderDefaultDesign(): array
+{
+    return [
+        'pageBackgroundColor' => '#0b0d10',
+        'pageTextColor' => '#eef1f4',
+        'linkColor' => '#8fb7e8',
+        'shellBackgroundColor' => '#12171d',
+        'contentBackgroundColor' => '#151b22',
+        'formBackgroundColor' => '#1c232c',
+        'titleStartColor' => '#626b76',
+        'titleEndColor' => '#4f5863',
+        'tableHeaderColor' => '#59636f',
+        'borderColor' => '#707b88',
+        'buttonBackgroundColor' => '#3974ee',
+        'buttonTextColor' => '#ffffff',
+        'activeTabColor' => '#315f9e',
+        'errorColor' => '#ff8585',
+    ];
 }
 
 function updateSettings(PDO $pdo): void
@@ -4370,12 +4389,12 @@ function materialsSettings(PDO $pdo): void
             'allowedArchiveExtensions' => (string)($config['materialsAllowedArchiveExtensions'] ?? 'zip 7z rar'),
             'ssoEnabled' => toBoolFlag($config['ssoEnabled'] ?? false),
             'design' => [
-                'pageBackgroundColor' => (string)($skin['materialsPageBackgroundColor'] ?? '#050505'),
-                'pageTextColor' => (string)($skin['materialsPageTextColor'] ?? '#f2f2f2'),
-                'panelBackgroundColor' => (string)($skin['materialsPanelBackgroundColor'] ?? '#111820'),
-                'panelBorderColor' => (string)($skin['materialsPanelBorderColor'] ?? '#6c7787'),
-                'headingBackgroundColor' => (string)($skin['materialsHeadingBackgroundColor'] ?? '#59636f'),
-                'accentColor' => (string)($skin['materialsAccentColor'] ?? '#8fb0ff'),
+                'pageBackgroundColor' => (string)($skin['materialsPageBackgroundColor'] ?? '#000000'),
+                'pageTextColor' => (string)($skin['materialsPageTextColor'] ?? '#f4f4f4'),
+                'panelBackgroundColor' => (string)($skin['materialsPanelBackgroundColor'] ?? '#101010'),
+                'panelBorderColor' => (string)($skin['materialsPanelBorderColor'] ?? '#777777'),
+                'headingBackgroundColor' => (string)($skin['materialsHeadingBackgroundColor'] ?? '#65008f'),
+                'accentColor' => (string)($skin['materialsAccentColor'] ?? '#79b7ff'),
                 'buttonBackgroundColor' => (string)($skin['materialsButtonBackgroundColor'] ?? '#3974ee'),
                 'buttonTextColor' => (string)($skin['materialsButtonTextColor'] ?? '#ffffff'),
             ],
@@ -4427,10 +4446,16 @@ function buildMaterialItem(PDO $pdo, array $row): array
 {
     $termStmt = $pdo->prepare(
         'SELECT t.id, t.label, t.description, mit.accepted
-         FROM material_item_terms mit JOIN material_terms t ON t.id = mit.term_id
-         WHERE mit.item_id = :item_id ORDER BY t.sort_order, t.id'
+         FROM material_terms t
+         LEFT JOIN material_item_terms mit ON mit.term_id = t.id AND mit.item_id = :item_id
+         ORDER BY t.sort_order, t.id'
     );
     $termStmt->execute([':item_id' => (int)$row['id']]);
+    $mediaStmt = $pdo->prepare(
+        'SELECT id, path, original_name, size_bytes FROM material_media
+         WHERE item_id = :item_id ORDER BY sort_order, id'
+    );
+    $mediaStmt->execute([':item_id' => (int)$row['id']]);
     $userId = isset($row['user_id']) ? (int)$row['user_id'] : null;
     return [
         'id' => (int)$row['id'],
@@ -4452,8 +4477,15 @@ function buildMaterialItem(PDO $pdo, array $row): array
         'deletedAt' => $row['deleted_at'] ?? null,
         'terms' => array_map(static fn(array $term): array => [
             'id' => (int)$term['id'], 'label' => (string)$term['label'],
-            'description' => (string)$term['description'], 'accepted' => (bool)$term['accepted'],
+            'description' => (string)$term['description'],
+            'accepted' => $term['accepted'] === null ? null : (bool)$term['accepted'],
         ], $termStmt->fetchAll(PDO::FETCH_ASSOC)),
+        'media' => array_map(static fn(array $media): array => [
+            'id' => (int)$media['id'],
+            'url' => publicStoragePath((string)$media['path']),
+            'originalName' => (string)$media['original_name'],
+            'sizeBytes' => (int)$media['size_bytes'],
+        ], $mediaStmt->fetchAll(PDO::FETCH_ASSOC)),
     ];
 }
 
@@ -4482,6 +4514,7 @@ function createMaterialItem(PDO $pdo): void
     $password = trim((string)($_POST['password'] ?? ($user['post_password'] ?? '')));
     $archive = $_FILES['archive'] ?? null;
     $image = $_FILES['image'] ?? null;
+    $audioFiles = materialUploadedFiles('audio');
     if ($authorName === '' && $user) {
         $authorName = normalizeString((string)($user['materials_author_name'] ?? $user['display_name'] ?? ''));
     }
@@ -4492,6 +4525,9 @@ function createMaterialItem(PDO $pdo): void
     validateMaterialUpload($pdo, $archive, 'archive');
     if (is_array($image) && (int)($image['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
         validateMaterialUpload($pdo, $image, 'image');
+    }
+    foreach ($audioFiles as $audioFile) {
+        validateMaterialUpload($pdo, $audioFile, 'audio');
     }
     $now = currentTimestamp();
     $pdo->beginTransaction();
@@ -4522,6 +4558,7 @@ function createMaterialItem(PDO $pdo): void
         $pdo->prepare('UPDATE material_items SET archive_path = :archive_path, image_path = :image_path, image_original_name = :image_name WHERE id = :id')
             ->execute([':archive_path' => $archivePath, ':image_path' => $imagePath, ':image_name' => $imageName, ':id' => $id]);
         replaceMaterialTerms($pdo, $id, materialTermAnswersFromRequest());
+        saveMaterialAudioUploads($pdo, $audioFiles, $id);
         $pdo->commit();
     } catch (Throwable $exception) {
         if ($pdo->inTransaction()) {
@@ -4565,6 +4602,10 @@ function updateMaterialItem(PDO $pdo): void
         $imagePath = saveMaterialUpload($_FILES['image'], (int)$id, 'image');
         $imageName = basename((string)$_FILES['image']['name']);
     }
+    $audioFiles = materialUploadedFiles('audio');
+    foreach ($audioFiles as $audioFile) {
+        validateMaterialUpload($pdo, $audioFile, 'audio');
+    }
     $pdo->prepare(
         'UPDATE material_items SET author_name = :author_name, name = :name, notes = :notes, tag_id = :tag_id,
          archive_path = :archive_path, archive_original_name = :archive_name, archive_size_bytes = :archive_size,
@@ -4577,6 +4618,7 @@ function updateMaterialItem(PDO $pdo): void
     if (isset($_POST['terms'])) {
         replaceMaterialTerms($pdo, (int)$id, materialTermAnswersFromRequest());
     }
+    saveMaterialAudioUploads($pdo, $audioFiles, (int)$id);
     jsonResponse(['success' => true, 'message' => '素材を更新しました。']);
 }
 
@@ -4656,6 +4698,14 @@ function purgeMaterialItems(PDO $pdo): void
                 @unlink($path);
             }
         }
+        $mediaStmt = $pdo->prepare('SELECT path FROM material_media WHERE item_id = :id');
+        $mediaStmt->execute([':id' => $id]);
+        foreach ($mediaStmt->fetchAll(PDO::FETCH_COLUMN) as $path) {
+            if (is_string($path) && is_file($path)) {
+                @unlink($path);
+            }
+        }
+        $pdo->prepare('DELETE FROM material_media WHERE item_id = :id')->execute([':id' => $id]);
         $pdo->prepare('DELETE FROM material_item_terms WHERE item_id = :id')->execute([':id' => $id]);
         $pdo->prepare('DELETE FROM material_items WHERE id = :id')->execute([':id' => $id]);
     }
@@ -4829,6 +4879,9 @@ function validateMaterialUpload(PDO $pdo, mixed $file, string $kind): void
     if ($kind === 'archive') {
         $allowed = preg_split('/[\s,;]+/', strtolower((string)($config['materialsAllowedArchiveExtensions'] ?? 'zip 7z rar'))) ?: [];
         $limit = max(1, (int)($config['materialsMaxArchiveKb'] ?? 102400)) * 1024;
+    } elseif ($kind === 'audio') {
+        $allowed = ['mp3'];
+        $limit = max(1, (int)($config['materialsMaxImageKb'] ?? 10240)) * 1024;
     } else {
         $allowed = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
         $limit = max(1, (int)($config['materialsMaxImageKb'] ?? 10240)) * 1024;
@@ -4838,6 +4891,61 @@ function validateMaterialUpload(PDO $pdo, mixed $file, string $kind): void
     }
     if ((int)$file['size'] > $limit) {
         jsonResponse(['success' => false, 'message' => 'ファイルサイズが上限を超えています。'], 400);
+    }
+}
+
+function materialUploadedFiles(string $key): array
+{
+    $files = $_FILES[$key] ?? null;
+    if (!is_array($files)) {
+        return [];
+    }
+    if (!is_array($files['name'] ?? null)) {
+        return (int)($files['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE ? [] : [$files];
+    }
+    $result = [];
+    foreach ($files['name'] as $index => $name) {
+        $error = (int)($files['error'][$index] ?? UPLOAD_ERR_NO_FILE);
+        if ($error === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
+        $result[] = [
+            'name' => $name,
+            'type' => $files['type'][$index] ?? '',
+            'tmp_name' => $files['tmp_name'][$index] ?? '',
+            'error' => $error,
+            'size' => $files['size'][$index] ?? 0,
+        ];
+    }
+    return $result;
+}
+
+function saveMaterialAudioUploads(PDO $pdo, array $files, int $itemId): void
+{
+    if ($files === []) {
+        return;
+    }
+    $sortOrderStmt = $pdo->prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 FROM material_media WHERE item_id = :item_id');
+    $sortOrderStmt->execute([':item_id' => $itemId]);
+    $sortOrder = (int)$sortOrderStmt->fetchColumn();
+    $insert = $pdo->prepare(
+        'INSERT INTO material_media (item_id, path, original_name, size_bytes, sort_order, created_at)
+         VALUES (:item_id, :path, :original_name, :size_bytes, :sort_order, :created_at)'
+    );
+    foreach ($files as $file) {
+        $destination = STORAGE_DIR . '/material-' . $itemId . '-audio-' . $sortOrder . '.mp3';
+        if (!move_uploaded_file((string)$file['tmp_name'], $destination)) {
+            throw new RuntimeException('MP3ファイルを保存できませんでした。');
+        }
+        $insert->execute([
+            ':item_id' => $itemId,
+            ':path' => $destination,
+            ':original_name' => basename((string)$file['name']),
+            ':size_bytes' => (int)$file['size'],
+            ':sort_order' => $sortOrder,
+            ':created_at' => currentTimestamp(),
+        ]);
+        $sortOrder++;
     }
 }
 
@@ -4867,7 +4975,7 @@ function replaceMaterialTerms(PDO $pdo, int $itemId, array $answers): void
     $insert = $pdo->prepare('INSERT INTO material_item_terms (item_id, term_id, accepted) VALUES (:item_id, :term_id, :accepted)');
     foreach ($answers as $rawId => $accepted) {
         $id = filter_var($rawId, FILTER_VALIDATE_INT);
-        if ($id) {
+        if ($id && $accepted !== null) {
             $insert->execute([':item_id' => $itemId, ':term_id' => (int)$id, ':accepted' => toBoolFlag($accepted) ? 1 : 0]);
         }
     }
@@ -4941,46 +5049,52 @@ function defaultSettings(): array
             'maxImageHeight' => 960,
             'allowedImageTypes' => ['gif', 'png', 'jpeg', 'jpg', 'bmp'],
         ],
-        'skin' => [
-            'normalFrameColor' => '#a23dff',
-            'gdgdFrameColor' => '#6dffc0',
-            'backgroundColor' => '#000000',
-            'pageTextColor' => '#ffffff',
-            'linkColor' => '#58a6ff',
-            'panelBackgroundColor' => '#101821',
-            'panelTitleBackgroundColor' => '#5b6572',
-            'panelBorderColor' => '#738196',
-            'labelColor' => '#8fc0ff',
-            'inputBackgroundColor' => '#30343a',
-            'inputTextColor' => '#ffffff',
-            'buttonBackgroundColor' => '#3f74ff',
-            'buttonTextColor' => '#ffffff',
-            'buttonBorderColor' => '#8fb0ff',
-            'secondaryButtonBackgroundColor' => '#2f333b',
-            'secondaryButtonTextColor' => '#ffffff',
-            'secondaryButtonBorderColor' => '#7a8495',
-            'normalHeaderColor' => '#7f00a8',
-            'normalTextColor' => '#ffffff',
-            'gdgdHeaderColor' => '#39988a',
-            'gdgdTextColor' => '#ffffff',
-            'replyBorderColor' => '#7a8495',
-            'quickReactionButtonBackgroundColor' => '#30343b',
-            'dangerColor' => '#ff7c7c',
-            'warningColor' => '#ffd36a',
-            'successColor' => '#8dff8d',
-            'materialsPageBackgroundColor' => '#050505',
-            'materialsPageTextColor' => '#f2f2f2',
-            'materialsPanelBackgroundColor' => '#111820',
-            'materialsPanelBorderColor' => '#6c7787',
-            'materialsHeadingBackgroundColor' => '#59636f',
-            'materialsAccentColor' => '#8fb0ff',
+        'skin' => array_merge(imageBoardDefaultSkin(), [
+            'materialsPageBackgroundColor' => '#000000',
+            'materialsPageTextColor' => '#f4f4f4',
+            'materialsPanelBackgroundColor' => '#101010',
+            'materialsPanelBorderColor' => '#777777',
+            'materialsHeadingBackgroundColor' => '#65008f',
+            'materialsAccentColor' => '#79b7ff',
             'materialsButtonBackgroundColor' => '#3974ee',
             'materialsButtonTextColor' => '#ffffff',
-        ],
+        ]),
         'security' => [
             'adminPasswordHash' => '',
             'cronApiKey' => '',
         ],
+    ];
+}
+
+function imageBoardDefaultSkin(): array
+{
+    return [
+        'normalFrameColor' => '#858f9b',
+        'gdgdFrameColor' => '#6e9f8c',
+        'backgroundColor' => '#0b0d10',
+        'pageTextColor' => '#eef1f4',
+        'linkColor' => '#8fb7e8',
+        'panelBackgroundColor' => '#151b22',
+        'panelTitleBackgroundColor' => '#59636f',
+        'panelBorderColor' => '#707b88',
+        'labelColor' => '#aac4df',
+        'inputBackgroundColor' => '#2d333b',
+        'inputTextColor' => '#ffffff',
+        'buttonBackgroundColor' => '#3974ee',
+        'buttonTextColor' => '#ffffff',
+        'buttonBorderColor' => '#8fb0ff',
+        'secondaryButtonBackgroundColor' => '#303640',
+        'secondaryButtonTextColor' => '#ffffff',
+        'secondaryButtonBorderColor' => '#778291',
+        'normalHeaderColor' => '#626c78',
+        'normalTextColor' => '#ffffff',
+        'gdgdHeaderColor' => '#477968',
+        'gdgdTextColor' => '#ffffff',
+        'replyBorderColor' => '#737d89',
+        'quickReactionButtonBackgroundColor' => '#303640',
+        'dangerColor' => '#ff8585',
+        'warningColor' => '#f0cf78',
+        'successColor' => '#8bd39a',
     ];
 }
 

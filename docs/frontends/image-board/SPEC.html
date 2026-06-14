@@ -96,10 +96,11 @@
 </ul>
 <h2 id="見た目">見た目</h2>
 <ul>
-<li>黒背景</li>
+<li>デフォルトは灰色を基調としたダークテーマ</li>
 <li>ドット絵板らしいクラシックな掲示板ナビゲーション</li>
 <li>親投稿カードと返信表示</li>
 <li>画像を大きく見せるレイアウト</li>
+<li>管理画面の「デフォルトに戻す」「編集前に戻す」は画面へ即時プレビューし、保存ボタンを押すまでDBへ保存しない</li>
 </ul>
 <h2 id="runtime">Runtime</h2>
 <p>開発環境:</p>
@@ -165,6 +166,8 @@ server/runtime/image-board/storage/data/</code></pre>
 <li>Admin-configurable embedded manual title and body</li>
 <li>Search by all fields, title, body, or author</li>
 <li>RSS feed</li>
+<li>Gray-based dark theme by default</li>
+<li>Admin design reset and undo update the live preview immediately but do not persist until Save is pressed</li>
 </ul>
 <h2 id="admin-features">Admin Features</h2>
 <p>The admin page uses the configured administrator password. <code>THREADFORGE_ADMIN_PASSWORD</code> is available as an optional recovery/setup override.</p>

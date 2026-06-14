@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { acceptExtensions, formatBytes } from './App';
-import { groupMaterials, homeHref, MaterialItem } from './api';
+import { groupMaterials, homeHref, MaterialItem, packAuthorGroups } from './api';
 
 describe('materials-library helpers', () => {
   it('groups logged-in and guest authors separately even when names match', () => {
@@ -31,6 +31,21 @@ describe('materials-library helpers', () => {
     expect(formatBytes(2048)).toBe('2KB');
     expect(formatBytes(1572864)).toBe('1.5MB');
   });
+
+  it('packs small adjacent authors into rows without exceeding four cards', () => {
+    const groups = [
+      { label: 'A', items: [item(1, 1, 'A', 'tag:1'), item(2, 1, 'A', 'tag:1')] },
+      { label: 'B', items: [item(3, 2, 'B', 'tag:1'), item(4, 2, 'B', 'tag:1')] },
+      { label: 'C', items: [item(5, 3, 'C', 'tag:1')] },
+      { label: 'D', items: [item(6, 4, 'D', 'tag:1'), item(7, 4, 'D', 'tag:1'), item(8, 4, 'D', 'tag:1')] },
+    ];
+
+    expect(packAuthorGroups(groups).map((row) => row.map((group) => group.label))).toEqual([
+      ['A', 'B'],
+      ['C'],
+      ['D'],
+    ]);
+  });
 });
 
 function item(id: number, userId: number | null, authorName: string, _tag: string): MaterialItem {
@@ -38,6 +53,6 @@ function item(id: number, userId: number | null, authorName: string, _tag: strin
     id, userId, authorName, authorKey: userId ? `user:${userId}` : `guest:${authorName}`,
     authorIcon: null, name: `Item ${id}`, notes: '', tagId: 1, tagName: 'Effects',
     archiveUrl: 'storage/item.zip', archiveOriginalName: 'item.zip', archiveSizeBytes: 1,
-    imageUrl: null, imageOriginalName: null, createdAt: '', updatedAt: '', deletedAt: null, terms: [],
+    imageUrl: null, imageOriginalName: null, createdAt: '', updatedAt: '', deletedAt: null, terms: [], media: [],
   };
 }
