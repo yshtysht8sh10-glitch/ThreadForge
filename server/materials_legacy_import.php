@@ -187,6 +187,7 @@ function importLegacyMaterials(PDO $pdo, string $legacyRoot, ?string $storageDir
         $existingStmt->execute([':legacy_source' => $item['legacy_source']]);
         $existingId = $existingStmt->fetchColumn();
         if ($existingId !== false) {
+            syncLegacyMaterialTerms($pdo, $item, (int)$existingId);
             $summary['media_imported'] += importLegacyMaterialMedia($pdo, $item, (int)$existingId, $storage);
             $summary['skipped']++;
             continue;
@@ -236,6 +237,9 @@ function importLegacyMaterials(PDO $pdo, string $legacyRoot, ?string $storageDir
 
             foreach ($item['terms'] as $label => $answer) {
                 $termId = ensureLegacyMaterialTerm($pdo, $label);
+                if ($answer === '△') {
+                    continue;
+                }
                 $termInsertStmt->execute([
                     ':item_id' => $itemId,
                     ':term_id' => $termId,
@@ -262,7 +266,54 @@ function importLegacyMaterials(PDO $pdo, string $legacyRoot, ?string $storageDir
         }
     }
 
+    normalizeLegacyMaterialTerms($pdo);
     return $summary;
+}
+
+function syncLegacyMaterialTerms(PDO $pdo, array $item, int $itemId): void
+{
+    $delete = $pdo->prepare(
+        'DELETE FROM material_item_terms WHERE item_id = :item_id AND term_id = :term_id'
+    );
+    $insert = $pdo->prepare(
+        'INSERT INTO material_item_terms (item_id, term_id, accepted) VALUES (:item_id, :term_id, :accepted)'
+    );
+    foreach ($item['terms'] as $label => $answer) {
+        $termId = ensureLegacyMaterialTerm($pdo, $label);
+        $delete->execute([':item_id' => $itemId, ':term_id' => $termId]);
+        if ($answer === '△') {
+            continue;
+        }
+        $insert->execute([
+            ':item_id' => $itemId,
+            ':term_id' => $termId,
+            ':accepted' => $answer === '○' ? 1 : 0,
+        ]);
+    }
+}
+
+function normalizeLegacyMaterialTerms(PDO $pdo): void
+{
+    $labels = [
+        '改変',
+        '2次配布',
+        'readmeへの記載しなくてよい',
+        'mugen以外での利用（非営利目的）',
+        'mugen以外での利用（営利目的）',
+    ];
+    $update = $pdo->prepare('UPDATE material_terms SET sort_order = :sort_order WHERE label = :label');
+    foreach ($labels as $sortOrder => $label) {
+        $update->execute([':sort_order' => $sortOrder, ':label' => $label]);
+    }
+
+    $delete = $pdo->prepare(
+        'DELETE FROM material_terms
+         WHERE label = :label
+           AND NOT EXISTS (SELECT 1 FROM material_item_terms WHERE term_id = material_terms.id)'
+    );
+    foreach (['二次配布', 'Readmeへの記載', '商用利用'] as $label) {
+        $delete->execute([':label' => $label]);
+    }
 }
 
 function legacyMaterialParsedItem(

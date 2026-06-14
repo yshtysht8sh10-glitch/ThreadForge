@@ -22,6 +22,7 @@ Packaged deployment:
 - `material_tags`: administrator-managed purpose categories and ordering.
 - `material_terms`: administrator-managed usage terms and descriptions.
 - `material_item_terms`: yes/no answer snapshot for each item and term.
+- `material_media`: MP3 preview files for audio/voice materials.
 - `users`: shared login records plus `materials_author_name` and JSON `materials_default_terms`.
 
 `material_items.user_id` is nullable. Non-null values define author identity by user ID. Null values define author identity by `author_name`; therefore an ID author and a guest author with the same name do not merge.
@@ -44,3 +45,11 @@ tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko
 
 Each imported row records a unique `material_items.legacy_source`. Running the command again skips existing rows.
 Entries without a user ID are grouped by their legacy author name. HTML link typos are repaired when a matching preview/file stem exists, and archive files missing from the HTML are imported as supplemented entries.
+
+The five legacy usage terms are preserved verbatim. `○` means allowed, `×` means rejected, and `△` remains unknown and displays as `?`. Rerunning the importer also resynchronizes existing imported answers.
+
+```powershell
+server\.php\php.exe tools\audit_material_terms.php
+```
+
+This audit command compares every imported answer with `Sozaiko.html`.

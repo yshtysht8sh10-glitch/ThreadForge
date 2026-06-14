@@ -40,24 +40,42 @@ final class MaterialsApiHttpIntegrationTest extends TestCase
 
         $guestId = $this->uploadMaterial($tagId, $termId, 'Same Author', '');
 
+        $mismatchedRegistration = $this->postForm([
+            'action' => 'registerUser',
+            'login_id' => 'mismatched-user',
+            'password' => 'login-secret',
+            'password_confirm' => 'different-secret',
+        ]);
+        $this->assertSame(400, $mismatchedRegistration['status'], $mismatchedRegistration['body']);
+        $this->assertStringContainsString('一致しません', $mismatchedRegistration['json']['message']);
+
         $registered = $this->postForm([
             'action' => 'registerUser',
             'login_id' => 'material-user',
             'password' => 'login-secret',
-            'display_name' => 'Same Author',
-            'post_password' => 'postkey',
+            'password_confirm' => 'login-secret',
         ]);
         $this->assertSame(200, $registered['status'], $registered['body']);
+        $this->assertSame('material-user', $registered['json']['user']['login_id']);
         $token = (string)$registered['json']['token'];
 
         $profile = $this->postForm([
             'action' => 'updateMaterialProfile',
             'auth_token' => $token,
             'author_name' => 'Same Author',
+            'post_password' => 'postkey',
             'default_terms' => json_encode([$termId => true]),
         ]);
         $this->assertSame(200, $profile['status'], $profile['body']);
+        $this->assertSame('postkey', $profile['json']['user']['post_password']);
         $this->assertSame('Same Author', $profile['json']['user']['materials_author_name']);
+
+        $login = $this->postForm([
+            'action' => 'loginUser',
+            'login_id' => 'material-user',
+            'password' => 'login-secret',
+        ]);
+        $this->assertSame(200, $login['status'], $login['body']);
 
         $userId = $this->uploadMaterial($tagId, $termId, 'Same Author', $token);
         $listed = $this->getJson(['action' => 'listMaterialItems']);
@@ -111,6 +129,54 @@ final class MaterialsApiHttpIntegrationTest extends TestCase
         ]);
         $this->assertSame(200, $purged['status'], $purged['body']);
         $this->assertCount(1, $this->getJson(['action' => 'listMaterialItems'])['json']['items']);
+    }
+
+    public function testMaterialWithoutPostPasswordCanOnlyBeChangedByAdmin(): void
+    {
+        $settings = $this->getJson(['action' => 'materialsSettings']);
+        $tagId = (string)$settings['json']['tags'][0]['id'];
+        $termId = (string)$settings['json']['terms'][0]['id'];
+        $itemId = $this->uploadMaterial($tagId, $termId, 'Admin Only Author', '');
+
+        $pdo = new PDO('sqlite:' . $this->runtimeDir . '/database.sqlite');
+        $pdo->prepare('UPDATE material_items SET password_hash = "" WHERE id = :id')
+            ->execute([':id' => $itemId]);
+
+        $listed = $this->getJson(['action' => 'listMaterialItems']);
+        $item = array_values(array_filter(
+            $listed['json']['items'],
+            static fn(array $candidate): bool => (int)$candidate['id'] === $itemId
+        ))[0];
+        $this->assertTrue($item['adminOnly']);
+
+        $deleted = $this->postForm([
+            'action' => 'deleteMaterialItem',
+            'id' => (string)$itemId,
+            'password' => '',
+        ]);
+        $this->assertSame(403, $deleted['status'], $deleted['body']);
+        $this->assertStringContainsString('管理画面からのみ変更', $deleted['json']['message']);
+
+        $updated = $this->postForm([
+            'action' => 'updateMaterialItem',
+            'id' => (string)$itemId,
+            'password' => '',
+        ]);
+        $this->assertSame(403, $updated['status'], $updated['body']);
+        $this->assertStringContainsString('管理画面からのみ変更', $updated['json']['message']);
+
+        $initialized = $this->postForm([
+            'action' => 'initializeAdminPassword',
+            'new_admin_password' => 'admin-secret',
+        ]);
+        $this->assertSame(200, $initialized['status'], $initialized['body']);
+
+        $adminDeleted = $this->postForm([
+            'action' => 'adminDeleteMaterialItems',
+            'admin_password' => 'admin-secret',
+            'ids' => (string)$itemId,
+        ]);
+        $this->assertSame(200, $adminDeleted['status'], $adminDeleted['body']);
     }
 
     private function uploadMaterial(string $tagId, string $termId, string $author, string $token): int

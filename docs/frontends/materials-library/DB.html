@@ -81,6 +81,7 @@ server/runtime/materials-library/storage/data/</code></pre>
 <li><code>material_tags</code>: 管理者が編集する用途タグ</li>
 <li><code>material_terms</code>: 管理者が編集する利用規約</li>
 <li><code>material_item_terms</code>: 各素材の規約ごとの○×</li>
+<li><code>material_media</code>: 音声・ボイス素材の試聴用MP3</li>
 <li><code>users</code>: 共通ユーザー情報と素材庫用作者名・規約初期値</li>
 </ul>
 <p><code>user_id</code> がある素材はID単位、ない素材は作者名単位でまとめます。同名でもIDあり・なしは統合しません。</p>
@@ -89,7 +90,10 @@ server/runtime/materials-library/storage/data/</code></pre>
 <p><code>Sozaiko.html</code>、<code>zip/</code> 内の圧縮ファイル、<code>img/</code> 内のプレビューを読み込みます。旧フォルダのファイルは移動・削除せず、素材庫ランタイムへコピーします。</p>
 <pre><code class="language-powershell">tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko --dry-run
 tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko</code></pre>
-<p>各素材には一意な <code>material_items.legacy_source</code> を記録するため、同じコマンドを再実行しても二重登録されません。ユーザーIDのない旧素材は作者名単位でまとめます。HTMLのリンク誤記はプレビューと同名の圧縮ファイルがあれば補正し、HTMLに未掲載の圧縮ファイルも補完登録します。</p></article>
+<p>各素材には一意な <code>material_items.legacy_source</code> を記録するため、同じコマンドを再実行しても二重登録されません。ユーザーIDのない旧素材は作者名単位でまとめます。HTMLのリンク誤記はプレビューと同名の圧縮ファイルがあれば補正し、HTMLに未掲載の圧縮ファイルも補完登録します。</p>
+<p>利用規約は legacy の5項目をそのまま使用します。<code>○</code> は許可、<code>×</code> は不許可、<code>△</code> は未確定の <code>?</code> として保持します。再インポート時には既存素材の規約回答も legacy と同期します。</p>
+<pre><code class="language-powershell">server\.php\php.exe tools\audit_material_terms.php</code></pre>
+<p>この監査コマンドは全素材・全回答を <code>Sozaiko.html</code> と照合します。</p></article>
       <article class="docs-article" data-language-panel="en"><h1 id="materials-library-database">Materials Library Database</h1>
 <p>Frontend ID: <code>materials-library</code></p>
 <h2 id="runtime">Runtime</h2>
@@ -104,6 +108,7 @@ server/runtime/materials-library/storage/data/</code></pre>
 <li><code>material_tags</code>: administrator-managed purpose categories and ordering.</li>
 <li><code>material_terms</code>: administrator-managed usage terms and descriptions.</li>
 <li><code>material_item_terms</code>: yes/no answer snapshot for each item and term.</li>
+<li><code>material_media</code>: MP3 preview files for audio/voice materials.</li>
 <li><code>users</code>: shared login records plus <code>materials_author_name</code> and JSON <code>materials_default_terms</code>.</li>
 </ul>
 <p><code>material_items.user_id</code> is nullable. Non-null values define author identity by user ID. Null values define author identity by <code>author_name</code>; therefore an ID author and a guest author with the same name do not merge.</p>
@@ -114,7 +119,10 @@ server/runtime/materials-library/storage/data/</code></pre>
 <p>The importer reads <code>Sozaiko.html</code>, archives under <code>zip/</code>, and previews under <code>img/</code>.<br>It copies files into the Materials Library runtime and never moves or deletes the legacy source.</p>
 <pre><code class="language-powershell">tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko --dry-run
 tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko</code></pre>
-<p>Each imported row records a unique <code>material_items.legacy_source</code>. Running the command again skips existing rows.<br>Entries without a user ID are grouped by their legacy author name. HTML link typos are repaired when a matching preview/file stem exists, and archive files missing from the HTML are imported as supplemented entries.</p></article>
+<p>Each imported row records a unique <code>material_items.legacy_source</code>. Running the command again skips existing rows.<br>Entries without a user ID are grouped by their legacy author name. HTML link typos are repaired when a matching preview/file stem exists, and archive files missing from the HTML are imported as supplemented entries.</p>
+<p>The five legacy usage terms are preserved verbatim. <code>○</code> means allowed, <code>×</code> means rejected, and <code>△</code> remains unknown and displays as <code>?</code>. Rerunning the importer also resynchronizes existing imported answers.</p>
+<pre><code class="language-powershell">server\.php\php.exe tools\audit_material_terms.php</code></pre>
+<p>This audit command compares every imported answer with <code>Sozaiko.html</code>.</p></article>
       <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
     </main>
   </div>

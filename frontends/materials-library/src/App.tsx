@@ -70,7 +70,8 @@ function App() {
         {page === 'login' && <LoginPage {...common} />}
         {page === 'admin' && <AdminPage {...common} />}
       </main>
-      <button className="back-to-top" type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>上に戻る</button>
+      {(['list', 'delete', 'edit'] as Page[]).includes(page) &&
+        <button className="back-to-top" type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>上に戻る</button>}
     </div>
   );
 }
@@ -136,22 +137,28 @@ function renderCatalogGroup(group: ReturnType<typeof groupMaterials>[number]) {
   return (
         <section className="catalog-section" id={`group-${slug(group.key)}`} key={group.key}>
           <h2>{group.label}</h2>
-          {packAuthorGroups(group.groups).map((row, rowIndex) => <div className="author-row" key={rowIndex}>
-            {row.map((inner) => (
-              <div className="catalog-subsection" id={`author-${slug(group.key)}-${slug(inner.key)}`} key={inner.key}>
+          <div className="author-masonry">
+            {group.groups.map((inner) => (
+              <div
+                className="catalog-subsection"
+                id={`author-${slug(group.key)}-${slug(inner.key)}`}
+                key={inner.key}
+                style={{ '--author-card-count': Math.min(inner.items.length, 4) } as CSSProperties}
+              >
                 <h3>{inner.label}</h3>
                 <div className="material-grid">{inner.items.map((item) => <MaterialCard item={item} key={item.id} />)}</div>
               </div>
             ))}
-          </div>)}
+          </div>
         </section>
   );
 }
 
 function MaterialCard({ item, selectable, selected, onSelect }: { item: MaterialItem; selectable?: boolean; selected?: boolean; onSelect?: () => void }) {
   return (
-    <article className={`material-card ${selected ? 'selected' : ''}`}>
-      {selectable && <input className="card-select" type="radio" checked={selected} onChange={onSelect} aria-label={`${item.name}を選択`} />}
+    <article className={`material-card ${selected ? 'selected' : ''} ${item.adminOnly ? 'admin-only' : ''}`}>
+      {selectable && <input className="card-select" type="radio" checked={selected} disabled={item.adminOnly} onChange={onSelect} aria-label={`${item.name}を選択`} />}
+      {selectable && item.adminOnly && <span className="admin-only-badge">管理画面のみ</span>}
       <div className="material-image">
         {item.imageUrl ? <img src={mediaUrl(item.imageUrl) ?? ''} alt={`${item.name}の説明画像`} loading="lazy" /> :
           (item.media ?? []).length ? <div className="audio-preview">{(item.media ?? []).map((media) => <label key={media.id} title={media.originalName}><span>{media.originalName}</span><audio controls preload="none" src={mediaUrl(media.url) ?? ''} /></label>)}</div> : <span>NO IMAGE</span>}
@@ -171,7 +178,7 @@ function MaterialCard({ item, selectable, selected, onSelect }: { item: Material
 
 function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: MaterialItem }) {
   const { mode, item, tags, terms, token, user, reload, navigate, setNotice, setError } = props;
-  const [name, setName] = useState(item?.name ?? '');
+  const [name, setName] = useState(item?.name ?? 'blank');
   const [author, setAuthor] = useState(item?.authorName ?? user?.materials_author_name ?? user?.display_name ?? '');
   const [notes, setNotes] = useState(item?.notes ?? '');
   const [tagId, setTagId] = useState(String(item?.tagId ?? tags[0]?.id ?? ''));
@@ -181,12 +188,7 @@ function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
   const [answers, setAnswers] = useState<Record<string, boolean | null>>(() => {
     if (item) return Object.fromEntries(item.terms.map((term) => [String(term.id), term.accepted]));
-    return Object.fromEntries(terms.map((term) => [
-      String(term.id),
-      Object.prototype.hasOwnProperty.call(user?.materials_default_terms ?? {}, String(term.id))
-        ? Boolean(user?.materials_default_terms?.[String(term.id)])
-        : null,
-    ]));
+    return defaultTermAnswers(terms, user?.materials_default_terms);
   });
   const [busy, setBusy] = useState(false);
   const preview = useMemo(() => image ? URL.createObjectURL(image) : null, [image]);
@@ -216,13 +218,13 @@ function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
       <form className="material-form" onSubmit={submit}>
         <div className="form-grid two-columns">
           <label>名称<input value={name} onChange={(event) => setName(event.target.value)} required /></label>
-          <label>作者名<input value={author} onChange={(event) => setAuthor(event.target.value)} required /></label>
+          <label><span>作者名<span className="required-marker" aria-hidden="true">*</span></span><input value={author} onChange={(event) => setAuthor(event.target.value)} required /></label>
         </div>
         <label>タグ<select value={tagId} onChange={(event) => setTagId(event.target.value)} required>
           {tags.map((tag) => <option value={tag.id} key={tag.id}>{tag.name}</option>)}
         </select></label>
         <label>備考<textarea value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
-        <label>素材ファイル（{props.settings.allowedArchiveExtensions}）
+        <label><span>ファイル（{props.settings.allowedArchiveExtensions}）{mode === 'create' && <span className="required-marker" aria-hidden="true">*</span>}</span>
           <input type="file" required={mode === 'create'} accept={acceptExtensions(props.settings.allowedArchiveExtensions)} onChange={(event) => setArchive(event.target.files?.[0] ?? null)} />
         </label>
         {isAudioTag
@@ -237,7 +239,7 @@ function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
             <label><input type="radio" name={`term-${term.id}`} checked={answers[String(term.id)] === false} onChange={() => setAnswers({ ...answers, [String(term.id)]: false })} />×</label>
           </div>)}
         </fieldset>
-        <label>投稿パスワード<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required={!user} /></label>
+        <label><span>投稿パスワード<span className="required-marker" aria-hidden="true">*</span></span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
         <div className="actions"><button className="secondary" type="button" onClick={() => navigate('list')}>戻る</button><button disabled={busy}>{busy ? '送信中...' : mode === 'create' ? '投稿する' : '更新する'}</button></div>
       </form>
     </Panel>
@@ -248,6 +250,7 @@ function SelectionPage(props: CommonProps & { mode: 'delete' | 'edit' }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [password, setPassword] = useState(props.user?.post_password ?? '');
   const selected = props.items.find((item) => item.id === selectedId);
+  const groups = groupMaterials(props.items, props.settings.groupParent);
   if (props.mode === 'edit' && selected) return <MaterialForm {...props} mode="edit" item={selected} />;
   const executeDelete = async () => {
     if (!selectedId || !confirm('選択した素材を削除しますか？')) return;
@@ -258,14 +261,59 @@ function SelectionPage(props: CommonProps & { mode: 'delete' | 'edit' }) {
   };
   return (
     <Panel title={props.mode === 'delete' ? '素材を削除' : '素材を編集'}>
-      <p>対象を1件選択してください。ログイン投稿は本人のログイン中、ゲスト投稿は投稿パスワードで操作できます。</p>
-      <div className="selection-grid">{props.items.map((item) => <MaterialCard key={item.id} item={item} selectable selected={selectedId === item.id} onSelect={() => setSelectedId(item.id)} />)}</div>
+      <p>対象を1件選択してください。ログイン投稿は本人のログイン中、ゲスト投稿は投稿パスワードで操作できます。パスワード未設定の投稿は管理画面からのみ変更できます。</p>
+      <SelectionCatalog groups={groups} selectedId={selectedId} setSelectedId={setSelectedId} />
       {selected && <div className="selection-actions">
         {props.mode === 'delete' && <label>投稿パスワード<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>}
         <button onClick={props.mode === 'delete' ? executeDelete : () => undefined}>{props.mode === 'delete' ? '削除する' : '編集画面へ'}</button>
       </div>}
     </Panel>
   );
+}
+
+function SelectionCatalog({
+  groups,
+  selectedId,
+  setSelectedId,
+}: {
+  groups: ReturnType<typeof groupMaterials>;
+  selectedId: number | null;
+  setSelectedId: (id: number) => void;
+}) {
+  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  return <>
+    <nav className="catalog-index selection-index" aria-label="対象素材の目次">
+      {groups.map((group) => <span className="catalog-index-group" key={group.key}>
+        <button type="button" onClick={() => scrollTo(`selection-group-${slug(group.key)}`)}>{group.label}</button>
+        {group.groups.map((inner) => <button
+          type="button"
+          className="author-index-link"
+          key={inner.key}
+          onClick={() => scrollTo(`selection-author-${slug(group.key)}-${slug(inner.key)}`)}
+        >{inner.label}</button>)}
+      </span>)}
+    </nav>
+    {groups.map((group) => <section className="catalog-section" id={`selection-group-${slug(group.key)}`} key={group.key}>
+      <h2>{group.label}</h2>
+      <div className="author-masonry">
+        {group.groups.map((inner) => <div
+          className="catalog-subsection"
+          id={`selection-author-${slug(group.key)}-${slug(inner.key)}`}
+          key={inner.key}
+          style={{ '--author-card-count': Math.min(inner.items.length, 4) } as CSSProperties}
+        >
+          <h3>{inner.label}</h3>
+          <div className="material-grid">{inner.items.map((item) => <MaterialCard
+            key={item.id}
+            item={item}
+            selectable
+            selected={selectedId === item.id}
+            onSelect={() => { if (!item.adminOnly) setSelectedId(item.id); }}
+          />)}</div>
+        </div>)}
+      </div>
+    </section>)}
+  </>;
 }
 
 function ManualPage({ settings }: { settings: MaterialSettings }) {
@@ -276,12 +324,20 @@ function LoginPage(props: CommonProps) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [authorName, setAuthorName] = useState(props.user?.materials_author_name ?? props.user?.display_name ?? '');
   const [postPassword, setPostPassword] = useState(props.user?.post_password ?? '');
-  const [defaults, setDefaults] = useState<Record<string, boolean>>(props.user?.materials_default_terms ?? {});
+  const [defaults, setDefaults] = useState<Record<string, boolean>>(() => defaultTermAnswers(props.terms, props.user?.materials_default_terms));
   const [icon, setIcon] = useState<File | null>(null);
   const ssoDone = useRef(false);
+
+  useEffect(() => {
+    if (!props.user) return;
+    setAuthorName(props.user.materials_author_name ?? props.user.display_name);
+    setPostPassword(props.user.post_password);
+    setDefaults(defaultTermAnswers(props.terms, props.user.materials_default_terms));
+  }, [props.user, props.terms]);
 
   useEffect(() => {
     if (ssoDone.current) return;
@@ -294,7 +350,7 @@ function LoginPage(props: CommonProps) {
   const completeLogin = (nextToken: string, nextUser: User) => {
     localStorage.setItem(TOKEN_KEY, nextToken); props.setToken(nextToken); props.setUser(nextUser);
     setAuthorName(nextUser.materials_author_name ?? nextUser.display_name); setPostPassword(nextUser.post_password);
-    setDefaults(nextUser.materials_default_terms ?? {}); props.setNotice('ログインしました。');
+    setDefaults(defaultTermAnswers(props.terms, nextUser.materials_default_terms)); props.setNotice('ログインしました。');
   };
   const submitAuth = async (event: FormEvent) => {
     event.preventDefault(); props.setError('');
@@ -302,8 +358,12 @@ function LoginPage(props: CommonProps) {
       if (mode === 'login') {
         const response = await api.login(loginId, password); completeLogin(response.token, response.user);
       } else {
+        if (password !== passwordConfirm) {
+          props.setError('ログインパスワードと確認入力が一致しません。');
+          return;
+        }
         const body = new FormData();
-        body.set('login_id', loginId); body.set('password', password); body.set('display_name', displayName || loginId); body.set('post_password', postPassword);
+        body.set('login_id', loginId); body.set('password', password); body.set('password_confirm', passwordConfirm);
         const response = await api.register(body); completeLogin(response.token, response.user);
       }
     } catch (reason) { props.setError((reason as Error).message); }
@@ -311,7 +371,8 @@ function LoginPage(props: CommonProps) {
   const saveProfile = async (event: FormEvent) => {
     event.preventDefault();
     const body = new FormData();
-    body.set('author_name', authorName); body.set('default_terms', JSON.stringify(defaults));
+    body.set('author_name', authorName); body.set('post_password', postPassword);
+    body.set('default_terms', JSON.stringify(defaults));
     if (icon) body.set('icon', icon);
     try {
       const response = await api.updateProfile(body, props.token); props.setUser(response.user); props.setNotice('素材庫プロフィールを保存しました。');
@@ -323,7 +384,8 @@ function LoginPage(props: CommonProps) {
         <button className="secondary" onClick={() => { api.logout(props.token).catch(() => undefined); localStorage.removeItem(TOKEN_KEY); props.setToken(''); props.setUser(null); }}>ログアウト</button>
       </div>
       <form className="material-form" onSubmit={saveProfile}>
-        <label>作者名<input value={authorName} onChange={(event) => setAuthorName(event.target.value)} required /></label>
+        <label><span>作者名<span className="required-marker" aria-hidden="true">*</span></span><input value={authorName} onChange={(event) => setAuthorName(event.target.value)} required /></label>
+        <label>投稿パスワード<input value={postPassword} onChange={(event) => setPostPassword(event.target.value)} /></label>
         <label>アイコン<input type="file" accept="image/png,image/jpeg,image/gif" onChange={(event) => setIcon(event.target.files?.[0] ?? null)} /></label>
         <fieldset className="terms-editor"><legend>利用規約の初期値</legend>{props.terms.map((term) => <div className="term-choice" key={term.id}>
           <span>{term.label}</span><label><input type="radio" checked={defaults[String(term.id)] === true} onChange={() => setDefaults({ ...defaults, [String(term.id)]: true })} />○</label>
@@ -338,10 +400,10 @@ function LoginPage(props: CommonProps) {
       <div className="segmented"><button className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>ログイン</button>
         {!props.settings.ssoEnabled && <button className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>新規登録</button>}</div>
       <form className="material-form" onSubmit={submitAuth}>
-        <label>ログインID<input value={loginId} onChange={(event) => setLoginId(event.target.value)} required /></label>
-        <label>ログインパスワード<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-        {mode === 'register' && <><label>表示名<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} /></label>
-          <label>投稿パスワード<input value={postPassword} onChange={(event) => setPostPassword(event.target.value)} required /></label></>}
+        <label><span>ログインID<span className="required-marker" aria-hidden="true">*</span></span><input value={loginId} onChange={(event) => setLoginId(event.target.value)} required pattern="[A-Za-z0-9_.-]{3,40}" /></label>
+        <label><span>ログインパスワード<span className="required-marker" aria-hidden="true">*</span></span><input type={showPassword ? 'text' : 'password'} minLength={mode === 'register' ? 8 : undefined} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+        {mode === 'register' && <label><span>ログインパスワード（確認）<span className="required-marker" aria-hidden="true">*</span></span><input type={showPassword ? 'text' : 'password'} minLength={8} value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} required /></label>}
+        <label className="inline-check"><input type="checkbox" checked={showPassword} onChange={(event) => setShowPassword(event.target.checked)} />ログインパスワードを表示</label>
         <div className="actions"><button>{mode === 'login' ? 'ログイン' : '登録してログイン'}</button></div>
       </form>
       {props.settings.ssoEnabled && <p>親サイトから渡されたSSOトークンにも対応しています。</p>}
@@ -364,13 +426,22 @@ function AdminPage(props: CommonProps) {
   const [analytics, setAnalytics] = useState<{ summary: Record<string, string>; months: Array<Record<string, string>> } | null>(null);
   const [nextAdminPassword, setNextAdminPassword] = useState('');
   const importRef = useRef<HTMLInputElement>(null);
+  const settingsImportRef = useRef<HTMLInputElement>(null);
+  const designImportRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { api.adminStatus().then((response) => setConfigured(response.adminPasswordConfigured)); }, []);
   const load = async (value = password) => {
     const [settingsResponse, deletedResponse, userResponse, analyticsResponse] = await Promise.all([
       api.getAdmin(value), api.deleted(value), api.users(value), api.analytics(value),
     ]);
-    setAdminSettings(settingsResponse.settings); setSavedAdminSettings(structuredClone(settingsResponse.settings)); setDeleted(deletedResponse.items); setUsers(userResponse.users);
+    const settingsWithDesignDefaults = {
+      ...settingsResponse.settings,
+      skin: {
+        ...settingsResponse.settings.skin,
+        ...materialDesignSkin(materialDesignFromSkin(settingsResponse.settings.skin)),
+      },
+    };
+    setAdminSettings(settingsWithDesignDefaults); setSavedAdminSettings(structuredClone(settingsWithDesignDefaults)); setDeleted(deletedResponse.items); setUsers(userResponse.users);
     setAnalytics(analyticsResponse); setAuthenticated(true); localStorage.setItem(ADMIN_KEY, value); props.setError('');
   };
   const authenticate = async (event: FormEvent) => {
@@ -394,6 +465,45 @@ function AdminPage(props: CommonProps) {
     await runAdmin(() => api.updateSettings(password, adminSettings));
     setSavedAdminSettings(structuredClone(adminSettings));
     props.setPreviewDesign(null);
+  };
+  const exportAdminJson = async (section: 'settings' | 'design') => {
+    const payload = section === 'settings'
+      ? { format: 'threadforge-materials-library-settings', version: 1, config: adminSettings.config }
+      : { format: 'threadforge-materials-library-design', version: 1, design: materialDesignFromSkin(adminSettings.skin) };
+    try {
+      await saveJsonWithPicker(
+        payload,
+        section === 'settings' ? 'materials-library-settings.json' : 'materials-library-design.json',
+      );
+      props.setNotice(`${section === 'settings' ? '設定' : 'デザイン'}JSONをエクスポートしました。`);
+      props.setError('');
+    } catch (reason) {
+      if (!isAbortError(reason)) props.setError((reason as Error).message);
+    }
+  };
+  const importAdminJson = async (section: 'settings' | 'design', file: File | null) => {
+    if (!file) return;
+    try {
+      const payload = JSON.parse(await file.text()) as Record<string, unknown>;
+      if (!isPlainObject(payload)) throw new Error('JSONの形式が正しくありません。');
+      if (section === 'settings') {
+        if (payload.format !== 'threadforge-materials-library-settings' || !isPlainObject(payload.config)) {
+          throw new Error('materials-libraryの設定JSONではありません。');
+        }
+        setAdminSettings({ ...adminSettings, config: { ...adminSettings.config, ...payload.config } });
+      } else {
+        if (payload.format !== 'threadforge-materials-library-design' || !isPlainObject(payload.design)) {
+          throw new Error('materials-libraryのデザインJSONではありません。');
+        }
+        const design = normalizeMaterialDesign(payload.design);
+        setAdminSettings({ ...adminSettings, skin: { ...adminSettings.skin, ...materialDesignSkin(design) } });
+        props.setPreviewDesign(design);
+      }
+      props.setNotice(`${section === 'settings' ? '設定' : 'デザイン'}JSONを読み込みました。保存するまではDBへ反映されません。`);
+      props.setError('');
+    } catch (reason) {
+      props.setError((reason as Error).message);
+    }
   };
   const config = adminSettings.config;
   const skin = adminSettings.skin;
@@ -448,6 +558,17 @@ function AdminPage(props: CommonProps) {
             <label>画像上限 KB<input type="number" value={Number(config.materialsMaxImageKb ?? 10240)} onChange={(e) => setAdminSettings({ ...adminSettings, config: { ...config, materialsMaxImageKb: Number(e.target.value) } })} /></label></div>
           <label>許可する圧縮形式<input value={String(config.materialsAllowedArchiveExtensions ?? '')} onChange={(e) => setAdminSettings({ ...adminSettings, config: { ...config, materialsAllowedArchiveExtensions: e.target.value } })} /></label>
           <div className="actions"><button onClick={saveSettings}>設定を保存</button></div>
+          <div className="admin-import-export">
+            <strong>設定JSON</strong>
+            <div className="actions">
+              <button type="button" className="secondary" onClick={() => void exportAdminJson('settings')}>エクスポート</button>
+              <button type="button" className="secondary" onClick={() => settingsImportRef.current?.click()}>インポート</button>
+              <input ref={settingsImportRef} className="visually-hidden-file" type="file" accept="application/json,.json" onChange={(event) => {
+                void importAdminJson('settings', event.currentTarget.files?.[0] ?? null);
+                event.currentTarget.value = '';
+              }} />
+            </div>
+          </div>
         </div>
       </Panel><CatalogEditor tags={draftTags} terms={draftTerms} setTags={setDraftTags} setTerms={setDraftTerms} save={async () => {
         try {
@@ -478,6 +599,17 @@ function AdminPage(props: CommonProps) {
             props.setNotice('デザインを編集前の状態に戻しました。');
           }}>編集前に戻す</button>
           <button onClick={saveSettings}>デザインを保存</button>
+        </div>
+        <div className="admin-import-export">
+          <strong>デザインJSON</strong>
+          <div className="actions">
+            <button type="button" className="secondary" onClick={() => void exportAdminJson('design')}>エクスポート</button>
+            <button type="button" className="secondary" onClick={() => designImportRef.current?.click()}>インポート</button>
+            <input ref={designImportRef} className="visually-hidden-file" type="file" accept="application/json,.json" onChange={(event) => {
+              void importAdminJson('design', event.currentTarget.files?.[0] ?? null);
+              event.currentTarget.value = '';
+            }} />
+          </div>
         </div>
       </Panel>}
     </>
@@ -519,20 +651,46 @@ function pageFromHash(): Page {
 function designVariables(settings: MaterialSettings): CSSProperties {
   return {
     '--page-bg': settings.design.pageBackgroundColor, '--page-text': settings.design.pageTextColor,
+    '--header-bg': settings.design.headerBackgroundColor, '--header-text': settings.design.headerTextColor,
+    '--header-border': settings.design.headerBorderColor,
     '--panel-bg': settings.design.panelBackgroundColor, '--panel-border': settings.design.panelBorderColor,
-    '--heading-bg': settings.design.headingBackgroundColor, '--accent': settings.design.accentColor,
+    '--heading-bg': settings.design.headingBackgroundColor, '--heading-text': settings.design.headingTextColor,
+    '--accent': settings.design.accentColor,
     '--button-bg': settings.design.buttonBackgroundColor, '--button-text': settings.design.buttonTextColor,
+    '--secondary-button-bg': settings.design.secondaryButtonBackgroundColor,
+    '--secondary-button-text': settings.design.secondaryButtonTextColor,
+    '--danger-button-bg': settings.design.dangerButtonBackgroundColor,
+    '--danger-button-text': settings.design.dangerButtonTextColor,
+    '--input-bg': settings.design.inputBackgroundColor, '--input-text': settings.design.inputTextColor,
+    '--image-bg': settings.design.imageBackgroundColor, '--muted-text': settings.design.mutedTextColor,
+    '--positive': settings.design.positiveColor, '--negative': settings.design.negativeColor,
+    '--unknown': settings.design.unknownColor,
   } as CSSProperties;
 }
 function slug(value: string) { return encodeURIComponent(value).replace(/%/g, ''); }
 function formatBytes(value: number) { if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)}MB`; if (value >= 1024) return `${Math.ceil(value / 1024)}KB`; return `${value}bytes`; }
 function acceptExtensions(value: string) { return value.split(/[\s,;]+/).filter(Boolean).map((extension) => `.${extension.replace(/^\./, '')}`).join(','); }
+export function defaultTermAnswers(terms: MaterialTerm[], saved: Record<string, boolean> = {}) {
+  return Object.fromEntries(terms.map((term) => [
+    String(term.id),
+    Object.prototype.hasOwnProperty.call(saved, String(term.id)) ? Boolean(saved[String(term.id)]) : true,
+  ]));
+}
 function adminTabLabel(tab: AdminTab) { return ({ items: '一括削除', deleted: '復元 / 消去', maintenance: '保守', analytics: 'アナリティクス', settings: '設定', design: 'デザイン' })[tab]; }
 const designFields: Array<[string, string]> = [
   ['materialsPageBackgroundColor', 'ページ背景'], ['materialsPageTextColor', '文字色'],
+  ['materialsHeaderBackgroundColor', '上部メニュー背景'], ['materialsHeaderTextColor', '上部メニュー文字'],
+  ['materialsHeaderBorderColor', '上部メニュー枠線'],
   ['materialsPanelBackgroundColor', 'パネル背景'], ['materialsPanelBorderColor', '枠線'],
-  ['materialsHeadingBackgroundColor', '見出し背景'], ['materialsAccentColor', 'アクセント'],
+  ['materialsHeadingBackgroundColor', '見出し背景'], ['materialsHeadingTextColor', '見出し文字'],
+  ['materialsAccentColor', 'アクセント'],
   ['materialsButtonBackgroundColor', 'ボタン背景'], ['materialsButtonTextColor', 'ボタン文字'],
+  ['materialsSecondaryButtonBackgroundColor', '補助ボタン背景'], ['materialsSecondaryButtonTextColor', '補助ボタン文字'],
+  ['materialsDangerButtonBackgroundColor', '削除ボタン背景'], ['materialsDangerButtonTextColor', '削除ボタン文字'],
+  ['materialsInputBackgroundColor', '入力欄背景'], ['materialsInputTextColor', '入力欄文字'],
+  ['materialsImageBackgroundColor', '画像欄背景'], ['materialsMutedTextColor', '補助文字'],
+  ['materialsPositiveColor', '利用規約 ○'], ['materialsNegativeColor', '利用規約 ×'],
+  ['materialsUnknownColor', '利用規約 ？'],
 ];
 function materialDesignSkin(design: MaterialDesign): Record<string, string> {
   return Object.fromEntries(Object.entries(design).map(([key, value]) => [`materials${key[0].toUpperCase()}${key.slice(1)}`, value]));
@@ -542,6 +700,43 @@ function materialDesignFromSkin(skin: Record<string, unknown>): MaterialDesign {
     key,
     String(skin[`materials${key[0].toUpperCase()}${key.slice(1)}`] ?? fallback),
   ])) as MaterialDesign;
+}
+export function normalizeMaterialDesign(value: Record<string, unknown>): MaterialDesign {
+  return Object.fromEntries(Object.entries(defaultMaterialDesign).map(([key, fallback]) => {
+    const candidate = value[key];
+    return [key, typeof candidate === 'string' && candidate.trim() !== '' ? candidate : fallback];
+  })) as MaterialDesign;
+}
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+async function saveJsonWithPicker(value: unknown, filename: string) {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' });
+  const picker = (window as Window & { showSaveFilePicker?: (options: unknown) => Promise<any> }).showSaveFilePicker;
+  if (typeof picker === 'function') {
+    const handle = await picker({
+      suggestedName: filename,
+      types: [{
+        description: 'JSON file',
+        accept: { 'application/json': ['.json'] },
+      }],
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+function isAbortError(error: unknown) {
+  return error instanceof Error && error.name === 'AbortError';
 }
 function updateMaterialDesign(
   key: string,

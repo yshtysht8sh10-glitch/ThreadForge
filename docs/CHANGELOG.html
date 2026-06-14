@@ -67,7 +67,7 @@
         </div>
       </header>
       <article class="docs-article" data-language-panel="ja"><h1 id="変更履歴">変更履歴</h1>
-<h2 id="materials-library-1-0-0-2026-06-13">materials-library 1.0.0 - 2026-06-13</h2>
+<h2 id="materials-library-0-9-0-2026-06-14">materials-library 0.9.0 - 2026-06-14</h2>
 <ul>
 <li>素材庫を、圧縮ファイルを主役としてタグと作者で整理するカタログへ刷新</li>
 <li>素材ファイル、説明画像、管理者設定の利用規約○×を含む投稿機能を追加</li>
@@ -76,9 +76,16 @@
 <li>同名でもログイン作者IDとゲスト・既存作者を分離し、管理者による作者ID割当を追加</li>
 <li>旧 <code>05_Sozaiko</code> の圧縮ファイル、プレビュー、作者、カテゴリ、備考、利用条件を重複なく移行するインポーターを追加</li>
 <li>独立SQLite、独立ストレージ、フルバックアップ、HTTP統合テスト、<code>15_materials_library</code> 配布Zipに対応</li>
-<li>legacy調の標準配色、作者目次、少数作者の横並び、カード項目整列、上に戻るボタンを追加</li>
+<li>灰色基調の標準配色、作者目次、少数作者の横並び、カード項目整列、上に戻るボタンを追加</li>
 <li>音声・ボイス素材の複数MP3投稿・再生と、旧素材音声の追加インポートに対応</li>
+<li>旧素材の利用規約を5項目へ正規化し、<code>△</code> を <code>?</code> として保持する再同期・監査を追加</li>
 <li>image-board、file-uploader、materials-library のデザイン初期化・編集前戻しを保存前プレビューとして統一</li>
+<li>設定・デザインJSONの入出力をファイルダイアログ対応にし、旧JSON互換のまま配色項目を拡充</li>
+<li>高さの異なる素材カードを段組みにし、隣の長いカードに引っ張られる空白を解消</li>
+<li>投稿パスワード未設定・旧移行素材の通常削除と編集を禁止し、管理画面専用として明示</li>
+<li>投稿必須表示、名称 <code>blank</code>、利用規約○初期値、ユーザー別規約初期値、削除・編集目次を追加</li>
+<li>「上に戻る」を一覧・削除・編集画面だけに表示</li>
+<li>新規登録をログインID・パスワード・確認入力に整理し、パスワード表示切替を追加</li>
 </ul>
 <h2 id="file-uploader-1-0-0-2026-06-12">file-uploader 1.0.0 - 2026-06-12</h2>
 <ul>
@@ -176,7 +183,7 @@
 </ul></article>
       <article class="docs-article" data-language-panel="en"><h1 id="changelog">Changelog</h1>
 <p>ThreadForge follows semantic versioning while it is being prepared for public use.</p>
-<h2 id="materials-library-1-0-0-2026-06-13">materials-library 1.0.0 - 2026-06-13</h2>
+<h2 id="materials-library-0-9-0-2026-06-14">materials-library 0.9.0 - 2026-06-14</h2>
 <ul>
 <li>Rebuilt Materials Library as an archive-first catalog grouped by tag and author</li>
 <li>Added archive and preview-image posting with administrator-managed yes/no usage terms</li>
@@ -185,9 +192,16 @@
 <li>Kept logged-in author IDs separate from same-name guest/imported authors and added admin author-ID assignment</li>
 <li>Added an idempotent legacy <code>05_Sozaiko</code> importer for archives, previews, authors, categories, notes, and usage terms</li>
 <li>Added isolated SQLite tables, storage, full backup support, HTTP integration tests, and <code>15_materials_library</code> release packaging</li>
-<li>Added legacy-inspired default colors, author index links, compact author rows, aligned card fields, and a fixed Back to Top action</li>
+<li>Added gray-based default colors, author index links, compact author rows, aligned card fields, and a fixed Back to Top action</li>
 <li>Added multiple MP3 previews for audio/voice materials and audio migration from the legacy library</li>
+<li>Normalized imported usage terms to the five legacy fields and added resynchronization/auditing that preserves <code>△</code> as unknown</li>
 <li>Unified design reset and undo across Image Board, File Uploader, and Materials Library as unsaved live previews</li>
+<li>Added file-dialog based settings/design JSON transfer and expanded theme colors while retaining old JSON compatibility</li>
+<li>Switched uneven material cards to a compact column layout without row-height gaps</li>
+<li>Restricted passwordless and legacy materials to admin-only edit and delete operations</li>
+<li>Added required-field markers, the <code>blank</code> name default, yes-by-default terms, saved user term defaults, and delete/edit indexes</li>
+<li>Limited Back to Top to list, delete, and edit screens</li>
+<li>Simplified registration to login ID, password, and confirmation, with a password visibility toggle</li>
 </ul>
 <h2 id="file-uploader-1-0-0-2026-06-12">file-uploader 1.0.0 - 2026-06-12</h2>
 <ul>

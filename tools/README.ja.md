@@ -128,6 +128,14 @@ https://example.com/threadforge/tools/update_imported_recent_cron.php?limit=10&a
 
 ## 注意
 
+素材庫の旧利用規約を `Sozaiko.html` と照合する場合:
+
+```powershell
+server\.php\php.exe tools\audit_material_terms.php
+```
+
+全素材のlegacy回答と現在DBを比較し、差異がある場合は終了コード1を返します。
+
 - 実行前に管理画面のフルバックアップを取得してください。
 - レンタルサーバーで長時間処理になる場合は、`limit` と `offset` を使って分割実行してください。
 - 画像修復と差分更新は旧ログとの照合に依存します。旧ログを上書きする場合は、必要な画像と `LOG_*.cgi` が揃っていることを確認してください。

@@ -129,3 +129,13 @@ https://example.com/threadforge/tools/update_imported_recent_cron.php?limit=10&a
 ```
 
 Without `apply=1`, it only reports planned changes. `--add` or `add=1` inserts unmatched latest archive entries as new ThreadForge posts; without it, unmatched entries are reported as `new_candidates` only. Results are written to `update_imported_recent.log`.
+
+## Materials Terms Audit
+
+Audit imported Materials Library usage terms against `Sozaiko.html`:
+
+```powershell
+server\.php\php.exe tools\audit_material_terms.php
+```
+
+The command compares every legacy answer with the current DB and exits with code 1 when it finds a mismatch.

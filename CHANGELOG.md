@@ -4,7 +4,7 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
-## materials-library 1.0.0 - 2026-06-13
+## materials-library 0.9.0 - 2026-06-14
 
 - Rebuilt Materials Library as an archive-first catalog grouped by tag and author
 - Added archive and preview-image posting with administrator-managed yes/no usage terms
@@ -13,9 +13,16 @@ ThreadForge follows semantic versioning while it is being prepared for public us
 - Kept logged-in author IDs separate from same-name guest/imported authors and added admin author-ID assignment
 - Added an idempotent legacy `05_Sozaiko` importer for archives, previews, authors, categories, notes, and usage terms
 - Added isolated SQLite tables, storage, full backup support, HTTP integration tests, and `15_materials_library` release packaging
-- Added legacy-inspired default colors, author index links, compact author rows, aligned card fields, and a fixed Back to Top action
+- Added gray-based default colors, author index links, compact author rows, aligned card fields, and a fixed Back to Top action
 - Added multiple MP3 previews for audio/voice materials and audio migration from the legacy library
+- Normalized imported usage terms to the five legacy fields and added resynchronization/auditing that preserves `△` as unknown
 - Unified design reset and undo across Image Board, File Uploader, and Materials Library as unsaved live previews
+- Added file-dialog based settings/design JSON transfer and expanded theme colors while retaining old JSON compatibility
+- Switched uneven material cards to a compact column layout without row-height gaps
+- Restricted passwordless and legacy materials to admin-only edit and delete operations
+- Added required-field markers, the `blank` name default, yes-by-default terms, saved user term defaults, and delete/edit indexes
+- Limited Back to Top to list, delete, and edit screens
+- Simplified registration to login ID, password, and confirmation, with a password visibility toggle
 
 ## file-uploader 1.0.0 - 2026-06-12
 

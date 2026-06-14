@@ -412,9 +412,10 @@ function ensureMaterialCatalogDefaults(PDO $pdo): void
         );
         $defaults = [
             ['改変', '素材を改変して利用できるか'],
-            ['二次配布', '素材を含むデータを再配布できるか'],
-            ['Readmeへの記載', '利用時に作者・配布元の記載が必要か'],
-            ['商用利用', '商用作品で利用できるか'],
+            ['2次配布', '素材を再配布できるか'],
+            ['readmeへの記載しなくてよい', 'readmeへ作者・配布元を記載せずに利用できるか'],
+            ['mugen以外での利用（非営利目的）', 'MUGEN以外の非営利作品で利用できるか'],
+            ['mugen以外での利用（営利目的）', 'MUGEN以外の営利作品で利用できるか'],
         ];
         foreach ($defaults as $index => [$label, $description]) {
             $stmt->execute([

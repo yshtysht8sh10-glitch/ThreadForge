@@ -88,6 +88,39 @@ HTML);
         $this->assertFileExists((string)$media['path']);
     }
 
+    public function testPartialLegacyTermRemainsUnknownInsteadOfBecomingRejected(): void
+    {
+        $pdo = getConnection();
+        importLegacyMaterials($pdo, $this->legacyRoot, STORAGE_DIR);
+        $itemId = (int)$pdo->query('SELECT id FROM material_items LIMIT 1')->fetchColumn();
+        $this->assertSame(1, (int)$pdo->query(
+            'SELECT COUNT(*) FROM material_item_terms mit
+             JOIN material_terms t ON t.id = mit.term_id
+             WHERE mit.item_id = ' . $itemId . " AND t.label = '改変' AND mit.accepted = 1"
+        )->fetchColumn());
+
+        $html = file_get_contents($this->legacyRoot . '/Sozaiko.html');
+        file_put_contents(
+            $this->legacyRoot . '/Sozaiko.html',
+            str_replace(
+                '<td class="TermsCellsRight">○</td></tr>',
+                '<td class="TermsCellsRight">△</td></tr>',
+                (string)$html,
+                $count
+            )
+        );
+        $this->assertGreaterThan(0, $count);
+
+        importLegacyMaterials($pdo, $this->legacyRoot, STORAGE_DIR);
+        $answerCount = (int)$pdo->query(
+            'SELECT COUNT(*) FROM material_item_terms mit
+             JOIN material_terms t ON t.id = mit.term_id
+             WHERE mit.item_id = ' . $itemId . " AND t.label = '改変'"
+        )->fetchColumn();
+
+        $this->assertSame(0, $answerCount);
+    }
+
     private function removeDirectory(string $path): void
     {
         if (!is_dir($path)) {

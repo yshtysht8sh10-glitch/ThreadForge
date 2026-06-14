@@ -5,12 +5,27 @@ export type MaterialMedia = { id: number; url: string; originalName: string; siz
 export type MaterialDesign = {
   pageBackgroundColor: string;
   pageTextColor: string;
+  headerBackgroundColor: string;
+  headerTextColor: string;
+  headerBorderColor: string;
   panelBackgroundColor: string;
   panelBorderColor: string;
   headingBackgroundColor: string;
+  headingTextColor: string;
   accentColor: string;
   buttonBackgroundColor: string;
   buttonTextColor: string;
+  secondaryButtonBackgroundColor: string;
+  secondaryButtonTextColor: string;
+  dangerButtonBackgroundColor: string;
+  dangerButtonTextColor: string;
+  inputBackgroundColor: string;
+  inputTextColor: string;
+  imageBackgroundColor: string;
+  mutedTextColor: string;
+  positiveColor: string;
+  negativeColor: string;
+  unknownColor: string;
 };
 export type MaterialSettings = {
   title: string;
@@ -25,14 +40,29 @@ export type MaterialSettings = {
   design: MaterialDesign;
 };
 export const defaultMaterialDesign: MaterialDesign = {
-  pageBackgroundColor: '#000000',
-  pageTextColor: '#f4f4f4',
-  panelBackgroundColor: '#101010',
-  panelBorderColor: '#777777',
-  headingBackgroundColor: '#65008f',
-  accentColor: '#79b7ff',
+  pageBackgroundColor: '#050505',
+  pageTextColor: '#f2f2f2',
+  headerBackgroundColor: '#000000',
+  headerTextColor: '#ffffff',
+  headerBorderColor: '#222222',
+  panelBackgroundColor: '#111820',
+  panelBorderColor: '#6c7787',
+  headingBackgroundColor: '#59636f',
+  headingTextColor: '#ffffff',
+  accentColor: '#8fb0ff',
   buttonBackgroundColor: '#3974ee',
   buttonTextColor: '#ffffff',
+  secondaryButtonBackgroundColor: '#303640',
+  secondaryButtonTextColor: '#ffffff',
+  dangerButtonBackgroundColor: '#c44141',
+  dangerButtonTextColor: '#ffffff',
+  inputBackgroundColor: '#282f38',
+  inputTextColor: '#ffffff',
+  imageBackgroundColor: '#020202',
+  mutedTextColor: '#aab4c0',
+  positiveColor: '#72e9a2',
+  negativeColor: '#ff9292',
+  unknownColor: '#f0cf78',
 };
 export type MaterialItem = {
   id: number;
@@ -52,6 +82,7 @@ export type MaterialItem = {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  adminOnly: boolean;
   terms: TermAnswer[];
   media: MaterialMedia[];
 };

@@ -22,7 +22,7 @@ Materials Library is a file-posting application optimized for preservation and d
 - A logged-in author and a guest author with the same displayed name remain separate.
 - Administrators can assign or remove a user ID on an existing material.
 - The table of contents links both tags and authors.
-- Adjacent authors with two or fewer items share a row when their complete groups fit.
+- Material cards use four columns on wide screens and place the next author group into available columns while preserving author grouping.
 
 ## Cards And Audio
 
@@ -30,11 +30,11 @@ Materials Library is a file-posting application optimized for preservation and d
 - Images retain their aspect ratio. Long material and archive names use ellipsis with full text in a tooltip.
 - A newly added usage term without an answer displays `?`.
 - Audio/voice categories accept multiple MP3 preview files and show a separate player for each file.
-- A fixed Back to Top button remains available at the lower right.
+- Back to Top appears at the lower right on list, delete, and edit screens.
 
 ## Posting
 
-Required fields are material name, author name, tag, archive, and post password. A preview image and notes are optional. Every configured usage term is answered with yes/no and stored with the item.
+The material name starts as `blank`. Author name, file, and post password are marked required with a red `*`. A preview image and notes are optional. Every usage term defaults to yes.
 
 Logged-in users receive defaults from their material profile:
 
@@ -42,19 +42,26 @@ Logged-in users receive defaults from their material profile:
 - icon
 - yes/no answers for each current usage term
 
+Delete and edit screens include the same tag/author index as the catalog.
+
+Registration requires only a login ID, login password, and password confirmation. Author name and post password are configured after login. Login and registration can toggle password visibility.
+
 ## Administration
 
 - Passwordless bulk soft delete after admin authentication
+- Materials without a post password, including legacy imports, can only be changed from the admin screen
 - Restore and permanent purge
 - Author ID assignment
 - Full DB/storage backup and restore
 - Material count, author count, tag count, storage size, and monthly analytics
 - Title, description, HOME, manual, grouping order, upload limits, and extensions
 - Tag and usage-term add/edit/delete
-- Legacy-inspired color design settings
+- Gray-based default colors with administrator controls for headings, navigation, inputs, button variants, image areas, muted text, and usage-term symbols
 - Reset and undo update the live preview immediately but persist only after Save
+- Import and export board settings and design through file dialogs as separate, typed JSON files
+- Preserve compatibility with older design JSON by filling newly added colors from defaults
 - Admin password initialization and change
 
 ## Release
 
-Version 1.0.0 deploys under `15_materials_library/`. Runtime DB and uploaded files are not bundled in the release Zip.
+Version 0.9.0 is the first public preview release and deploys under `15_materials_library/`. Runtime DB and uploaded files are not bundled in the release Zip.

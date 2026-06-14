@@ -707,12 +707,16 @@ function registerUser(PDO $pdo): void
 
     $loginId = normalizeLoginId($_POST['login_id'] ?? '');
     $password = (string)($_POST['password'] ?? '');
+    $passwordConfirm = (string)($_POST['password_confirm'] ?? $password);
     $displayName = normalizeString($_POST['display_name'] ?? $loginId);
     $postPassword = normalizeString($_POST['post_password'] ?? '');
     $homeUrl = normalizeUrl($_POST['home_url'] ?? null);
 
     if ($loginId === '' || $password === '') {
         jsonResponse(['success' => false, 'message' => 'IDとログインパスワードを入力してください。'], 400);
+    }
+    if (!hash_equals($password, $passwordConfirm)) {
+        jsonResponse(['success' => false, 'message' => 'ログインパスワードと確認入力が一致しません。'], 400);
     }
     if (strlen($password) < 8) {
         jsonResponse(['success' => false, 'message' => 'ログインパスワードは8文字以上にしてください。'], 400);
@@ -4389,14 +4393,29 @@ function materialsSettings(PDO $pdo): void
             'allowedArchiveExtensions' => (string)($config['materialsAllowedArchiveExtensions'] ?? 'zip 7z rar'),
             'ssoEnabled' => toBoolFlag($config['ssoEnabled'] ?? false),
             'design' => [
-                'pageBackgroundColor' => (string)($skin['materialsPageBackgroundColor'] ?? '#000000'),
-                'pageTextColor' => (string)($skin['materialsPageTextColor'] ?? '#f4f4f4'),
-                'panelBackgroundColor' => (string)($skin['materialsPanelBackgroundColor'] ?? '#101010'),
-                'panelBorderColor' => (string)($skin['materialsPanelBorderColor'] ?? '#777777'),
-                'headingBackgroundColor' => (string)($skin['materialsHeadingBackgroundColor'] ?? '#65008f'),
-                'accentColor' => (string)($skin['materialsAccentColor'] ?? '#79b7ff'),
+                'pageBackgroundColor' => (string)($skin['materialsPageBackgroundColor'] ?? '#050505'),
+                'pageTextColor' => (string)($skin['materialsPageTextColor'] ?? '#f2f2f2'),
+                'headerBackgroundColor' => (string)($skin['materialsHeaderBackgroundColor'] ?? '#000000'),
+                'headerTextColor' => (string)($skin['materialsHeaderTextColor'] ?? '#ffffff'),
+                'headerBorderColor' => (string)($skin['materialsHeaderBorderColor'] ?? '#222222'),
+                'panelBackgroundColor' => (string)($skin['materialsPanelBackgroundColor'] ?? '#111820'),
+                'panelBorderColor' => (string)($skin['materialsPanelBorderColor'] ?? '#6c7787'),
+                'headingBackgroundColor' => (string)($skin['materialsHeadingBackgroundColor'] ?? '#59636f'),
+                'headingTextColor' => (string)($skin['materialsHeadingTextColor'] ?? '#ffffff'),
+                'accentColor' => (string)($skin['materialsAccentColor'] ?? '#8fb0ff'),
                 'buttonBackgroundColor' => (string)($skin['materialsButtonBackgroundColor'] ?? '#3974ee'),
                 'buttonTextColor' => (string)($skin['materialsButtonTextColor'] ?? '#ffffff'),
+                'secondaryButtonBackgroundColor' => (string)($skin['materialsSecondaryButtonBackgroundColor'] ?? '#303640'),
+                'secondaryButtonTextColor' => (string)($skin['materialsSecondaryButtonTextColor'] ?? '#ffffff'),
+                'dangerButtonBackgroundColor' => (string)($skin['materialsDangerButtonBackgroundColor'] ?? '#c44141'),
+                'dangerButtonTextColor' => (string)($skin['materialsDangerButtonTextColor'] ?? '#ffffff'),
+                'inputBackgroundColor' => (string)($skin['materialsInputBackgroundColor'] ?? '#282f38'),
+                'inputTextColor' => (string)($skin['materialsInputTextColor'] ?? '#ffffff'),
+                'imageBackgroundColor' => (string)($skin['materialsImageBackgroundColor'] ?? '#020202'),
+                'mutedTextColor' => (string)($skin['materialsMutedTextColor'] ?? '#aab4c0'),
+                'positiveColor' => (string)($skin['materialsPositiveColor'] ?? '#72e9a2'),
+                'negativeColor' => (string)($skin['materialsNegativeColor'] ?? '#ff9292'),
+                'unknownColor' => (string)($skin['materialsUnknownColor'] ?? '#f0cf78'),
             ],
         ],
         'tags' => array_map(static fn(array $row): array => [
@@ -4475,6 +4494,7 @@ function buildMaterialItem(PDO $pdo, array $row): array
         'createdAt' => (string)$row['created_at'],
         'updatedAt' => (string)$row['updated_at'],
         'deletedAt' => $row['deleted_at'] ?? null,
+        'adminOnly' => materialItemIsAdminOnly($row),
         'terms' => array_map(static fn(array $term): array => [
             'id' => (int)$term['id'], 'label' => (string)$term['label'],
             'description' => (string)$term['description'],
@@ -4637,6 +4657,9 @@ function deleteMaterialItem(PDO $pdo): void
 
 function requireMaterialOwner(PDO $pdo, array $item): void
 {
+    if (materialItemIsAdminOnly($item)) {
+        jsonResponse(['success' => false, 'message' => 'この素材は投稿パスワードが設定されていないため、管理画面からのみ変更できます。'], 403);
+    }
     $user = optionalUser($pdo);
     if ($user && (int)($item['user_id'] ?? 0) === (int)$user['id']) {
         return;
@@ -4645,6 +4668,12 @@ function requireMaterialOwner(PDO $pdo, array $item): void
     if ($password === '' || !password_verify($password, (string)$item['password_hash'])) {
         jsonResponse(['success' => false, 'message' => '投稿パスワードが違います。'], 403);
     }
+}
+
+function materialItemIsAdminOnly(array $item): bool
+{
+    return trim((string)($item['legacy_source'] ?? '')) !== ''
+        || trim((string)($item['password_hash'] ?? '')) === '';
 }
 
 function listDeletedMaterialItems(PDO $pdo): void
@@ -4834,6 +4863,7 @@ function updateMaterialProfile(PDO $pdo): void
 {
     $user = requireUser($pdo);
     $authorName = normalizeString((string)($_POST['author_name'] ?? $user['display_name']));
+    $postPassword = normalizeString((string)($_POST['post_password'] ?? $user['post_password']));
     $defaults = json_decode((string)($_POST['default_terms'] ?? '{}'), true);
     if ($authorName === '' || !is_array($defaults)) {
         jsonResponse(['success' => false, 'message' => '作者名または利用規約の初期値が正しくありません。'], 400);
@@ -4843,9 +4873,11 @@ function updateMaterialProfile(PDO $pdo): void
         $iconPath = saveUploadedUserIcon($_FILES['icon'], (int)$user['id']);
     }
     $pdo->prepare(
-        'UPDATE users SET materials_author_name = :author_name, materials_default_terms = :default_terms,
+        'UPDATE users SET post_password = :post_password, materials_author_name = :author_name,
+         materials_default_terms = :default_terms,
          icon_path = :icon_path, updated_at = :updated_at WHERE id = :id'
     )->execute([
+        ':post_password' => $postPassword,
         ':author_name' => $authorName,
         ':default_terms' => json_encode($defaults, JSON_UNESCAPED_UNICODE),
         ':icon_path' => $iconPath, ':updated_at' => currentTimestamp(), ':id' => (int)$user['id'],
@@ -5050,14 +5082,29 @@ function defaultSettings(): array
             'allowedImageTypes' => ['gif', 'png', 'jpeg', 'jpg', 'bmp'],
         ],
         'skin' => array_merge(imageBoardDefaultSkin(), [
-            'materialsPageBackgroundColor' => '#000000',
-            'materialsPageTextColor' => '#f4f4f4',
-            'materialsPanelBackgroundColor' => '#101010',
-            'materialsPanelBorderColor' => '#777777',
-            'materialsHeadingBackgroundColor' => '#65008f',
-            'materialsAccentColor' => '#79b7ff',
+            'materialsPageBackgroundColor' => '#050505',
+            'materialsPageTextColor' => '#f2f2f2',
+            'materialsHeaderBackgroundColor' => '#000000',
+            'materialsHeaderTextColor' => '#ffffff',
+            'materialsHeaderBorderColor' => '#222222',
+            'materialsPanelBackgroundColor' => '#111820',
+            'materialsPanelBorderColor' => '#6c7787',
+            'materialsHeadingBackgroundColor' => '#59636f',
+            'materialsHeadingTextColor' => '#ffffff',
+            'materialsAccentColor' => '#8fb0ff',
             'materialsButtonBackgroundColor' => '#3974ee',
             'materialsButtonTextColor' => '#ffffff',
+            'materialsSecondaryButtonBackgroundColor' => '#303640',
+            'materialsSecondaryButtonTextColor' => '#ffffff',
+            'materialsDangerButtonBackgroundColor' => '#c44141',
+            'materialsDangerButtonTextColor' => '#ffffff',
+            'materialsInputBackgroundColor' => '#282f38',
+            'materialsInputTextColor' => '#ffffff',
+            'materialsImageBackgroundColor' => '#020202',
+            'materialsMutedTextColor' => '#aab4c0',
+            'materialsPositiveColor' => '#72e9a2',
+            'materialsNegativeColor' => '#ff9292',
+            'materialsUnknownColor' => '#f0cf78',
         ]),
         'security' => [
             'adminPasswordHash' => '',
