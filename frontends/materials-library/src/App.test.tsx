@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { acceptExtensions, defaultTermAnswers, exportFullBackup, formatBytes, generateSharedSecret, isPlainObject, normalizeMaterialDesign, toBoolean } from './App';
-import { defaultMaterialDesign, groupMaterials, homeHref, MaterialItem, packAuthorGroups } from './api';
+import { acceptExtensions, defaultTermAnswers, exportFullBackup, formatBytes, generateSharedSecret, importBackup, isPlainObject, normalizeMaterialDesign, toBoolean } from './App';
+import { api, defaultMaterialDesign, groupMaterials, homeHref, MaterialItem, packAuthorGroups } from './api';
 
 describe('materials-library helpers', () => {
   afterEach(() => {
@@ -124,6 +124,103 @@ describe('materials-library helpers', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(Array.from(chunks[0])).toEqual([1, 2, 3]);
     expect(notice).toHaveBeenCalledWith('フルバックアップを保存しました。');
+    expect(error).toHaveBeenCalledWith('');
+  });
+
+  it('sends imported settings as base64 to avoid hosting WAF JSON rejection', async () => {
+    const fetchMock = vi.fn(async (_url: string, options: RequestInit) => {
+      const body = options.body as FormData;
+      expect(body.get('action')).toBe('updateSettings');
+      expect(body.get('settings')).toBeNull();
+      const encoded = String(body.get('settings_b64'));
+      const decoded = new TextDecoder().decode(Uint8Array.from(atob(encoded), (character) => character.charCodeAt(0)));
+      expect(JSON.parse(decoded)).toEqual({ config: { materialsTitle: '素材庫' }, skin: {} });
+      return new Response(JSON.stringify({ success: true, message: '設定を保存しました。' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(api.updateSettings('admin-secret', {
+      config: { materialsTitle: '素材庫' },
+      skin: {},
+    })).resolves.toMatchObject({ message: '設定を保存しました。' });
+  });
+
+  it('rejects a downloaded material archive before backup restore', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const restored = vi.fn();
+    const notice = vi.fn();
+    const error = vi.fn();
+
+    await expect(importBackup(
+      'admin-secret',
+      new File(['archive'], 'material-133-archive.zip', { type: 'application/zip' }),
+      restored,
+      notice,
+      error,
+    )).resolves.toBe(false);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(restored).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('フルバックアップ'));
+  });
+
+  it('turns an HTML restore response into an actionable error', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('<!DOCTYPE html><title>Server Error</title>', {
+      status: 500,
+      headers: { 'content-type': 'text/html' },
+    })));
+    const restored = vi.fn();
+    const error = vi.fn();
+
+    const progress = vi.fn();
+    await expect(importBackup(
+      'admin-secret',
+      new File(['backup'], 'materials-library-full-backup.zip', { type: 'application/zip' }),
+      restored,
+      vi.fn(),
+      error,
+      progress,
+    )).resolves.toBe(false);
+
+    expect(restored).not.toHaveBeenCalled();
+    expect(progress).toHaveBeenCalledWith(expect.stringContaining('サーバーで復元'));
+    expect(progress).toHaveBeenCalledWith(expect.stringContaining('復元結果'));
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('PHPエラーログ'));
+    expect(error.mock.calls[0][0]).not.toContain('<!DOCTYPE');
+  });
+
+  it('reports backup restore phases and completes successfully', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      success: true,
+      message: 'バックアップをインポートしました。',
+    }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    })));
+    const restored = vi.fn();
+    const notice = vi.fn();
+    const error = vi.fn();
+    const progress = vi.fn();
+
+    await expect(importBackup(
+      'admin-secret',
+      new File(['backup'], 'materials-library-full-backup.zip', { type: 'application/zip' }),
+      restored,
+      notice,
+      error,
+      progress,
+    )).resolves.toBe(true);
+
+    expect(progress.mock.calls.map(([message]) => message)).toEqual([
+      expect.stringContaining('アップロード'),
+      expect.stringContaining('復元結果'),
+    ]);
+    expect(restored).toHaveBeenCalledOnce();
+    expect(notice).toHaveBeenCalledWith(expect.stringContaining('管理パスワードで入り直して'));
     expect(error).toHaveBeenCalledWith('');
   });
 });

@@ -59,6 +59,7 @@ Registration requires only a login ID, login password, and password confirmation
 - Materials without a post password, including legacy imports, can only be changed from the admin screen
 - Restore and permanent purge
 - Author ID assignment
+- User administration opens from Maintenance after a confirmation dialog.
 - Registered-user list and management for login ID, shared display name, material author name, post password, HOME, term defaults, login password, and icon
 - Two-stage user erasure, with material author IDs kept consistent when user numbers are compacted
 - Full DB/storage backup and restore
@@ -73,4 +74,4 @@ Registration requires only a login ID, login password, and password confirmation
 
 ## Release
 
-Version 0.9.0 is the first public preview release and deploys under `15_materials_library/`. Runtime DB and uploaded files are not bundled in the release Zip.
+Version 0.9.1 is the current public preview release and deploys under `15_materials_library/`. Runtime DB and uploaded files are not bundled in the release Zip.

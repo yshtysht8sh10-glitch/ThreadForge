@@ -4,6 +4,17 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## materials-library 0.9.1 - 2026-06-15
+
+- Added Materials Library admin controls for parent-site SSO enablement, shared-secret editing, generation, and copy
+- Disabled local registration and ThreadForge-side user edits or erasure while SSO is enabled
+- Added registered-user administration for material profiles, icons, login passwords, and two-stage erasure
+- Preserved material author references when permanent user deletion compacts user IDs
+- Sent settings as Base64 to avoid hosting WAF rejection during save
+- Improved full-backup restore with material-archive rejection, readable HTML-server errors, and post-restore admin reauthentication
+- Moved user administration under Maintenance and added a confirmation before opening it
+- Added restore-stage status, elapsed time, progress animation, and duplicate-submit prevention during full-backup restore
+
 ## materials-library 0.9.0 - 2026-06-14
 
 - Rebuilt Materials Library as an archive-first catalog grouped by tag and author
@@ -24,10 +35,6 @@ ThreadForge follows semantic versioning while it is being prepared for public us
 - Limited Back to Top to list, delete, and edit screens
 - Simplified registration to login ID, password, and confirmation, with a password visibility toggle
 - Fixed large full-backup export with save-file picker streaming, stored compression for existing archives/media, and packaged PHP upload limits for restore
-- Added Materials Library admin controls for parent-site SSO enablement, shared-secret editing, generation, and copy
-- Disabled local registration and ThreadForge-side user edits or erasure while SSO is enabled
-- Added registered-user administration for material profiles, icons, login passwords, and two-stage erasure
-- Preserved material author references when permanent user deletion compacts user IDs
 
 ## file-uploader 1.0.0 - 2026-06-12
 

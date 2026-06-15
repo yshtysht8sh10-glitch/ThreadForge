@@ -67,6 +67,17 @@
         </div>
       </header>
       <article class="docs-article" data-language-panel="ja"><h1 id="変更履歴">変更履歴</h1>
+<h2 id="materials-library-0-9-1-2026-06-15">materials-library 0.9.1 - 2026-06-15</h2>
+<ul>
+<li>素材庫の管理画面に親サイトSSOのON/OFF、共有秘密鍵の設定・自動生成・コピーを追加</li>
+<li>SSO利用中はローカル新規登録とThreadForge側のユーザー編集・消去を禁止</li>
+<li>素材庫に登録ユーザー一覧、素材庫プロフィール編集、アイコン・ログインパスワード更新、二段階消去を追加</li>
+<li>ユーザー番号の完全消去・詰め直し後も素材の作者IDが正しく追従するよう修正</li>
+<li>レンタルサーバーのWAFで設定保存が拒否されないよう、設定データをBase64送信へ変更</li>
+<li>フルバックアップ復元時に素材配布Zipを誤選択した場合の案内、HTMLエラーの整形、復元後の管理再ログインを追加</li>
+<li>ユーザー情報管理を保守配下へ移し、表示前の確認ダイアログを追加</li>
+<li>フルバックアップ復元中に処理段階、経過時間、進行アニメーションを表示し、二重実行を防止</li>
+</ul>
 <h2 id="materials-library-0-9-0-2026-06-14">materials-library 0.9.0 - 2026-06-14</h2>
 <ul>
 <li>素材庫を、圧縮ファイルを主役としてタグと作者で整理するカタログへ刷新</li>
@@ -87,10 +98,6 @@
 <li>「上に戻る」を一覧・削除・編集画面だけに表示</li>
 <li>新規登録をログインID・パスワード・確認入力に整理し、パスワード表示切替を追加</li>
 <li>大容量フルバックアップを保存先ダイアログから直接保存し、既圧縮素材の再圧縮を避け、復元用PHPアップロード上限を配布設定へ追加</li>
-<li>素材庫の管理画面に親サイトSSOのON/OFF、共有秘密鍵の設定・自動生成・コピーを追加</li>
-<li>SSO利用中はローカル新規登録とThreadForge側のユーザー編集・消去を禁止</li>
-<li>素材庫に登録ユーザー一覧、素材庫プロフィール編集、アイコン・ログインパスワード更新、二段階消去を追加</li>
-<li>ユーザー番号の完全消去・詰め直し後も素材の作者IDが正しく追従するよう修正</li>
 </ul>
 <h2 id="file-uploader-1-0-0-2026-06-12">file-uploader 1.0.0 - 2026-06-12</h2>
 <ul>
@@ -188,6 +195,17 @@
 </ul></article>
       <article class="docs-article" data-language-panel="en"><h1 id="changelog">Changelog</h1>
 <p>ThreadForge follows semantic versioning while it is being prepared for public use.</p>
+<h2 id="materials-library-0-9-1-2026-06-15">materials-library 0.9.1 - 2026-06-15</h2>
+<ul>
+<li>Added Materials Library admin controls for parent-site SSO enablement, shared-secret editing, generation, and copy</li>
+<li>Disabled local registration and ThreadForge-side user edits or erasure while SSO is enabled</li>
+<li>Added registered-user administration for material profiles, icons, login passwords, and two-stage erasure</li>
+<li>Preserved material author references when permanent user deletion compacts user IDs</li>
+<li>Sent settings as Base64 to avoid hosting WAF rejection during save</li>
+<li>Improved full-backup restore with material-archive rejection, readable HTML-server errors, and post-restore admin reauthentication</li>
+<li>Moved user administration under Maintenance and added a confirmation before opening it</li>
+<li>Added restore-stage status, elapsed time, progress animation, and duplicate-submit prevention during full-backup restore</li>
+</ul>
 <h2 id="materials-library-0-9-0-2026-06-14">materials-library 0.9.0 - 2026-06-14</h2>
 <ul>
 <li>Rebuilt Materials Library as an archive-first catalog grouped by tag and author</li>
@@ -208,10 +226,6 @@
 <li>Limited Back to Top to list, delete, and edit screens</li>
 <li>Simplified registration to login ID, password, and confirmation, with a password visibility toggle</li>
 <li>Fixed large full-backup export with save-file picker streaming, stored compression for existing archives/media, and packaged PHP upload limits for restore</li>
-<li>Added Materials Library admin controls for parent-site SSO enablement, shared-secret editing, generation, and copy</li>
-<li>Disabled local registration and ThreadForge-side user edits or erasure while SSO is enabled</li>
-<li>Added registered-user administration for material profiles, icons, login passwords, and two-stage erasure</li>
-<li>Preserved material author references when permanent user deletion compacts user IDs</li>
 </ul>
 <h2 id="file-uploader-1-0-0-2026-06-12">file-uploader 1.0.0 - 2026-06-12</h2>
 <ul>

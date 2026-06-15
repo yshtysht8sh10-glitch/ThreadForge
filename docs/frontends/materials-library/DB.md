@@ -34,6 +34,10 @@ Archives use `material-<id>-archive.<ext>`. Preview images use `material-<id>-im
 Full backup Zip includes `database.sqlite` and every file under `storage/data/`.
 The admin screen uses the browser save-file picker when supported and streams the generated Zip directly to the selected destination. Packaged releases include `.user.ini` with a 1 GB upload limit so large full-backup files can be restored on compatible PHP/FastCGI hosting. If the hosting provider overrides this file, configure `upload_max_filesize` and `post_max_size` in the hosting control panel.
 
+Restore requires a Zip created by **Download full backup**. A `material-*-archive.zip` downloaded from a material card is the published asset, not a restorable backup. Restoring also replaces the administrator password with the value stored in the backup DB, so sign in again with that password.
+
+The admin screen displays the current restore stage and elapsed time. Large backups may require several minutes after upload to extract the Zip, replace the DB, and restore material files. Keep the page open until completion or an error is displayed.
+
 ## Legacy Sozaiko import
 
 The importer reads `Sozaiko.html`, archives under `zip/`, and previews under `img/`.

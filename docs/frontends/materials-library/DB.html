@@ -87,6 +87,8 @@ server/runtime/materials-library/storage/data/</code></pre>
 <p><code>user_id</code> がある素材はID単位、ない素材は作者名単位でまとめます。同名でもIDあり・なしは統合しません。</p>
 <p>差し替え前のファイルは履歴名で保持します。論理削除ではファイルを残し、管理者の完全消去で削除します。フルバックアップZipにはSQLite DBと <code>storage/data/</code> の全ファイルを含めます。</p>
 <p>管理画面のフルバックアップは、対応ブラウザでは保存先ダイアログを開き、生成したZipを選択先へ直接保存します。配布Zipには大容量バックアップ復元用の <code>.user.ini</code> を同梱し、アップロード上限を1GBに設定します。レンタルサーバー側が <code>.user.ini</code> を上書き・無効化している場合は、サーバー管理画面で <code>upload_max_filesize</code> と <code>post_max_size</code> を調整してください。</p>
+<p>復元には「フルバックアップをダウンロード」で作成したZipを指定します。素材カードから取得した <code>material-*-archive.zip</code> は素材本体であり、復元には使用できません。復元後はDB内の管理パスワードもバックアップ時点へ戻るため、そのパスワードで管理画面へ入り直します。</p>
+<p>復元中は処理段階と経過時間を管理画面へ表示します。大容量バックアップでは、アップロード後のZip展開、DB差し替え、素材ファイル復元に数分かかる場合があります。完了またはエラーが表示されるまで画面を閉じないでください。</p>
 <h2 id="旧素材庫のインポート">旧素材庫のインポート</h2>
 <p><code>Sozaiko.html</code>、<code>zip/</code> 内の圧縮ファイル、<code>img/</code> 内のプレビューを読み込みます。旧フォルダのファイルは移動・削除せず、素材庫ランタイムへコピーします。</p>
 <pre><code class="language-powershell">tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko --dry-run
@@ -116,6 +118,8 @@ server/runtime/materials-library/storage/data/</code></pre>
 <h2 id="files">Files</h2>
 <p>Archives use <code>material-&lt;id&gt;-archive.&lt;ext&gt;</code>. Preview images use <code>material-&lt;id&gt;-image.&lt;ext&gt;</code>. Replacements archive the previous file with a timestamp. Soft deletion retains all files; permanent purge removes them.</p>
 <p>Full backup Zip includes <code>database.sqlite</code> and every file under <code>storage/data/</code>.<br>The admin screen uses the browser save-file picker when supported and streams the generated Zip directly to the selected destination. Packaged releases include <code>.user.ini</code> with a 1 GB upload limit so large full-backup files can be restored on compatible PHP/FastCGI hosting. If the hosting provider overrides this file, configure <code>upload_max_filesize</code> and <code>post_max_size</code> in the hosting control panel.</p>
+<p>Restore requires a Zip created by <strong>Download full backup</strong>. A <code>material-*-archive.zip</code> downloaded from a material card is the published asset, not a restorable backup. Restoring also replaces the administrator password with the value stored in the backup DB, so sign in again with that password.</p>
+<p>The admin screen displays the current restore stage and elapsed time. Large backups may require several minutes after upload to extract the Zip, replace the DB, and restore material files. Keep the page open until completion or an error is displayed.</p>
 <h2 id="legacy-sozaiko-import">Legacy Sozaiko import</h2>
 <p>The importer reads <code>Sozaiko.html</code>, archives under <code>zip/</code>, and previews under <code>img/</code>.<br>It copies files into the Materials Library runtime and never moves or deletes the legacy source.</p>
 <pre><code class="language-powershell">tools\import_legacy_materials.bat frontends\materials-library\legacy\05_Sozaiko --dry-run

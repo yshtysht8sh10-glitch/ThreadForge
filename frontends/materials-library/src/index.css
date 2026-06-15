@@ -129,6 +129,14 @@ textarea.large { min-height: 280px; }
 .admin-user-summary small { color: var(--muted-text); }
 .admin-user-edit { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--panel-border); }
 .admin-user-edit h3 { margin: 0; }
+.maintenance-section h3 { margin: 0 0 8px; }
+.maintenance-section p { margin: 0; line-height: 1.6; }
+.restore-progress { display: grid; gap: 7px; margin-top: 12px; padding: 11px 13px; border: 1px solid var(--panel-border); background: color-mix(in srgb, var(--panel-bg) 78%, black); }
+.restore-progress strong { color: var(--page-text); }
+.restore-progress small { color: var(--muted-text); line-height: 1.5; }
+.restore-progress-bar { position: relative; display: block; height: 5px; overflow: hidden; background: color-mix(in srgb, var(--input-bg) 75%, black); }
+.restore-progress.active .restore-progress-bar::after { content: ""; position: absolute; inset-block: 0; width: 35%; background: var(--button-bg); animation: restore-progress-slide 1.2s ease-in-out infinite; }
+@keyframes restore-progress-slide { from { left: -35%; } to { left: 100%; } }
 .stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
 .stat { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--panel-border); background: #090e14; }
 .stat strong { font-size: 23px; color: var(--accent); }

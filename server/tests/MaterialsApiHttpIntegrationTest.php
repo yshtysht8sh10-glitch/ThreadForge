@@ -206,7 +206,7 @@ final class MaterialsApiHttpIntegrationTest extends TestCase
         $saved = $this->postForm([
             'action' => 'updateSettings',
             'admin_password' => 'admin-secret',
-            'settings' => json_encode($settings),
+            'settings_b64' => base64_encode((string)json_encode($settings)),
         ]);
         $this->assertSame(200, $saved['status'], $saved['body']);
 
@@ -361,6 +361,25 @@ final class MaterialsApiHttpIntegrationTest extends TestCase
             $archiveStat = $zip->statIndex((int)$archiveIndex);
             $this->assertSame(ZipArchive::CM_STORE, $archiveStat['comp_method']);
             $this->assertSame('test archive', $zip->getFromIndex((int)$archiveIndex));
+
+            $zip->close();
+            $opened = false;
+
+            $pdo = new PDO('sqlite:' . $this->runtimeDir . '/database.sqlite');
+            $pdo->prepare('UPDATE material_items SET name = :name WHERE id = :id')
+                ->execute([':name' => 'Changed after backup', ':id' => $itemId]);
+            $pdo = null;
+
+            $restored = $this->postForm([
+                'action' => 'importBackup',
+                'admin_password' => 'admin-secret',
+                'backup' => new CURLFile($backupFile, 'application/zip', 'materials-library-full-backup.zip'),
+            ]);
+            $this->assertSame(200, $restored['status'], $restored['body']);
+            $this->assertTrue($restored['json']['success']);
+            $restoredItems = array_column($this->getJson(['action' => 'listMaterialItems'])['json']['items'], null, 'id');
+            $this->assertArrayHasKey($itemId, $restoredItems);
+            $this->assertNotSame('Changed after backup', $restoredItems[$itemId]['name']);
         } finally {
             if ($opened) {
                 $zip->close();

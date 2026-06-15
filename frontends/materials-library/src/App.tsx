@@ -439,11 +439,21 @@ function AdminPage(props: CommonProps) {
   const [userDeleteEnabled, setUserDeleteEnabled] = useState(false);
   const [analytics, setAnalytics] = useState<{ summary: Record<string, string>; months: Array<Record<string, string>> } | null>(null);
   const [nextAdminPassword, setNextAdminPassword] = useState('');
+  const [restoreInProgress, setRestoreInProgress] = useState(false);
+  const [restoreStatus, setRestoreStatus] = useState('');
+  const [restoreElapsed, setRestoreElapsed] = useState(0);
   const importRef = useRef<HTMLInputElement>(null);
   const settingsImportRef = useRef<HTMLInputElement>(null);
   const designImportRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { api.adminStatus().then((response) => setConfigured(response.adminPasswordConfigured)); }, []);
+  useEffect(() => {
+    if (!restoreInProgress) return;
+    const startedAt = Date.now();
+    setRestoreElapsed(0);
+    const timer = window.setInterval(() => setRestoreElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, [restoreInProgress]);
   const load = async (value = password) => {
     const [settingsResponse, deletedResponse, userResponse, analyticsResponse] = await Promise.all([
       api.getAdmin(value), api.deleted(value), api.users(value), api.analytics(value),
@@ -587,7 +597,9 @@ function AdminPage(props: CommonProps) {
   return (
     <>
       <Panel title="管理"><p>管理者としてログインしています。素材庫の投稿、保守、設定、デザインを管理できます。</p></Panel>
-      <nav className="admin-tabs">{(['items', 'deleted', 'users', 'maintenance', 'analytics', 'settings', 'design'] as AdminTab[]).map((value) =>
+      <nav className="admin-tabs">{((tab === 'users'
+        ? ['items', 'deleted', 'users', 'maintenance', 'analytics', 'settings', 'design']
+        : ['items', 'deleted', 'maintenance', 'analytics', 'settings', 'design']) as AdminTab[]).map((value) =>
         <button key={value} className={tab === value ? 'active' : ''} onClick={() => {
           setTab(value); setSelected([]); setEditingUser(null); setUserDeleteEnabled(false);
         }}>{adminTabLabel(value)}</button>)}</nav>
@@ -630,6 +642,9 @@ function AdminPage(props: CommonProps) {
             </div>
           </article>)}
         </div>
+        <div className="actions"><button type="button" className="secondary" onClick={() => {
+          setTab('maintenance'); setEditingUser(null); setUserDeleteEnabled(false);
+        }}>保守に戻る</button></div>
         {editingUser && <form className="material-form admin-user-edit" onSubmit={saveAdminUser}>
           <h3>ユーザー No.{editingUser.id} を編集</h3>
           <div className="form-grid two-columns">
@@ -655,11 +670,48 @@ function AdminPage(props: CommonProps) {
         </form>}
       </Panel>}
       {tab === 'maintenance' && <Panel title="保守・バックアップ">
+        <section className="maintenance-section">
+          <h3>ユーザー情報</h3>
+          <p>{ssoEnabled ? 'SSOがONのため、ユーザー情報は親サイト側で管理してください。' : '登録ユーザーの情報編集と消去は専用画面で行います。'}</p>
+          <div className="actions"><button type="button" className="secondary" disabled={ssoEnabled} onClick={() => {
+            if (!confirm('ユーザー情報管理画面を表示しますか？')) return;
+            setTab('users'); setEditingUser(null); setUserDeleteEnabled(false);
+          }}>ユーザー情報を開く</button></div>
+        </section>
+        <hr />
         <p>データベースと素材ファイルをまとめてエクスポートできます。</p>
         <div className="actions"><button type="button" onClick={() => void exportFullBackup(password, props.setNotice, props.setError)}>フルバックアップをダウンロード</button></div>
         <hr /><p>フルバックアップZipを選択して復元します。現在のデータは置き換わります。</p>
-        <input ref={importRef} type="file" accept=".zip" />
-        <div className="actions"><button onClick={() => importBackup(password, importRef.current?.files?.[0] ?? null, load, props.setNotice, props.setError)}>インポートして復元</button></div>
+        <input ref={importRef} type="file" accept=".zip" disabled={restoreInProgress} />
+        {restoreStatus && <div className={`restore-progress ${restoreInProgress ? 'active' : ''}`} role="status" aria-live="polite">
+          <span className="restore-progress-bar" aria-hidden="true" />
+          <strong>{restoreStatus}</strong>
+          {restoreInProgress && <small>経過時間: {formatElapsed(restoreElapsed)}。大容量バックアップは展開とDB差し替えに数分かかる場合があります。この画面を閉じないでください。</small>}
+        </div>}
+        <div className="actions"><button disabled={restoreInProgress} onClick={async () => {
+          if (restoreInProgress) return;
+          props.setError('');
+          setRestoreStatus('バックアップファイルを確認しています...');
+          setRestoreInProgress(true);
+          const succeeded = await importBackup(
+            password,
+            importRef.current?.files?.[0] ?? null,
+            () => {
+              setRestoreStatus('復元が完了しました。管理画面へ入り直します...');
+              localStorage.removeItem(ADMIN_KEY);
+              setAuthenticated(false);
+              setAdminSettings(null);
+              setSavedAdminSettings(null);
+              setPassword('');
+              props.setPreviewDesign(null);
+            },
+            props.setNotice,
+            props.setError,
+            setRestoreStatus,
+          );
+          if (!succeeded) setRestoreStatus('復元できませんでした。表示されたエラーを確認してください。');
+          setRestoreInProgress(false);
+        }}>{restoreInProgress ? '復元処理中...' : 'インポートして復元'}</button></div>
         <hr /><label>新しい管理パスワード<input type="password" value={nextAdminPassword} onChange={(event) => setNextAdminPassword(event.target.value)} /></label>
         <div className="actions"><button onClick={async () => {
           try {
@@ -954,6 +1006,9 @@ async function responseErrorMessage(response: Response, fallback: string) {
     return payload?.message || fallback;
   }
   const text = await response.text().catch(() => '');
+  if (/^\s*</.test(text)) {
+    return `${fallback} api.phpの配置、PHPエラーログ、upload_max_filesize、post_max_sizeを確認してください。`;
+  }
   return text.trim() || fallback;
 }
 function downloadBlob(blob: Blob, filename: string) {
@@ -970,6 +1025,11 @@ function timestampForFilename(value: Date) {
   const part = (number: number) => String(number).padStart(2, '0');
   return `${value.getFullYear()}${part(value.getMonth() + 1)}${part(value.getDate())}-${part(value.getHours())}${part(value.getMinutes())}${part(value.getSeconds())}`;
 }
+function formatElapsed(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  return minutes > 0 ? `${minutes}分${String(remaining).padStart(2, '0')}秒` : `${remaining}秒`;
+}
 function isAbortError(error: unknown) {
   return error instanceof Error && error.name === 'AbortError';
 }
@@ -984,14 +1044,39 @@ function updateMaterialDesign(
   setSettings(next);
   setPreview(materialDesignFromSkin(next.skin));
 }
-async function importBackup(password: string, file: File | null, reload: () => Promise<void>, notice: (message: string) => void, error: (message: string) => void) {
-  if (!file) { error('バックアップZipを選択してください。'); return; }
+export async function importBackup(
+  password: string,
+  file: File | null,
+  restored: () => void,
+  notice: (message: string) => void,
+  error: (message: string) => void,
+  progress: (message: string) => void = () => undefined,
+) {
+  if (!file) { error('バックアップZipを選択してください。'); return false; }
+  if (/^material-\d+-archive\./i.test(file.name)) {
+    error('素材のダウンロードZipでは復元できません。「フルバックアップをダウンロード」で作成したZipを選択してください。');
+    return false;
+  }
   const body = new FormData(); body.set('action', 'importBackup'); body.set('admin_password', password); body.set('backup', file);
   try {
-    const response = await fetch(apiBase(), { method: 'POST', body }); const data = await response.json();
-    if (!response.ok || data.success === false) throw new Error(data.message);
-    notice(data.message); await reload();
-  } catch (reason) { error((reason as Error).message); }
+    progress(`「${file.name}」をアップロードし、サーバーで復元しています...`);
+    const response = await fetch(apiBase(), { method: 'POST', body });
+    progress('サーバーから返された復元結果を確認しています...');
+    if (!response.ok) throw new Error(await responseErrorMessage(response, `バックアップの復元に失敗しました（HTTP ${response.status}）。`));
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+      throw new Error(await responseErrorMessage(response, 'バックアップ復元APIがJSONを返しませんでした。'));
+    }
+    const data = await response.json() as { success?: boolean; message?: string };
+    if (data.success === false) throw new Error(data.message || 'バックアップの復元に失敗しました。');
+    notice(`${data.message || 'バックアップをインポートしました。'} 復元したDBの管理パスワードで入り直してください。`);
+    error('');
+    restored();
+    return true;
+  } catch (reason) {
+    error((reason as Error).message);
+    return false;
+  }
 }
 
 export { acceptExtensions, formatBytes };

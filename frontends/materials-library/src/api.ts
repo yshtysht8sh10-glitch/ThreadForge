@@ -122,8 +122,17 @@ async function request<T>(action: string, values: Record<string, string> = {}, m
     Object.entries(values).forEach(([key, value]) => payload.set(key, value));
     response = await fetch(apiBase(), { method: 'POST', body: payload });
   }
-  const data = await response.json();
-  if (!response.ok || data.success === false) throw new Error(data.message || 'API request failed.');
+  const text = await response.text();
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    const htmlResponse = /^\s*</.test(text);
+    throw new Error(htmlResponse
+      ? `APIがHTMLエラーを返しました（HTTP ${response.status}）。api.phpの配置、PHPエラーログ、アップロード上限を確認してください。`
+      : (text.trim() || `API request failed (HTTP ${response.status}).`));
+  }
+  if (!response.ok || data.success === false) throw new Error(data.message || `API request failed (HTTP ${response.status}).`);
   return data as T;
 }
 
@@ -145,7 +154,7 @@ export const api = {
   adminStatus: () => request<{ adminPasswordConfigured: boolean }>('adminStatus'),
   getAdmin: (password: string) => request<{ settings: { config: Record<string, unknown>; skin: Record<string, unknown> } }>('getSettings', { admin_password: password }),
   updateSettings: (password: string, settings: unknown) => request<{ message: string }>('updateSettings', {
-    admin_password: password, settings: JSON.stringify(settings),
+    admin_password: password, settings_b64: base64EncodeUtf8(JSON.stringify(settings)),
   }, 'POST'),
   saveCatalog: (password: string, tags: MaterialTag[], terms: MaterialTerm[]) => request<{ message: string }>('saveMaterialCatalog', {
     admin_password: password, tags: JSON.stringify(tags), terms: JSON.stringify(terms),
@@ -207,6 +216,13 @@ export function homeHref(value: string) {
   const trimmed = value.trim();
   if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith('/') || trimmed.startsWith('.')) return trimmed || './';
   return trimmed ? `https://${trimmed}` : './';
+}
+
+function base64EncodeUtf8(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary);
 }
 
 export function groupMaterials(items: MaterialItem[], parent: 'tag' | 'author') {
