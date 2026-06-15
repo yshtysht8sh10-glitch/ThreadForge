@@ -32,6 +32,7 @@ Packaged deployment:
 Archives use `material-<id>-archive.<ext>`. Preview images use `material-<id>-image.<ext>`. Replacements archive the previous file with a timestamp. Soft deletion retains all files; permanent purge removes them.
 
 Full backup Zip includes `database.sqlite` and every file under `storage/data/`.
+The admin screen uses the browser save-file picker when supported and streams the generated Zip directly to the selected destination. Packaged releases include `.user.ini` with a 1 GB upload limit so large full-backup files can be restored on compatible PHP/FastCGI hosting. If the hosting provider overrides this file, configure `upload_max_filesize` and `post_max_size` in the hosting control panel.
 
 ## Legacy Sozaiko import
 

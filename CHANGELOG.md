@@ -23,6 +23,11 @@ ThreadForge follows semantic versioning while it is being prepared for public us
 - Added required-field markers, the `blank` name default, yes-by-default terms, saved user term defaults, and delete/edit indexes
 - Limited Back to Top to list, delete, and edit screens
 - Simplified registration to login ID, password, and confirmation, with a password visibility toggle
+- Fixed large full-backup export with save-file picker streaming, stored compression for existing archives/media, and packaged PHP upload limits for restore
+- Added Materials Library admin controls for parent-site SSO enablement, shared-secret editing, generation, and copy
+- Disabled local registration and ThreadForge-side user edits or erasure while SSO is enabled
+- Added registered-user administration for material profiles, icons, login passwords, and two-stage erasure
+- Preserved material author references when permanent user deletion compacts user IDs
 
 ## file-uploader 1.0.0 - 2026-06-12
 

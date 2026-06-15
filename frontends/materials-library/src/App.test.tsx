@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest';
-import { acceptExtensions, defaultTermAnswers, formatBytes, isPlainObject, normalizeMaterialDesign } from './App';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { acceptExtensions, defaultTermAnswers, exportFullBackup, formatBytes, generateSharedSecret, isPlainObject, normalizeMaterialDesign, toBoolean } from './App';
 import { defaultMaterialDesign, groupMaterials, homeHref, MaterialItem, packAuthorGroups } from './api';
 
 describe('materials-library helpers', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
   it('groups logged-in and guest authors separately even when names match', () => {
     const items = [
       item(1, 10, 'Same Name', 'tag:1'),
@@ -63,6 +68,15 @@ describe('materials-library helpers', () => {
     expect(isPlainObject([])).toBe(false);
   });
 
+  it('normalizes persisted SSO flags and creates URL-safe secrets', () => {
+    expect(toBoolean(true)).toBe(true);
+    expect(toBoolean('true')).toBe(true);
+    expect(toBoolean('1')).toBe(true);
+    expect(toBoolean(false)).toBe(false);
+    expect(toBoolean('false')).toBe(false);
+    expect(generateSharedSecret()).toMatch(/^[A-Za-z0-9_-]{48}$/);
+  });
+
   it('packs small adjacent authors into rows without exceeding four cards', () => {
     const groups = [
       { label: 'A', items: [item(1, 1, 'A', 'tag:1'), item(2, 1, 'A', 'tag:1')] },
@@ -76,6 +90,41 @@ describe('materials-library helpers', () => {
       ['C'],
       ['D'],
     ]);
+  });
+
+  it('streams a full backup into the browser save-file picker', async () => {
+    const chunks: Uint8Array[] = [];
+    const writable = new WritableStream<Uint8Array>({
+      write(chunk) { chunks.push(chunk); },
+    });
+    const createWritable = vi.fn(async () => writable);
+    const showSaveFilePicker = vi.fn(async () => ({ createWritable }));
+    vi.stubGlobal('window', {
+      location: { href: 'http://127.0.0.1:4277/#/admin' },
+      showSaveFilePicker,
+    });
+    const fetchMock = vi.fn(async (_url: string, options: RequestInit) => {
+      expect(options.method).toBe('POST');
+      const body = options.body as FormData;
+      expect(body.get('action')).toBe('exportBackup');
+      expect(body.get('admin_password')).toBe('admin-secret');
+      return new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { 'content-type': 'application/zip' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const notice = vi.fn();
+    const error = vi.fn();
+
+    await exportFullBackup('admin-secret', notice, error);
+
+    expect(showSaveFilePicker).toHaveBeenCalledOnce();
+    expect(createWritable).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(Array.from(chunks[0])).toEqual([1, 2, 3]);
+    expect(notice).toHaveBeenCalledWith('フルバックアップを保存しました。');
+    expect(error).toHaveBeenCalledWith('');
   });
 });
 

@@ -1,8 +1,8 @@
 import { CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { api, apiBase, defaultMaterialDesign, groupMaterials, homeHref, MaterialDesign, MaterialItem, MaterialSettings, MaterialTag, MaterialTerm, mediaUrl, packAuthorGroups, User } from './api';
+import { AdminUser, api, apiBase, defaultMaterialDesign, groupMaterials, homeHref, MaterialDesign, MaterialItem, MaterialSettings, MaterialTag, MaterialTerm, mediaUrl, packAuthorGroups, User } from './api';
 
 type Page = 'list' | 'post' | 'delete' | 'edit' | 'manual' | 'login' | 'admin';
-type AdminTab = 'items' | 'deleted' | 'maintenance' | 'analytics' | 'settings' | 'design';
+type AdminTab = 'items' | 'deleted' | 'users' | 'maintenance' | 'analytics' | 'settings' | 'design';
 const TOKEN_KEY = 'threadforgeMaterialsUserToken';
 const ADMIN_KEY = 'threadforgeMaterialsAdminPassword';
 
@@ -340,6 +340,13 @@ function LoginPage(props: CommonProps) {
   }, [props.user, props.terms]);
 
   useEffect(() => {
+    if (props.settings.ssoEnabled && mode === 'register') {
+      setMode('login');
+      setPasswordConfirm('');
+    }
+  }, [props.settings.ssoEnabled, mode]);
+
+  useEffect(() => {
     if (ssoDone.current) return;
     const sso = new URLSearchParams(location.hash.split('?')[1] ?? location.search).get('sso');
     if (!sso) return;
@@ -406,7 +413,7 @@ function LoginPage(props: CommonProps) {
         <label className="inline-check"><input type="checkbox" checked={showPassword} onChange={(event) => setShowPassword(event.target.checked)} />ログインパスワードを表示</label>
         <div className="actions"><button>{mode === 'login' ? 'ログイン' : '登録してログイン'}</button></div>
       </form>
-      {props.settings.ssoEnabled && <p>親サイトから渡されたSSOトークンにも対応しています。</p>}
+      {props.settings.ssoEnabled && <p className="sso-notice">SSOログインが有効です。アカウントの新規作成は親サイト側で行ってください。</p>}
     </Panel>
   );
 }
@@ -422,7 +429,14 @@ function AdminPage(props: CommonProps) {
   const [savedAdminSettings, setSavedAdminSettings] = useState<{ config: Record<string, unknown>; skin: Record<string, unknown> } | null>(null);
   const [draftTags, setDraftTags] = useState(props.tags);
   const [draftTerms, setDraftTerms] = useState(props.terms);
-  const [users, setUsers] = useState<Array<{ id: number; login_id: string; display_name: string }>>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [editingUserPassword, setEditingUserPassword] = useState('');
+  const [editingUserPasswordConfirm, setEditingUserPasswordConfirm] = useState('');
+  const [showEditingUserPassword, setShowEditingUserPassword] = useState(false);
+  const [editingUserIcon, setEditingUserIcon] = useState<File | null>(null);
+  const [removeEditingUserIcon, setRemoveEditingUserIcon] = useState(false);
+  const [userDeleteEnabled, setUserDeleteEnabled] = useState(false);
   const [analytics, setAnalytics] = useState<{ summary: Record<string, string>; months: Array<Record<string, string>> } | null>(null);
   const [nextAdminPassword, setNextAdminPassword] = useState('');
   const importRef = useRef<HTMLInputElement>(null);
@@ -465,6 +479,68 @@ function AdminPage(props: CommonProps) {
     await runAdmin(() => api.updateSettings(password, adminSettings));
     setSavedAdminSettings(structuredClone(adminSettings));
     props.setPreviewDesign(null);
+  };
+  const ssoEnabled = toBoolean(adminSettings.config.ssoEnabled);
+  const startEditUser = (user: AdminUser) => {
+    if (ssoEnabled) {
+      props.setError('SSOログインが有効なため、ThreadForge側ではユーザー情報を編集できません。親サイト側で編集してください。');
+      return;
+    }
+    setEditingUser(structuredClone(user));
+    setEditingUserPassword('');
+    setEditingUserPasswordConfirm('');
+    setShowEditingUserPassword(false);
+    setEditingUserIcon(null);
+    setRemoveEditingUserIcon(false);
+  };
+  const saveAdminUser = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!editingUser) return;
+    if (ssoEnabled) {
+      props.setError('SSOログインが有効なため、ThreadForge側ではユーザー情報を編集できません。親サイト側で編集してください。');
+      return;
+    }
+    if (editingUserPassword !== editingUserPasswordConfirm) {
+      props.setError('新しいログインパスワードと確認入力が一致しません。');
+      return;
+    }
+    try {
+      const response = await api.updateUser(
+        password,
+        editingUser,
+        editingUserPassword,
+        editingUserPasswordConfirm,
+        editingUserIcon,
+        removeEditingUserIcon,
+      );
+      props.setNotice(response.message);
+      setEditingUser(null);
+      await load();
+      await props.reload();
+    } catch (reason) {
+      props.setError((reason as Error).message);
+    }
+  };
+  const deleteAdminUser = async (user: AdminUser, stage: 1 | 2) => {
+    if (ssoEnabled) {
+      props.setError('SSOログインが有効なため、ThreadForge側ではユーザー情報を消去できません。親サイト側で管理してください。');
+      return;
+    }
+    if (!userDeleteEnabled) {
+      props.setError('ユーザー情報の消去を有効にしてください。');
+      return;
+    }
+    const operation = stage === 1 ? '登録情報を消去' : 'ユーザー番号ごと完全消去';
+    if (!confirm(`ユーザー No.${user.id} を${operation}しますか？`)) return;
+    try {
+      const response = await api.deleteUser(password, user.id, stage);
+      props.setNotice(response.message);
+      setEditingUser(null);
+      await load();
+      await props.reload();
+    } catch (reason) {
+      props.setError((reason as Error).message);
+    }
   };
   const exportAdminJson = async (section: 'settings' | 'design') => {
     const payload = section === 'settings'
@@ -511,8 +587,10 @@ function AdminPage(props: CommonProps) {
   return (
     <>
       <Panel title="管理"><p>管理者としてログインしています。素材庫の投稿、保守、設定、デザインを管理できます。</p></Panel>
-      <nav className="admin-tabs">{(['items', 'deleted', 'maintenance', 'analytics', 'settings', 'design'] as AdminTab[]).map((value) =>
-        <button key={value} className={tab === value ? 'active' : ''} onClick={() => { setTab(value); setSelected([]); }}>{adminTabLabel(value)}</button>)}</nav>
+      <nav className="admin-tabs">{(['items', 'deleted', 'users', 'maintenance', 'analytics', 'settings', 'design'] as AdminTab[]).map((value) =>
+        <button key={value} className={tab === value ? 'active' : ''} onClick={() => {
+          setTab(value); setSelected([]); setEditingUser(null); setUserDeleteEnabled(false);
+        }}>{adminTabLabel(value)}</button>)}</nav>
       {tab === 'items' && <Panel title="一括削除・作者ID割当">
         <AdminItemRows items={props.items} selected={selected} toggle={toggle} users={users} onAssign={(item, userId, authorName) => runAdmin(() => api.assignAuthor(password, item.id, userId, authorName))} />
         <div className="actions"><button className="danger" disabled={!selected.length} onClick={() => runAdmin(() => api.adminDelete(password, selected))}>チェックした素材を一括削除</button></div>
@@ -522,9 +600,63 @@ function AdminPage(props: CommonProps) {
         <div className="actions"><button disabled={!selected.length} onClick={() => runAdmin(() => api.restore(password, selected))}>復元する</button>
           <button className="danger" disabled={!selected.length} onClick={() => confirm('ファイルを含めて完全消去しますか？') && runAdmin(() => api.purge(password, selected))}>完全消去</button></div>
       </Panel>}
+      {tab === 'users' && <Panel title="ユーザー情報管理">
+        <div className="admin-user-intro">
+          <div>
+            <p>登録ユーザーの素材庫プロフィール、ログイン情報、アイコンを管理できます。</p>
+            {ssoEnabled && <p className="warning">SSOがONのため、ユーザー情報の編集・消去は親サイト側で行ってください。</p>}
+          </div>
+          <label className="inline-check danger-enable"><input type="checkbox" checked={userDeleteEnabled} disabled={ssoEnabled} onChange={(event) => setUserDeleteEnabled(event.target.checked)} />消去を有効にする</label>
+        </div>
+        <div className="admin-user-list">
+          {users.length === 0 && <Empty>登録ユーザーはありません。</Empty>}
+          {users.map((user) => <article className="admin-user-row" key={user.id}>
+            <div className="admin-user-meta">
+              <strong>No.{user.id}</strong>
+              <span>作成 {formatAdminDate(user.created_at)}</span>
+              <span>最終ログイン {formatAdminDate(user.last_login_at)}</span>
+              <span>素材 {user.material_count}件</span>
+            </div>
+            <div className="admin-user-main">
+              <div className="admin-user-summary">
+                {mediaUrl(user.icon_path) && <img src={mediaUrl(user.icon_path) ?? ''} alt="" />}
+                <span><strong>{user.materials_author_name || user.display_name}</strong><small>{user.login_id}</small></span>
+              </div>
+              <div className="actions">
+                <button type="button" disabled={ssoEnabled} title={ssoEnabled ? 'SSO利用中は親サイト側で編集してください。' : undefined} onClick={() => startEditUser(user)}>編集</button>
+                <button type="button" className="danger" disabled={ssoEnabled || !userDeleteEnabled} onClick={() => void deleteAdminUser(user, 1)}>情報消去</button>
+                <button type="button" className="danger" disabled={ssoEnabled || !userDeleteEnabled} onClick={() => void deleteAdminUser(user, 2)}>番号ごと消去</button>
+              </div>
+            </div>
+          </article>)}
+        </div>
+        {editingUser && <form className="material-form admin-user-edit" onSubmit={saveAdminUser}>
+          <h3>ユーザー No.{editingUser.id} を編集</h3>
+          <div className="form-grid two-columns">
+            <label>ログインID<input value={editingUser.login_id} onChange={(event) => setEditingUser({ ...editingUser, login_id: event.target.value })} required /></label>
+            <label>共通表示名<input value={editingUser.display_name} maxLength={30} onChange={(event) => setEditingUser({ ...editingUser, display_name: event.target.value })} required /></label>
+            <label>素材庫の作者名<input value={editingUser.materials_author_name ?? ''} maxLength={80} onChange={(event) => setEditingUser({ ...editingUser, materials_author_name: event.target.value })} required /></label>
+            <label>投稿パスワード<input value={editingUser.post_password} maxLength={8} onChange={(event) => setEditingUser({ ...editingUser, post_password: event.target.value })} /></label>
+          </div>
+          <label>URL / HOME<input value={editingUser.home_url ?? ''} onChange={(event) => setEditingUser({ ...editingUser, home_url: event.target.value })} /></label>
+          <fieldset className="terms-editor"><legend>素材庫の利用規約初期値</legend>{props.terms.map((term) => <div className="term-choice" key={term.id}>
+            <span>{term.label}<small>{term.description}</small></span>
+            <label><input type="radio" checked={editingUser.materials_default_terms[String(term.id)] === true} onChange={() => setEditingUser({ ...editingUser, materials_default_terms: { ...editingUser.materials_default_terms, [String(term.id)]: true } })} />○</label>
+            <label><input type="radio" checked={editingUser.materials_default_terms[String(term.id)] === false} onChange={() => setEditingUser({ ...editingUser, materials_default_terms: { ...editingUser.materials_default_terms, [String(term.id)]: false } })} />×</label>
+          </div>)}</fieldset>
+          <div className="form-grid two-columns">
+            <label>新しいログインパスワード<input type={showEditingUserPassword ? 'text' : 'password'} value={editingUserPassword} onChange={(event) => setEditingUserPassword(event.target.value)} /></label>
+            <label>新しいログインパスワード（確認）<input type={showEditingUserPassword ? 'text' : 'password'} value={editingUserPasswordConfirm} onChange={(event) => setEditingUserPasswordConfirm(event.target.value)} /></label>
+          </div>
+          <label className="inline-check"><input type="checkbox" checked={showEditingUserPassword} onChange={(event) => setShowEditingUserPassword(event.target.checked)} />ログインパスワードを表示</label>
+          <label>アイコン<input type="file" accept="image/png,image/jpeg,image/gif" onChange={(event) => setEditingUserIcon(event.target.files?.[0] ?? null)} /></label>
+          <label className="inline-check"><input type="checkbox" checked={removeEditingUserIcon} onChange={(event) => setRemoveEditingUserIcon(event.target.checked)} />現在のアイコンを削除</label>
+          <div className="actions"><button type="button" className="secondary" onClick={() => setEditingUser(null)}>閉じる</button><button type="submit">保存</button></div>
+        </form>}
+      </Panel>}
       {tab === 'maintenance' && <Panel title="保守・バックアップ">
         <p>データベースと素材ファイルをまとめてエクスポートできます。</p>
-        <div className="actions"><a className="button-link" href={`${apiBase()}?action=exportBackup&admin_password=${encodeURIComponent(password)}`}>フルバックアップをダウンロード</a></div>
+        <div className="actions"><button type="button" onClick={() => void exportFullBackup(password, props.setNotice, props.setError)}>フルバックアップをダウンロード</button></div>
         <hr /><p>フルバックアップZipを選択して復元します。現在のデータは置き換わります。</p>
         <input ref={importRef} type="file" accept=".zip" />
         <div className="actions"><button onClick={() => importBackup(password, importRef.current?.files?.[0] ?? null, load, props.setNotice, props.setError)}>インポートして復元</button></div>
@@ -557,6 +689,21 @@ function AdminPage(props: CommonProps) {
           <div className="form-grid two-columns"><label>素材上限 KB<input type="number" value={Number(config.materialsMaxArchiveKb ?? 102400)} onChange={(e) => setAdminSettings({ ...adminSettings, config: { ...config, materialsMaxArchiveKb: Number(e.target.value) } })} /></label>
             <label>画像上限 KB<input type="number" value={Number(config.materialsMaxImageKb ?? 10240)} onChange={(e) => setAdminSettings({ ...adminSettings, config: { ...config, materialsMaxImageKb: Number(e.target.value) } })} /></label></div>
           <label>許可する圧縮形式<input value={String(config.materialsAllowedArchiveExtensions ?? '')} onChange={(e) => setAdminSettings({ ...adminSettings, config: { ...config, materialsAllowedArchiveExtensions: e.target.value } })} /></label>
+          <fieldset className="settings-group">
+            <legend>親サイトSSO</legend>
+            <label>SSO使用<select value={toBoolean(config.ssoEnabled) ? '1' : '0'} onChange={(event) => setAdminSettings({ ...adminSettings, config: { ...config, ssoEnabled: event.target.value === '1' } })}>
+              <option value="0">OFF</option><option value="1">ON</option>
+            </select></label>
+            <label>SSO共有秘密鍵<input type="password" autoComplete="off" value={String(config.ssoSharedSecret ?? '')} onChange={(event) => setAdminSettings({ ...adminSettings, config: { ...config, ssoSharedSecret: event.target.value } })} /></label>
+            <div className="actions">
+              <button type="button" className="secondary" onClick={() => {
+                if (!confirm('新しいSSO共有秘密鍵を生成しますか？保存するまでDBには反映されません。')) return;
+                setAdminSettings({ ...adminSettings, config: { ...config, ssoSharedSecret: generateSharedSecret() } });
+              }}>自動生成</button>
+              <button type="button" className="secondary" disabled={!String(config.ssoSharedSecret ?? '')} onClick={() => void copyText(String(config.ssoSharedSecret ?? ''), props.setNotice, props.setError)}>コピー</button>
+            </div>
+            <p className="help-text">ONにするとThreadForge側での新規登録と、管理者によるユーザー情報の編集・消去を禁止します。ログイン情報は親サイト側で管理してください。</p>
+          </fieldset>
           <div className="actions"><button onClick={saveSettings}>設定を保存</button></div>
           <div className="admin-import-export">
             <strong>設定JSON</strong>
@@ -616,7 +763,7 @@ function AdminPage(props: CommonProps) {
   );
 }
 
-function AdminItemRows({ items, selected, toggle, users, onAssign }: { items: MaterialItem[]; selected: number[]; toggle: (id: number) => void; users?: Array<{ id: number; login_id: string; display_name: string }>; onAssign?: (item: MaterialItem, userId: string, authorName: string) => void }) {
+function AdminItemRows({ items, selected, toggle, users, onAssign }: { items: MaterialItem[]; selected: number[]; toggle: (id: number) => void; users?: AdminUser[]; onAssign?: (item: MaterialItem, userId: string, authorName: string) => void }) {
   return <div className="admin-item-list">{items.map((item) => <div className="admin-item-row" key={item.id}>
     <input type="checkbox" checked={selected.includes(item.id)} onChange={() => toggle(item.id)} />
     <span>No.{item.id}</span><strong>{item.name}</strong><span>{item.authorName}</span><span>{item.tagName}</span>
@@ -624,7 +771,7 @@ function AdminItemRows({ items, selected, toggle, users, onAssign }: { items: Ma
   </div>)}</div>;
 }
 
-function AuthorAssignment({ item, users, save }: { item: MaterialItem; users: Array<{ id: number; login_id: string; display_name: string }>; save: (item: MaterialItem, userId: string, authorName: string) => void }) {
+function AuthorAssignment({ item, users, save }: { item: MaterialItem; users: AdminUser[]; save: (item: MaterialItem, userId: string, authorName: string) => void }) {
   const [userId, setUserId] = useState(item.userId ? String(item.userId) : '');
   const [name, setName] = useState(item.authorName);
   return <span className="author-assignment"><select value={userId} onChange={(e) => setUserId(e.target.value)}><option value="">IDなし</option>{users.map((user) => <option value={user.id} key={user.id}>{user.login_id}</option>)}</select>
@@ -676,7 +823,28 @@ export function defaultTermAnswers(terms: MaterialTerm[], saved: Record<string, 
     Object.prototype.hasOwnProperty.call(saved, String(term.id)) ? Boolean(saved[String(term.id)]) : true,
   ]));
 }
-function adminTabLabel(tab: AdminTab) { return ({ items: '一括削除', deleted: '復元 / 消去', maintenance: '保守', analytics: 'アナリティクス', settings: '設定', design: 'デザイン' })[tab]; }
+function adminTabLabel(tab: AdminTab) { return ({ items: '一括削除', deleted: '復元 / 消去', users: 'ユーザー', maintenance: '保守', analytics: 'アナリティクス', settings: '設定', design: 'デザイン' })[tab]; }
+export function toBoolean(value: unknown) {
+  return value === true || value === 1 || value === '1' || value === 'true';
+}
+export function generateSharedSecret(length = 48) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (value) => alphabet[value % alphabet.length]).join('');
+}
+async function copyText(value: string, notice: (message: string) => void, error: (message: string) => void) {
+  try {
+    await navigator.clipboard.writeText(value);
+    notice('SSO共有秘密鍵をコピーしました。');
+    error('');
+  } catch {
+    error('クリップボードへコピーできませんでした。');
+  }
+}
+function formatAdminDate(value: string | null | undefined) {
+  return value ? value.replace('T', ' ').slice(0, 19) : 'なし';
+}
 const designFields: Array<[string, string]> = [
   ['materialsPageBackgroundColor', 'ページ背景'], ['materialsPageTextColor', '文字色'],
   ['materialsHeaderBackgroundColor', '上部メニュー背景'], ['materialsHeaderTextColor', '上部メニュー文字'],
@@ -734,6 +902,73 @@ async function saveJsonWithPicker(value: unknown, filename: string) {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+export async function exportFullBackup(password: string, notice: (message: string) => void, error: (message: string) => void) {
+  const filename = `materials-library-full-backup-${timestampForFilename(new Date())}.zip`;
+  const picker = (window as Window & { showSaveFilePicker?: (options: unknown) => Promise<any> }).showSaveFilePicker;
+  let writable: any = null;
+  try {
+    if (typeof picker === 'function') {
+      const handle = await picker({
+        suggestedName: filename,
+        types: [{
+          description: 'ThreadForge full backup',
+          accept: { 'application/zip': ['.zip'] },
+        }],
+      });
+      writable = await handle.createWritable();
+    }
+
+    const body = new FormData();
+    body.set('action', 'exportBackup');
+    body.set('admin_password', password);
+    const response = await fetch(apiBase(), { method: 'POST', body });
+    if (!response.ok) throw new Error(await responseErrorMessage(response, 'フルバックアップの作成に失敗しました。'));
+
+    if (writable && response.body) {
+      await response.body.pipeTo(writable);
+      writable = null;
+    } else {
+      const blob = await response.blob();
+      if (writable) {
+        await writable.write(blob);
+        await writable.close();
+        writable = null;
+      } else {
+        downloadBlob(blob, filename);
+      }
+    }
+    notice('フルバックアップを保存しました。');
+    error('');
+  } catch (reason) {
+    if (writable) {
+      try { await writable.abort(); } catch { /* The browser may already have closed it. */ }
+    }
+    if (!isAbortError(reason)) error((reason as Error).message);
+  }
+}
+async function responseErrorMessage(response: Response, fallback: string) {
+  const contentType = response.headers.get('content-type') ?? '';
+  if (contentType.includes('application/json')) {
+    const payload = await response.json().catch(() => null) as { message?: string } | null;
+    return payload?.message || fallback;
+  }
+  const text = await response.text().catch(() => '');
+  return text.trim() || fallback;
+}
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function timestampForFilename(value: Date) {
+  const part = (number: number) => String(number).padStart(2, '0');
+  return `${value.getFullYear()}${part(value.getMonth() + 1)}${part(value.getDate())}-${part(value.getHours())}${part(value.getMinutes())}${part(value.getSeconds())}`;
 }
 function isAbortError(error: unknown) {
   return error instanceof Error && error.name === 'AbortError';

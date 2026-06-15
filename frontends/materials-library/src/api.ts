@@ -96,6 +96,16 @@ export type User = {
   materials_author_name: string | null;
   materials_default_terms: Record<string, boolean>;
 };
+export type AdminUser = User & {
+  created_at: string;
+  updated_at: string;
+  last_login_at: string | null;
+  last_session_at: string | null;
+  active_session_count: number;
+  post_count: number;
+  claim_count: number;
+  material_count: number;
+};
 
 export const apiBase = () => import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api.php';
 
@@ -150,7 +160,33 @@ export const api = {
   purge: (password: string, ids: number[]) => request<{ message: string }>('purgeMaterialItems', {
     admin_password: password, ids: ids.join(','),
   }, 'POST'),
-  users: (password: string) => request<{ users: Array<{ id: number; login_id: string; display_name: string }> }>('listAdminUsers', { admin_password: password }),
+  users: (password: string) => request<{ users: AdminUser[] }>('listAdminUsers', { admin_password: password }),
+  updateUser: (
+    password: string,
+    user: AdminUser,
+    loginPassword: string,
+    loginPasswordConfirm: string,
+    icon: File | null,
+    removeIcon: boolean,
+  ) => {
+    const body = new FormData();
+    body.set('admin_password', password);
+    body.set('id', String(user.id));
+    body.set('login_id', user.login_id);
+    body.set('display_name', user.display_name);
+    body.set('post_password', user.post_password);
+    body.set('home_url', user.home_url ?? '');
+    body.set('materials_author_name', user.materials_author_name ?? user.display_name);
+    body.set('materials_default_terms', JSON.stringify(user.materials_default_terms));
+    body.set('login_password', loginPassword);
+    body.set('login_password_confirm', loginPasswordConfirm);
+    body.set('remove_icon', removeIcon ? '1' : '0');
+    if (icon) body.set('icon', icon);
+    return request<{ message: string }>('adminUpdateUser', {}, 'POST', body);
+  },
+  deleteUser: (password: string, id: number, stage: 1 | 2) => request<{ message: string }>('adminDeleteUser', {
+    admin_password: password, id: String(id), stage: String(stage),
+  }, 'POST'),
   assignAuthor: (password: string, id: number, userId: string, authorName: string) => request<{ message: string }>('assignMaterialAuthor', {
     admin_password: password, id: String(id), user_id: userId, author_name: authorName,
   }, 'POST'),

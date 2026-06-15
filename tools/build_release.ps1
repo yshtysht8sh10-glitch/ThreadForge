@@ -84,6 +84,7 @@ Copy-Item -Path (Join-Path $frontendDir 'dist\*') -Destination $appRoot -Recurse
 Copy-ReleaseItem -Source 'server\api.php' -Destination 'api.php'
 Copy-ReleaseItem -Source 'server\db.php' -Destination 'db.php'
 Copy-ReleaseItem -Source 'server\cron.php' -Destination 'cron.php'
+Copy-ReleaseItem -Source 'server\.user.ini' -Destination '.user.ini'
 $storageDir = Join-Path $appRoot 'storage\data'
 New-Item -ItemType Directory -Force -Path $storageDir | Out-Null
 Set-Content -Path (Join-Path $storageDir '.gitkeep') -Value '' -Encoding UTF8

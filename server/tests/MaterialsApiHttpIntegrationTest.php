@@ -179,6 +179,196 @@ final class MaterialsApiHttpIntegrationTest extends TestCase
         $this->assertSame(200, $adminDeleted['status'], $adminDeleted['body']);
     }
 
+    public function testSsoRestrictionsAndMaterialUserManagement(): void
+    {
+        $initialized = $this->postForm([
+            'action' => 'initializeAdminPassword',
+            'new_admin_password' => 'admin-secret',
+        ]);
+        $this->assertSame(200, $initialized['status'], $initialized['body']);
+
+        $registered = $this->postForm([
+            'action' => 'registerUser',
+            'login_id' => 'managed-user',
+            'password' => 'login-secret',
+            'password_confirm' => 'login-secret',
+        ]);
+        $this->assertSame(200, $registered['status'], $registered['body']);
+        $userId = (int)$registered['json']['user']['id'];
+
+        $adminSettings = $this->getJson([
+            'action' => 'getSettings',
+            'admin_password' => 'admin-secret',
+        ]);
+        $settings = $adminSettings['json']['settings'];
+        $settings['config']['ssoEnabled'] = true;
+        $settings['config']['ssoSharedSecret'] = 'materials-sso-secret';
+        $saved = $this->postForm([
+            'action' => 'updateSettings',
+            'admin_password' => 'admin-secret',
+            'settings' => json_encode($settings),
+        ]);
+        $this->assertSame(200, $saved['status'], $saved['body']);
+
+        $publicSettings = $this->getJson(['action' => 'materialsSettings']);
+        $this->assertTrue($publicSettings['json']['settings']['ssoEnabled']);
+
+        $blockedRegistration = $this->postForm([
+            'action' => 'registerUser',
+            'login_id' => 'blocked-user',
+            'password' => 'login-secret',
+            'password_confirm' => 'login-secret',
+        ]);
+        $this->assertSame(403, $blockedRegistration['status'], $blockedRegistration['body']);
+
+        $blockedEdit = $this->postForm([
+            'action' => 'adminUpdateUser',
+            'admin_password' => 'admin-secret',
+            'id' => (string)$userId,
+            'login_id' => 'managed-user',
+            'display_name' => 'Blocked',
+        ]);
+        $this->assertSame(403, $blockedEdit['status'], $blockedEdit['body']);
+        $this->assertStringContainsString('親サイト側', $blockedEdit['json']['message']);
+
+        $blockedDelete = $this->postForm([
+            'action' => 'adminDeleteUser',
+            'admin_password' => 'admin-secret',
+            'id' => (string)$userId,
+            'stage' => '1',
+        ]);
+        $this->assertSame(403, $blockedDelete['status'], $blockedDelete['body']);
+
+        $settings['config']['ssoEnabled'] = false;
+        $this->postForm([
+            'action' => 'updateSettings',
+            'admin_password' => 'admin-secret',
+            'settings' => json_encode($settings),
+        ]);
+        $updated = $this->postForm([
+            'action' => 'adminUpdateUser',
+            'admin_password' => 'admin-secret',
+            'id' => (string)$userId,
+            'login_id' => 'managed-user',
+            'display_name' => 'Common Name',
+            'post_password' => 'postkey',
+            'materials_author_name' => 'Material Author',
+            'materials_default_terms' => json_encode(['1' => false]),
+            'login_password' => 'new-login-secret',
+            'login_password_confirm' => 'new-login-secret',
+        ]);
+        $this->assertSame(200, $updated['status'], $updated['body']);
+
+        $users = $this->getJson([
+            'action' => 'listAdminUsers',
+            'admin_password' => 'admin-secret',
+        ]);
+        $this->assertSame('Material Author', $users['json']['users'][0]['materials_author_name']);
+        $this->assertFalse($users['json']['users'][0]['materials_default_terms']['1']);
+        $this->assertSame(0, $users['json']['users'][0]['material_count']);
+
+        $login = $this->postForm([
+            'action' => 'loginUser',
+            'login_id' => 'managed-user',
+            'password' => 'new-login-secret',
+        ]);
+        $this->assertSame(200, $login['status'], $login['body']);
+    }
+
+    public function testDeletingAndCompactingUsersKeepsMaterialAuthorReferencesConsistent(): void
+    {
+        $settings = $this->getJson(['action' => 'materialsSettings']);
+        $tagId = (string)$settings['json']['tags'][0]['id'];
+        $termId = (string)$settings['json']['terms'][0]['id'];
+
+        $first = $this->postForm([
+            'action' => 'registerUser',
+            'login_id' => 'first-user',
+            'password' => 'login-secret',
+            'password_confirm' => 'login-secret',
+        ]);
+        $second = $this->postForm([
+            'action' => 'registerUser',
+            'login_id' => 'second-user',
+            'password' => 'login-secret',
+            'password_confirm' => 'login-secret',
+        ]);
+        $this->assertSame(200, $first['status'], $first['body']);
+        $this->assertSame(200, $second['status'], $second['body']);
+        $firstItemId = $this->uploadMaterial($tagId, $termId, 'First', (string)$first['json']['token']);
+        $secondItemId = $this->uploadMaterial($tagId, $termId, 'Second', (string)$second['json']['token']);
+
+        $this->postForm([
+            'action' => 'initializeAdminPassword',
+            'new_admin_password' => 'admin-secret',
+        ]);
+        $deleted = $this->postForm([
+            'action' => 'adminDeleteUser',
+            'admin_password' => 'admin-secret',
+            'id' => (string)$first['json']['user']['id'],
+            'stage' => '2',
+        ]);
+        $this->assertSame(200, $deleted['status'], $deleted['body']);
+
+        $listed = $this->getJson(['action' => 'listMaterialItems']);
+        $items = array_column($listed['json']['items'], null, 'id');
+        $this->assertNull($items[$firstItemId]['userId']);
+        $this->assertSame(1, $items[$secondItemId]['userId']);
+
+        $users = $this->getJson([
+            'action' => 'listAdminUsers',
+            'admin_password' => 'admin-secret',
+        ]);
+        $this->assertCount(1, $users['json']['users']);
+        $this->assertSame(1, $users['json']['users'][0]['id']);
+        $this->assertSame(1, $users['json']['users'][0]['material_count']);
+    }
+
+    public function testFullBackupContainsMaterialDatabaseAndStoredFiles(): void
+    {
+        $settings = $this->getJson(['action' => 'materialsSettings']);
+        $tagId = (string)$settings['json']['tags'][0]['id'];
+        $termId = (string)$settings['json']['terms'][0]['id'];
+        $itemId = $this->uploadMaterial($tagId, $termId, 'Backup Author', '');
+
+        $initialized = $this->postForm([
+            'action' => 'initializeAdminPassword',
+            'new_admin_password' => 'admin-secret',
+        ]);
+        $this->assertSame(200, $initialized['status'], $initialized['body']);
+
+        $exported = $this->curl($this->baseUrl . '?' . http_build_query([
+            'action' => 'exportBackup',
+            'admin_password' => 'admin-secret',
+        ]));
+        $this->assertSame(200, $exported['status'], $exported['body']);
+        $this->assertNull($exported['json']);
+
+        $backupFile = tempnam(sys_get_temp_dir(), 'materials-backup-');
+        $this->assertNotFalse($backupFile);
+        file_put_contents($backupFile, $exported['body']);
+        $zip = new ZipArchive();
+        $opened = false;
+        try {
+            $opened = $zip->open($backupFile) === true;
+            $this->assertTrue($opened);
+            $manifest = json_decode((string)$zip->getFromName('backup.json'), true);
+            $this->assertSame(3, $manifest['backup_version']);
+            $this->assertSame('materials-library', $manifest['frontend_id']);
+            $this->assertNotFalse($zip->locateName('database.sqlite'));
+            $archiveIndex = $zip->locateName('images/material-' . $itemId . '-archive.zip');
+            $this->assertNotFalse($archiveIndex);
+            $archiveStat = $zip->statIndex((int)$archiveIndex);
+            $this->assertSame(ZipArchive::CM_STORE, $archiveStat['comp_method']);
+            $this->assertSame('test archive', $zip->getFromIndex((int)$archiveIndex));
+        } finally {
+            if ($opened) {
+                $zip->close();
+            }
+            @unlink((string)$backupFile);
+        }
+    }
+
     private function uploadMaterial(string $tagId, string $termId, string $author, string $token): int
     {
         $path = tempnam(sys_get_temp_dir(), 'threadforge-material-');

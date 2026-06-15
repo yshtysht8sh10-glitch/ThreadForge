@@ -2693,6 +2693,7 @@ function listAdminUsers(PDO $pdo): void
         'SELECT u.*,
                 (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,
                 (SELECT COUNT(*) FROM user_post_claims c WHERE c.user_id = u.id) AS claim_count,
+                (SELECT COUNT(*) FROM material_items m WHERE m.user_id = u.id) AS material_count,
                 (SELECT COUNT(*) FROM user_sessions s WHERE s.user_id = u.id AND s.expires_at > :now) AS active_session_count,
                 (SELECT MAX(s.created_at) FROM user_sessions s WHERE s.user_id = u.id) AS last_session_at
          FROM users u
@@ -2706,10 +2707,13 @@ function listAdminUsers(PDO $pdo): void
         'post_password' => (string)$row['post_password'],
         'home_url' => $row['home_url'] ?? '',
         'icon_path' => publicStoragePath($row['icon_path'] ?? null),
+        'materials_author_name' => $row['materials_author_name'] ?? null,
+        'materials_default_terms' => json_decode((string)($row['materials_default_terms'] ?? '{}'), true) ?: [],
         'created_at' => (string)$row['created_at'],
         'updated_at' => (string)$row['updated_at'],
         'post_count' => (int)$row['post_count'],
         'claim_count' => (int)$row['claim_count'],
+        'material_count' => (int)$row['material_count'],
         'last_login_at' => $row['last_login_at'] ?? ($row['last_session_at'] ?? null),
         'last_session_at' => $row['last_session_at'] ?? null,
         'active_session_count' => (int)($row['active_session_count'] ?? 0),
@@ -2740,13 +2744,22 @@ function adminUpdateUser(PDO $pdo): void
     $displayName = trim((string)($_POST['display_name'] ?? $user['display_name']));
     $postPassword = trim((string)($_POST['post_password'] ?? $user['post_password']));
     $homeUrl = normalizeUrl($_POST['home_url'] ?? ($user['home_url'] ?? null));
+    $materialsAuthorName = trim((string)($_POST['materials_author_name'] ?? ($user['materials_author_name'] ?? $displayName)));
+    $materialsDefaultTerms = json_decode((string)($_POST['materials_default_terms'] ?? ($user['materials_default_terms'] ?? '{}')), true);
     $newPassword = trim((string)($_POST['login_password'] ?? ''));
+    $newPasswordConfirm = trim((string)($_POST['login_password_confirm'] ?? $newPassword));
 
-    if ($loginId === '' || $displayName === '') {
-        jsonResponse(['success' => false, 'message' => 'IDと名前を入力してください。'], 400);
+    if ($loginId === '' || $displayName === '' || $materialsAuthorName === '') {
+        jsonResponse(['success' => false, 'message' => 'ID、名前、素材庫の作者名を入力してください。'], 400);
     }
-    if (mb_strlen($displayName) > 30) {
-        jsonResponse(['success' => false, 'message' => '名前は30文字以内で入力してください。'], 400);
+    if (mb_strlen($displayName) > 30 || mb_strlen($materialsAuthorName) > 80) {
+        jsonResponse(['success' => false, 'message' => '名前は30文字以内、素材庫の作者名は80文字以内で入力してください。'], 400);
+    }
+    if (!is_array($materialsDefaultTerms)) {
+        jsonResponse(['success' => false, 'message' => '素材庫の利用規約初期値が不正です。'], 400);
+    }
+    if ($newPassword !== $newPasswordConfirm) {
+        jsonResponse(['success' => false, 'message' => '新しいログインパスワードと確認入力が一致しません。'], 400);
     }
     if (strlen($postPassword) > 8) {
         $postPassword = substr($postPassword, 0, 8);
@@ -2757,13 +2770,31 @@ function adminUpdateUser(PDO $pdo): void
         jsonResponse(['success' => false, 'message' => 'このIDは既に使われています。'], 409);
     }
 
-    $fields = 'login_id = :login_id, display_name = :display_name, post_password = :post_password, home_url = :home_url, updated_at = :updated_at';
+    $iconPath = $user['icon_path'] ?? null;
+    if (toBoolFlag($_POST['remove_icon'] ?? false)) {
+        deleteStorageFile($iconPath);
+        $iconPath = null;
+    }
+    if (isset($_FILES['icon']) && (int)($_FILES['icon']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+        $newIconPath = saveUploadedUserIcon($_FILES['icon'], $id);
+        if ($iconPath && $newIconPath !== $iconPath) {
+            deleteStorageFile($iconPath);
+        }
+        $iconPath = $newIconPath;
+    }
+
+    $fields = 'login_id = :login_id, display_name = :display_name, post_password = :post_password,
+               home_url = :home_url, icon_path = :icon_path, materials_author_name = :materials_author_name,
+               materials_default_terms = :materials_default_terms, updated_at = :updated_at';
     $params = [
         ':id' => $id,
         ':login_id' => $loginId,
         ':display_name' => $displayName,
         ':post_password' => $postPassword,
         ':home_url' => $homeUrl,
+        ':icon_path' => $iconPath,
+        ':materials_author_name' => $materialsAuthorName,
+        ':materials_default_terms' => json_encode($materialsDefaultTerms, JSON_UNESCAPED_UNICODE),
         ':updated_at' => currentTimestamp(),
     ];
     if ($newPassword !== '') {
@@ -2779,6 +2810,10 @@ function adminUpdateUser(PDO $pdo): void
 function adminDeleteUser(PDO $pdo): void
 {
     requireAdmin();
+    $settings = loadSettings($pdo);
+    if (toBoolFlag($settings['config']['ssoEnabled'] ?? false)) {
+        jsonResponse(['success' => false, 'message' => 'SSOログインが有効なため、ThreadForge側ではユーザー情報を消去できません。親サイト側で管理してください。'], 403);
+    }
     $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
     $stage = filter_input(INPUT_POST, 'stage', FILTER_VALIDATE_INT) ?: 1;
     if ($id === false || $id === null) {
@@ -2794,6 +2829,7 @@ function adminDeleteUser(PDO $pdo): void
         if ($stage >= 2) {
             deleteStorageFile($user['icon_path'] ?? null);
             $pdo->prepare('UPDATE posts SET user_id = NULL WHERE user_id = :id')->execute([':id' => $id]);
+            $pdo->prepare('UPDATE material_items SET user_id = NULL WHERE user_id = :id')->execute([':id' => $id]);
             $pdo->prepare('DELETE FROM user_sessions WHERE user_id = :id')->execute([':id' => $id]);
             $pdo->prepare('DELETE FROM user_post_claims WHERE user_id = :id')->execute([':id' => $id]);
             $pdo->prepare('DELETE FROM users WHERE id = :id')->execute([':id' => $id]);
@@ -2809,6 +2845,8 @@ function adminDeleteUser(PDO $pdo): void
                      post_password = "",
                      home_url = NULL,
                      icon_path = NULL,
+                     materials_author_name = :materials_author_name,
+                     materials_default_terms = "{}",
                      updated_at = :updated_at
                  WHERE id = :id'
             );
@@ -2817,6 +2855,7 @@ function adminDeleteUser(PDO $pdo): void
                 ':login_id' => 'deleted_user_' . $id,
                 ':password_hash' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
                 ':display_name' => '削除済みユーザー',
+                ':materials_author_name' => '削除済みユーザー',
                 ':updated_at' => currentTimestamp(),
             ]);
             $pdo->prepare('DELETE FROM user_sessions WHERE user_id = :id')->execute([':id' => $id]);
@@ -2973,6 +3012,7 @@ function compactUserIds(PDO $pdo): void
         $temporary = -abs((int)$oldId);
         $pdo->prepare('UPDATE users SET id = :new WHERE id = :old')->execute([':new' => $temporary, ':old' => $oldId]);
         $pdo->prepare('UPDATE posts SET user_id = :new WHERE user_id = :old')->execute([':new' => $temporary, ':old' => $oldId]);
+        $pdo->prepare('UPDATE material_items SET user_id = :new WHERE user_id = :old')->execute([':new' => $temporary, ':old' => $oldId]);
         $pdo->prepare('UPDATE user_sessions SET user_id = :new WHERE user_id = :old')->execute([':new' => $temporary, ':old' => $oldId]);
         $pdo->prepare('UPDATE user_post_claims SET user_id = :new WHERE user_id = :old')->execute([':new' => $temporary, ':old' => $oldId]);
     }
@@ -2980,6 +3020,7 @@ function compactUserIds(PDO $pdo): void
         $temporary = -abs((int)$oldId);
         $pdo->prepare('UPDATE users SET id = :new WHERE id = :old')->execute([':new' => $newId, ':old' => $temporary]);
         $pdo->prepare('UPDATE posts SET user_id = :new WHERE user_id = :old')->execute([':new' => $newId, ':old' => $temporary]);
+        $pdo->prepare('UPDATE material_items SET user_id = :new WHERE user_id = :old')->execute([':new' => $newId, ':old' => $temporary]);
         $pdo->prepare('UPDATE user_sessions SET user_id = :new WHERE user_id = :old')->execute([':new' => $newId, ':old' => $temporary]);
         $pdo->prepare('UPDATE user_post_claims SET user_id = :new WHERE user_id = :old')->execute([':new' => $newId, ':old' => $temporary]);
     }
@@ -3447,6 +3488,8 @@ function exportBackup(PDO $pdo): void
 
 function exportSqliteBackup(PDO $pdo): void
 {
+    @set_time_limit(0);
+    ignore_user_abort(true);
     $zipPath = tempnam(sys_get_temp_dir(), 'threadforge-backup-');
     if ($zipPath === false) {
         jsonResponse(['success' => false, 'message' => 'バックアップZIPを作成できませんでした。'], 500);
@@ -3465,9 +3508,19 @@ function exportSqliteBackup(PDO $pdo): void
         'frontend_id' => FRONTEND_ID,
         'exported_at' => currentTimestamp(),
     ];
-    $zip->addFromString('backup.json', json_encode($manifest, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
+    $manifestJson = json_encode($manifest, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    if (!is_string($manifestJson) || !$zip->addFromString('backup.json', $manifestJson)) {
+        $zip->close();
+        @unlink($zipPath);
+        jsonResponse(['success' => false, 'message' => 'バックアップ情報をZIPへ追加できませんでした。'], 500);
+    }
     if (is_file(DB_FILE)) {
-        $zip->addFile(DB_FILE, 'database.sqlite');
+        if (!$zip->addFile(DB_FILE, 'database.sqlite')) {
+            $zip->close();
+            @unlink($zipPath);
+            jsonResponse(['success' => false, 'message' => 'データベースをZIPへ追加できませんでした。'], 500);
+        }
+        $zip->setCompressionName('database.sqlite', ZipArchive::CM_STORE);
     }
     $addedImages = [];
     if (is_dir(STORAGE_DIR)) {
@@ -3479,12 +3532,40 @@ function exportSqliteBackup(PDO $pdo): void
         }
     }
     addReferencedBackupImages($pdo, $zip, $addedImages);
-    $zip->close();
+    if (!$zip->close() || !is_file($zipPath)) {
+        @unlink($zipPath);
+        jsonResponse(['success' => false, 'message' => 'バックアップZIPを完成できませんでした。'], 500);
+    }
+    $zipSize = filesize($zipPath);
+    if ($zipSize === false || $zipSize <= 0) {
+        @unlink($zipPath);
+        jsonResponse(['success' => false, 'message' => '作成したバックアップZIPが空です。'], 500);
+    }
 
+    $input = fopen($zipPath, 'rb');
+    if ($input === false) {
+        @unlink($zipPath);
+        jsonResponse(['success' => false, 'message' => 'バックアップZIPを読み込めませんでした。'], 500);
+    }
     header('Content-Type: application/zip');
     header('Content-Disposition: attachment; filename="' . FRONTEND_ID . '-full-backup-' . date('Ymd-His') . '.zip"');
-    header('Content-Length: ' . filesize($zipPath));
-    readfile($zipPath);
+    header('Content-Length: ' . $zipSize);
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('X-Content-Type-Options: nosniff');
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    while (!feof($input)) {
+        $chunk = fread($input, 1024 * 1024);
+        if ($chunk === false) {
+            fclose($input);
+            @unlink($zipPath);
+            exit;
+        }
+        echo $chunk;
+        flush();
+    }
+    fclose($input);
     @unlink($zipPath);
     exit;
 }
@@ -3523,7 +3604,12 @@ function addBackupZipImageFile(ZipArchive $zip, string $path, array &$addedImage
     if ($basename === '' || isset($addedImages[$basename]) || !is_file($path)) {
         return;
     }
-    $zip->addFile($path, 'images/' . $basename);
+    $entryName = 'images/' . $basename;
+    if (!$zip->addFile($path, $entryName)) {
+        throw new RuntimeException('素材ファイルをバックアップZIPへ追加できませんでした: ' . $basename);
+    }
+    // Archives and media are already compressed. Storing them avoids minutes of redundant recompression.
+    $zip->setCompressionName($entryName, ZipArchive::CM_STORE);
     $addedImages[$basename] = true;
 }
 
@@ -3531,7 +3617,11 @@ function importBackup(PDO $pdo): void
 {
     requireAdmin();
     if (empty($_FILES['backup']) || $_FILES['backup']['error'] !== UPLOAD_ERR_OK) {
-        jsonResponse(['success' => false, 'message' => 'バックアップファイルを選択してください。'], 400);
+        $error = (int)($_FILES['backup']['error'] ?? UPLOAD_ERR_NO_FILE);
+        $message = in_array($error, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
+            ? 'バックアップZIPがサーバーのアップロード上限を超えています。PHPの upload_max_filesize と post_max_size を確認してください。'
+            : 'バックアップファイルを選択してください。';
+        jsonResponse(['success' => false, 'message' => $message], 400);
     }
 
     $backupPath = (string)$_FILES['backup']['tmp_name'];

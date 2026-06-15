@@ -46,12 +46,21 @@ Delete and edit screens include the same tag/author index as the catalog.
 
 Registration requires only a login ID, login password, and password confirmation. Author name and post password are configured after login. Login and registration can toggle password visibility.
 
+## SSO
+
+- Admin settings can enable or disable parent-site SSO and configure, generate, or copy the shared secret.
+- Enabling SSO disables local account registration so account creation remains on the parent site.
+- Enabling SSO also disables ThreadForge-side user edits, information erasure, and permanent user-number deletion.
+- Existing local login and the signed-in Materials Library profile remain available while SSO is enabled.
+
 ## Administration
 
 - Passwordless bulk soft delete after admin authentication
 - Materials without a post password, including legacy imports, can only be changed from the admin screen
 - Restore and permanent purge
 - Author ID assignment
+- Registered-user list and management for login ID, shared display name, material author name, post password, HOME, term defaults, login password, and icon
+- Two-stage user erasure, with material author IDs kept consistent when user numbers are compacted
 - Full DB/storage backup and restore
 - Material count, author count, tag count, storage size, and monthly analytics
 - Title, description, HOME, manual, grouping order, upload limits, and extensions
