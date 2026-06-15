@@ -4687,7 +4687,7 @@ function updateMaterialItem(PDO $pdo): void
     if (!$item) {
         jsonResponse(['success' => false, 'message' => '素材が見つかりません。'], 404);
     }
-    requireMaterialOwner($pdo, $item);
+    requireMaterialPassword($item);
     $name = normalizeString((string)($_POST['name'] ?? $item['name']));
     $authorName = normalizeString((string)($_POST['author_name'] ?? $item['author_name']));
     $notes = normalizeString((string)($_POST['notes'] ?? $item['notes']));
@@ -4739,20 +4739,16 @@ function deleteMaterialItem(PDO $pdo): void
     if (!$item) {
         jsonResponse(['success' => false, 'message' => '素材が見つかりません。'], 404);
     }
-    requireMaterialOwner($pdo, $item);
+    requireMaterialPassword($item);
     $pdo->prepare('UPDATE material_items SET deleted_at = :deleted_at WHERE id = :id')
         ->execute([':deleted_at' => currentTimestamp(), ':id' => (int)$id]);
     jsonResponse(['success' => true, 'message' => '素材を削除しました。']);
 }
 
-function requireMaterialOwner(PDO $pdo, array $item): void
+function requireMaterialPassword(array $item): void
 {
     if (materialItemIsAdminOnly($item)) {
         jsonResponse(['success' => false, 'message' => 'この素材は投稿パスワードが設定されていないため、管理画面からのみ変更できます。'], 403);
-    }
-    $user = optionalUser($pdo);
-    if ($user && (int)($item['user_id'] ?? 0) === (int)$user['id']) {
-        return;
     }
     $password = (string)($_POST['password'] ?? '');
     if ($password === '' || !password_verify($password, (string)$item['password_hash'])) {

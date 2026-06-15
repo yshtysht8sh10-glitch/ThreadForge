@@ -74,7 +74,7 @@
 <li>HOME: 管理画面で設定したURLを開きます。</li>
 <li>一覧: 目次と、タグ・作者で整理した素材を表示します。</li>
 <li>投稿: 圧縮ファイル、説明画像または試聴用MP3、名称、備考、作者名、タグ、利用規約を登録します。</li>
-<li>削除 / 編集: 1件を選び、所有ユーザーまたは投稿パスワードで操作します。</li>
+<li>削除 / 編集: 1件を選び、投稿パスワードを照合してから操作します。ログイン中の所有ユーザーも入力必須です。</li>
 <li>取説: 管理画面で設定した文章を表示します。</li>
 <li>ログイン: ローカルログイン、SSO、素材庫用プロフィールを扱います。</li>
 <li>管理画面: メニュー右端のリンクに見えない <code>■</code> からも開きます。</li>
@@ -132,7 +132,7 @@
 <li>管理パスワード設定・変更</li>
 </ul>
 <h2 id="配布">配布</h2>
-<p>バージョン0.9.1は現在の公開プレビュー版です。<code>15_materials_library/</code> に配置し、リリースZipには実運用のDBとアップロード済みファイルを含めません。</p></article>
+<p>バージョン0.9.2は現在の公開プレビュー版です。<code>15_materials_library/</code> に配置し、リリースZipには実運用のDBとアップロード済みファイルを含めません。</p></article>
       <article class="docs-article" data-language-panel="en"><h1 id="materials-library-specification">Materials Library Specification</h1>
 <h2 id="concept">Concept</h2>
 <p>Materials Library is a file-posting application optimized for preservation and discovery. The downloadable archive is the primary asset; preview images explain the archive. Unlike Image Board, entries are grouped by purpose/tag and author instead of social posting order.</p>
@@ -141,7 +141,7 @@
 <li>HOME: opens the administrator-configured URL.</li>
 <li>List: grouped material catalog and table of contents.</li>
 <li>Post: registers an archive, preview image or preview MP3 files, metadata, and terms answers.</li>
-<li>Delete / Edit: operates on one selected material using ownership or a post password.</li>
+<li>Delete / Edit: operates on one selected material after verifying its post password, including for the logged-in owner.</li>
 <li>Manual: displays administrator-configured text.</li>
 <li>Login: local account, SSO, and material-author preferences.</li>
 <li>Admin: also opens from the unlabelled square at the right edge of the menu.</li>
@@ -201,7 +201,7 @@
 <li>Admin password initialization and change</li>
 </ul>
 <h2 id="release">Release</h2>
-<p>Version 0.9.1 is the current public preview release and deploys under <code>15_materials_library/</code>. Runtime DB and uploaded files are not bundled in the release Zip.</p></article>
+<p>Version 0.9.2 is the current public preview release and deploys under <code>15_materials_library/</code>. Runtime DB and uploaded files are not bundled in the release Zip.</p></article>
       <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
     </main>
   </div>

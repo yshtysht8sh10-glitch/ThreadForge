@@ -2,6 +2,10 @@
 
 [English changelog](CHANGELOG.md)
 
+## materials-library 0.9.2 - 2026-06-16
+
+- 素材の編集・削除はログイン中の投稿者本人を含め、投稿パスワードの入力と照合を必須化
+
 ## materials-library 0.9.1 - 2026-06-15
 
 - 素材庫の管理画面に親サイトSSOのON/OFF、共有秘密鍵の設定・自動生成・コピーを追加

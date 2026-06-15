@@ -9,7 +9,7 @@ Materials Library is a file-posting application optimized for preservation and d
 - HOME: opens the administrator-configured URL.
 - List: grouped material catalog and table of contents.
 - Post: registers an archive, preview image or preview MP3 files, metadata, and terms answers.
-- Delete / Edit: operates on one selected material using ownership or a post password.
+- Delete / Edit: operates on one selected material after verifying its post password, including for the logged-in owner.
 - Manual: displays administrator-configured text.
 - Login: local account, SSO, and material-author preferences.
 - Admin: also opens from the unlabelled square at the right edge of the menu.
@@ -74,4 +74,4 @@ Registration requires only a login ID, login password, and password confirmation
 
 ## Release
 
-Version 0.9.1 is the current public preview release and deploys under `15_materials_library/`. Runtime DB and uploaded files are not bundled in the release Zip.
+Version 0.9.2 is the current public preview release and deploys under `15_materials_library/`. Runtime DB and uploaded files are not bundled in the release Zip.

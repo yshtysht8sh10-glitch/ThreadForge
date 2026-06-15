@@ -176,13 +176,13 @@ function MaterialCard({ item, selectable, selected, onSelect }: { item: Material
   );
 }
 
-function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: MaterialItem }) {
+function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: MaterialItem; initialPassword?: string }) {
   const { mode, item, tags, terms, token, user, reload, navigate, setNotice, setError } = props;
   const [name, setName] = useState(item?.name ?? 'blank');
   const [author, setAuthor] = useState(item?.authorName ?? user?.materials_author_name ?? user?.display_name ?? '');
   const [notes, setNotes] = useState(item?.notes ?? '');
   const [tagId, setTagId] = useState(String(item?.tagId ?? tags[0]?.id ?? ''));
-  const [password, setPassword] = useState(user?.post_password ?? '');
+  const [password, setPassword] = useState(mode === 'edit' ? props.initialPassword ?? '' : user?.post_password ?? '');
   const [archive, setArchive] = useState<File | null>(null);
   const [image, setImage] = useState<File | null>(null);
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
@@ -249,23 +249,42 @@ function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
 function SelectionPage(props: CommonProps & { mode: 'delete' | 'edit' }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [password, setPassword] = useState(props.user?.post_password ?? '');
+  const [editing, setEditing] = useState(false);
   const selected = props.items.find((item) => item.id === selectedId);
   const groups = groupMaterials(props.items, props.settings.groupParent);
-  if (props.mode === 'edit' && selected) return <MaterialForm {...props} mode="edit" item={selected} />;
+  if (props.mode === 'edit' && selected && editing) {
+    return <MaterialForm {...props} mode="edit" item={selected} initialPassword={password} />;
+  }
   const executeDelete = async () => {
-    if (!selectedId || !confirm('選択した素材を削除しますか？')) return;
+    if (!selectedId) return;
+    const passwordError = materialManagementPasswordError(password);
+    if (passwordError) {
+      props.setError(passwordError);
+      return;
+    }
+    if (!confirm('選択した素材を削除しますか？')) return;
     try {
       const response = await api.remove(selectedId, password, props.token);
       await props.reload(); props.setNotice(response.message); setSelectedId(null);
     } catch (reason) { props.setError((reason as Error).message); }
   };
+  const openEdit = () => {
+    if (!selectedId) return;
+    const passwordError = materialManagementPasswordError(password);
+    if (passwordError) {
+      props.setError(passwordError);
+      return;
+    }
+    props.setError('');
+    setEditing(true);
+  };
   return (
     <Panel title={props.mode === 'delete' ? '素材を削除' : '素材を編集'}>
-      <p>対象を1件選択してください。ログイン投稿は本人のログイン中、ゲスト投稿は投稿パスワードで操作できます。パスワード未設定の投稿は管理画面からのみ変更できます。</p>
-      <SelectionCatalog groups={groups} selectedId={selectedId} setSelectedId={setSelectedId} />
+      <p>対象を1件選択し、投稿時に設定した投稿パスワードを入力してください。パスワード未設定の投稿は管理画面からのみ変更できます。</p>
+      <SelectionCatalog groups={groups} selectedId={selectedId} setSelectedId={(id) => { setSelectedId(id); setEditing(false); }} />
       {selected && <div className="selection-actions">
-        {props.mode === 'delete' && <label>投稿パスワード<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>}
-        <button onClick={props.mode === 'delete' ? executeDelete : () => undefined}>{props.mode === 'delete' ? '削除する' : '編集画面へ'}</button>
+        <label>投稿パスワード<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+        <button onClick={props.mode === 'delete' ? executeDelete : openEdit}>{props.mode === 'delete' ? '削除する' : '編集画面へ'}</button>
       </div>}
     </Panel>
   );
@@ -1024,6 +1043,9 @@ function downloadBlob(blob: Blob, filename: string) {
 function timestampForFilename(value: Date) {
   const part = (number: number) => String(number).padStart(2, '0');
   return `${value.getFullYear()}${part(value.getMonth() + 1)}${part(value.getDate())}-${part(value.getHours())}${part(value.getMinutes())}${part(value.getSeconds())}`;
+}
+export function materialManagementPasswordError(password: string) {
+  return password.trim() ? null : '投稿パスワードを入力してください。';
 }
 function formatElapsed(seconds: number) {
   const minutes = Math.floor(seconds / 60);

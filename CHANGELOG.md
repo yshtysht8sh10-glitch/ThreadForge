@@ -4,6 +4,10 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## materials-library 0.9.2 - 2026-06-16
+
+- Required post-password entry and verification for all material edits and deletes, including the logged-in owner
+
 ## materials-library 0.9.1 - 2026-06-15
 
 - Added Materials Library admin controls for parent-site SSO enablement, shared-secret editing, generation, and copy

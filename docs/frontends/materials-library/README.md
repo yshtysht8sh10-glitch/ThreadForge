@@ -2,7 +2,7 @@
 
 Production material library frontend.
 
-- Current preview release: `0.9.1`
+- Current preview release: `0.9.2`
 - [Spec](SPEC.md)
 - [DB](DB.md)
 - Frontend source: `frontends/materials-library/`

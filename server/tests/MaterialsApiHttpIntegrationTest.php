@@ -179,6 +179,68 @@ final class MaterialsApiHttpIntegrationTest extends TestCase
         $this->assertSame(200, $adminDeleted['status'], $adminDeleted['body']);
     }
 
+    public function testLoggedInOwnerStillNeedsPostPasswordToEditOrDelete(): void
+    {
+        $settings = $this->getJson(['action' => 'materialsSettings']);
+        $tagId = (string)$settings['json']['tags'][0]['id'];
+        $termId = (string)$settings['json']['terms'][0]['id'];
+
+        $registered = $this->postForm([
+            'action' => 'registerUser',
+            'login_id' => 'password-required-owner',
+            'password' => 'login-secret',
+            'password_confirm' => 'login-secret',
+        ]);
+        $this->assertSame(200, $registered['status'], $registered['body']);
+        $token = (string)$registered['json']['token'];
+
+        $profile = $this->postForm([
+            'action' => 'updateMaterialProfile',
+            'auth_token' => $token,
+            'author_name' => 'Password Owner',
+            'post_password' => 'postkey',
+            'default_terms' => json_encode([$termId => true]),
+        ]);
+        $this->assertSame(200, $profile['status'], $profile['body']);
+
+        $itemId = $this->uploadMaterial($tagId, $termId, 'Password Owner', $token);
+
+        foreach (['', 'wrong-key'] as $password) {
+            $updated = $this->postForm([
+                'action' => 'updateMaterialItem',
+                'auth_token' => $token,
+                'id' => (string)$itemId,
+                'password' => $password,
+            ]);
+            $this->assertSame(403, $updated['status'], $updated['body']);
+
+            $deleted = $this->postForm([
+                'action' => 'deleteMaterialItem',
+                'auth_token' => $token,
+                'id' => (string)$itemId,
+                'password' => $password,
+            ]);
+            $this->assertSame(403, $deleted['status'], $deleted['body']);
+        }
+
+        $updated = $this->postForm([
+            'action' => 'updateMaterialItem',
+            'auth_token' => $token,
+            'id' => (string)$itemId,
+            'password' => 'postkey',
+            'name' => 'Password protected update',
+        ]);
+        $this->assertSame(200, $updated['status'], $updated['body']);
+
+        $deleted = $this->postForm([
+            'action' => 'deleteMaterialItem',
+            'auth_token' => $token,
+            'id' => (string)$itemId,
+            'password' => 'postkey',
+        ]);
+        $this->assertSame(200, $deleted['status'], $deleted['body']);
+    }
+
     public function testSsoRestrictionsAndMaterialUserManagement(): void
     {
         $initialized = $this->postForm([

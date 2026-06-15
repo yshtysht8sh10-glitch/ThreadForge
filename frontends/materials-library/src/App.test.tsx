@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { acceptExtensions, defaultTermAnswers, exportFullBackup, formatBytes, generateSharedSecret, importBackup, isPlainObject, normalizeMaterialDesign, toBoolean } from './App';
+import { acceptExtensions, defaultTermAnswers, exportFullBackup, formatBytes, generateSharedSecret, importBackup, isPlainObject, materialManagementPasswordError, normalizeMaterialDesign, toBoolean } from './App';
 import { api, defaultMaterialDesign, groupMaterials, homeHref, MaterialItem, packAuthorGroups } from './api';
 
 describe('materials-library helpers', () => {
@@ -44,6 +44,12 @@ describe('materials-library helpers', () => {
     expect(formatBytes(512)).toBe('512bytes');
     expect(formatBytes(2048)).toBe('2KB');
     expect(formatBytes(1572864)).toBe('1.5MB');
+  });
+
+  it('requires a post password before opening edit or running delete', () => {
+    expect(materialManagementPasswordError('')).toBe('投稿パスワードを入力してください。');
+    expect(materialManagementPasswordError('   ')).toBe('投稿パスワードを入力してください。');
+    expect(materialManagementPasswordError('postkey')).toBeNull();
   });
 
   it('keeps the gray design as the reset default', () => {
