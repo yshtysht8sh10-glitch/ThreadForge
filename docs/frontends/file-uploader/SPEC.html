@@ -97,7 +97,12 @@
 </ul>
 <h2 id="現在の状態">現在の状態</h2>
 <p>一覧の各ファイルには公開URLのコピーボタンと、Delkey照合を行う削除ボタンがあります。<br>スマートフォン表示では一覧をカード状に組み替え、長いコメントと元ファイル名を折り返します。</p>
-<p>バージョン1.0.0では、アップロード/一覧API、設定可能なHOMEリンク、Delkey削除、管理画面の一括削除・復原・完全削除、設定、アナリティクス、デザイン変更、設定・デザインのJSON入出力、フルバックアップZIP入出力、レスポンシブ表示、専用DBテーブルまで実装済みです。</p></article>
+<p>バージョン1.0.2では、アップロード/一覧API、設定可能なHOMEリンク、Delkey削除、管理画面の一括削除・復原・完全削除、設定、アナリティクス、拡張デザイン変更、設定・デザインのJSON入出力、フルバックアップZIP入出力、レスポンシブ表示、専用DBテーブルまで実装済みです。</p>
+<h2 id="デザイン設定">デザイン設定</h2>
+<ul>
+<li>ページ、タイトル、表、フォーム、入力欄、リンク、主・補助・削除ボタン、タブ、状態表示、管理メッセージ、オーバーレイの色を個別に設定できます。</li>
+<li>旧設定・旧デザインJSONは、新しい色項目を現在の初期値で補完して読み込みます。</li>
+</ul></article>
       <article class="docs-article" data-language-panel="en"><h1 id="file-uploader-spec">file-uploader Spec</h1>
 <p><a href="../../SPEC.html">Back to specification index</a></p>
 <h2 id="purpose">Purpose</h2>
@@ -118,6 +123,8 @@
 <li>Export/import uploader settings and design independently as JSON.</li>
 <li>Export/import a full backup ZIP containing the frontend DB, uploaded files, settings, and design from the maintenance tab.</li>
 <li>Apply saved uploader colors to the live page and provide a live design preview.</li>
+<li>Customize page, title, table, form, input, link, primary/secondary/danger button, tab, status, message, and overlay colors independently.</li>
+<li>Keep older settings/design JSON compatible by filling newly added color fields from the current defaults.</li>
 <li>Provide a gray dark default theme plus Reset to Default and Undo Editing actions.</li>
 <li>Reset and undo update only the live preview; the database changes only when Save is pressed.</li>
 <li>Reuse the common ThreadForge backend where practical.</li>
@@ -130,7 +137,7 @@
 <li>Minimal decoration.</li>
 </ul>
 <h2 id="current-status">Current Status</h2>
-<p>Version 1.0.0 implements the upload/list API, configurable HOME link, delete-key deletion, administrative bulk deletion, restore/purge, settings, analytics, design customization, independent JSON import/export, full backup ZIP import/export, responsive presentation, and the dedicated DB table.</p></article>
+<p>Version 1.0.2 implements the upload/list API, configurable HOME link, delete-key deletion, administrative bulk deletion, restore/purge, settings, analytics, expanded design customization, independent JSON import/export, full backup ZIP import/export, responsive presentation, and the dedicated DB table.</p></article>
       <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
     </main>
   </div>

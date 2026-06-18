@@ -33,36 +33,101 @@ export type UploaderDesign = {
   pageBackgroundColor: string;
   pageTextColor: string;
   linkColor: string;
+  linkHoverColor: string;
   shellBackgroundColor: string;
   contentBackgroundColor: string;
   formBackgroundColor: string;
   titleStartColor: string;
   titleEndColor: string;
+  titleTextColor: string;
   tableHeaderColor: string;
+  tableHeaderTextColor: string;
+  tableCellBackgroundColor: string;
+  tableCellTextColor: string;
   borderColor: string;
+  labelColor: string;
+  inputBackgroundColor: string;
+  inputTextColor: string;
+  inputBorderColor: string;
+  placeholderColor: string;
   buttonBackgroundColor: string;
   buttonTextColor: string;
+  buttonBorderColor: string;
+  secondaryButtonBackgroundColor: string;
+  secondaryButtonTextColor: string;
+  secondaryButtonBorderColor: string;
+  dangerButtonBackgroundColor: string;
+  dangerButtonTextColor: string;
+  dangerButtonBorderColor: string;
   activeTabColor: string;
+  activeTabTextColor: string;
+  mutedTextColor: string;
+  successColor: string;
   errorColor: string;
+  messageBackgroundColor: string;
+  messageTextColor: string;
+  messageBorderColor: string;
+  overlayColor: string;
 };
 
 type AdminTab = 'bulk-delete' | 'deleted' | 'settings' | 'design' | 'analytics' | 'maintenance';
 
 export const defaultDesign: UploaderDesign = {
-  pageBackgroundColor: '#0b0d10',
-  pageTextColor: '#eef1f4',
-  linkColor: '#8fb7e8',
-  shellBackgroundColor: '#12171d',
-  contentBackgroundColor: '#151b22',
-  formBackgroundColor: '#1c232c',
+  pageBackgroundColor: '#050505',
+  pageTextColor: '#f2f2f2',
+  linkColor: '#9dbbff',
+  linkHoverColor: '#c3d5ff',
+  shellBackgroundColor: '#0b0f15',
+  contentBackgroundColor: '#111820',
+  formBackgroundColor: '#111820',
   titleStartColor: '#626b76',
-  titleEndColor: '#4f5863',
+  titleEndColor: '#59636f',
+  titleTextColor: '#ffffff',
   tableHeaderColor: '#59636f',
-  borderColor: '#707b88',
-  buttonBackgroundColor: '#3974ee',
+  tableHeaderTextColor: '#ffffff',
+  tableCellBackgroundColor: '#0f151c',
+  tableCellTextColor: '#f2f2f2',
+  borderColor: '#6c7787',
+  labelColor: '#a7c2ff',
+  inputBackgroundColor: '#282f38',
+  inputTextColor: '#ffffff',
+  inputBorderColor: '#7f8a9a',
+  placeholderColor: '#b5bfcb',
+  buttonBackgroundColor: '#4f75e8',
   buttonTextColor: '#ffffff',
-  activeTabColor: '#315f9e',
-  errorColor: '#ff8585',
+  buttonBorderColor: '#9dbbff',
+  secondaryButtonBackgroundColor: '#252c36',
+  secondaryButtonTextColor: '#ffffff',
+  secondaryButtonBorderColor: '#7f8a9a',
+  dangerButtonBackgroundColor: '#b84949',
+  dangerButtonTextColor: '#ffffff',
+  dangerButtonBorderColor: '#ff9d9d',
+  activeTabColor: '#4f75e8',
+  activeTabTextColor: '#ffffff',
+  mutedTextColor: '#b5bfcb',
+  successColor: '#72e9a2',
+  errorColor: '#ff9292',
+  messageBackgroundColor: '#17283a',
+  messageTextColor: '#f2f2f2',
+  messageBorderColor: '#7fa2ce',
+  overlayColor: '#000000',
+};
+
+const legacyLightDesign = {
+  pageBackgroundColor: '#eeeeee',
+  pageTextColor: '#000000',
+  linkColor: '#0000ff',
+  shellBackgroundColor: '#2a2a2a',
+  contentBackgroundColor: '#ffffff',
+  formBackgroundColor: '#eeeeee',
+  titleStartColor: '#f7f7f7',
+  titleEndColor: '#d8d8d8',
+  tableHeaderColor: '#eeeeee',
+  borderColor: '#808080',
+  buttonBackgroundColor: '#f5f5f5',
+  buttonTextColor: '#000000',
+  activeTabColor: '#8eb4e3',
+  errorColor: '#9b1c1c',
 };
 
 const defaultSettings: UploaderSettings = {
@@ -566,7 +631,6 @@ function App() {
             <p className="upload-note">
               サイズ：{settings.maxUploadKb.toLocaleString()}KBまで<br />
               up可：{settings.allowedExtensions}
-              <span>count:80747</span>
             </p>
             {(uploadError || uploadMessage) && (
               <p className={uploadError ? 'upload-status error' : 'upload-status'}>{uploadError || uploadMessage}</p>
@@ -914,20 +978,45 @@ const designFields: Array<[keyof UploaderDesign, string]> = [
   ['pageBackgroundColor', 'ページ背景色'],
   ['pageTextColor', 'ページ文字色'],
   ['linkColor', 'リンク色'],
+  ['linkHoverColor', 'リンクのマウスオーバー色'],
   ['shellBackgroundColor', '外枠背景色'],
   ['contentBackgroundColor', '一覧背景色'],
   ['formBackgroundColor', '投稿フォーム背景色'],
   ['titleStartColor', 'タイトル上側色'],
   ['titleEndColor', 'タイトル下側色'],
+  ['titleTextColor', 'タイトル文字色'],
   ['tableHeaderColor', '表見出し背景色'],
+  ['tableHeaderTextColor', '表見出し文字色'],
+  ['tableCellBackgroundColor', '表セル背景色'],
+  ['tableCellTextColor', '表セル文字色'],
   ['borderColor', '枠線色'],
+  ['labelColor', 'ラベル文字色'],
+  ['inputBackgroundColor', '入力欄背景色'],
+  ['inputTextColor', '入力欄文字色'],
+  ['inputBorderColor', '入力欄枠線色'],
+  ['placeholderColor', '入力例・補助文字色'],
   ['buttonBackgroundColor', 'ボタン背景色'],
   ['buttonTextColor', 'ボタン文字色'],
+  ['buttonBorderColor', 'ボタン枠線色'],
+  ['secondaryButtonBackgroundColor', '補助ボタン背景色'],
+  ['secondaryButtonTextColor', '補助ボタン文字色'],
+  ['secondaryButtonBorderColor', '補助ボタン枠線色'],
+  ['dangerButtonBackgroundColor', '削除ボタン背景色'],
+  ['dangerButtonTextColor', '削除ボタン文字色'],
+  ['dangerButtonBorderColor', '削除ボタン枠線色'],
   ['activeTabColor', '選択中タブ色'],
+  ['activeTabTextColor', '選択中タブ文字色'],
+  ['mutedTextColor', '補助情報文字色'],
+  ['successColor', '成功メッセージ色'],
   ['errorColor', 'エラー/完全削除色'],
+  ['messageBackgroundColor', '管理メッセージ背景色'],
+  ['messageTextColor', '管理メッセージ文字色'],
+  ['messageBorderColor', '管理メッセージ枠線色'],
+  ['overlayColor', '管理画面背面色'],
 ];
 
 export function normalizeSettings(value: Partial<UploaderSettings>): UploaderSettings {
+  const design = normalizeUploaderDesign(value.design || {});
   return {
     title: value.title || defaultSettings.title,
     homePageUrl: typeof value.homePageUrl === 'string' && value.homePageUrl.trim() !== ''
@@ -937,8 +1026,19 @@ export function normalizeSettings(value: Partial<UploaderSettings>): UploaderSet
       ? value.allowedExtensions
       : defaultSettings.allowedExtensions,
     maxUploadKb: Number(value.maxUploadKb) > 0 ? Number(value.maxUploadKb) : defaultSettings.maxUploadKb,
-    design: { ...defaultDesign, ...(value.design || {}) },
+    design,
   };
+}
+
+function normalizeUploaderDesign(value: Partial<UploaderDesign>): UploaderDesign {
+  if (isLegacyLightDesign(value)) {
+    return { ...defaultDesign };
+  }
+  return { ...defaultDesign, ...value };
+}
+
+function isLegacyLightDesign(value: Partial<UploaderDesign>): boolean {
+  return Object.entries(legacyLightDesign).every(([key, expected]) => value[key as keyof UploaderDesign] === expected);
 }
 
 export function homeHref(value?: string): string {
@@ -981,17 +1081,41 @@ function designStyle(design: UploaderDesign): CSSProperties {
     '--uploader-page-bg': design.pageBackgroundColor,
     '--uploader-page-text': design.pageTextColor,
     '--uploader-link': design.linkColor,
+    '--uploader-link-hover': design.linkHoverColor,
     '--uploader-shell-bg': design.shellBackgroundColor,
     '--uploader-content-bg': design.contentBackgroundColor,
     '--uploader-form-bg': design.formBackgroundColor,
     '--uploader-title-start': design.titleStartColor,
     '--uploader-title-end': design.titleEndColor,
+    '--uploader-title-text': design.titleTextColor,
     '--uploader-table-header': design.tableHeaderColor,
+    '--uploader-table-header-text': design.tableHeaderTextColor,
+    '--uploader-table-cell-bg': design.tableCellBackgroundColor,
+    '--uploader-table-cell-text': design.tableCellTextColor,
     '--uploader-border': design.borderColor,
+    '--uploader-label': design.labelColor,
+    '--uploader-input-bg': design.inputBackgroundColor,
+    '--uploader-input-text': design.inputTextColor,
+    '--uploader-input-border': design.inputBorderColor,
+    '--uploader-placeholder': design.placeholderColor,
     '--uploader-button-bg': design.buttonBackgroundColor,
     '--uploader-button-text': design.buttonTextColor,
+    '--uploader-button-border': design.buttonBorderColor,
+    '--uploader-secondary-button-bg': design.secondaryButtonBackgroundColor,
+    '--uploader-secondary-button-text': design.secondaryButtonTextColor,
+    '--uploader-secondary-button-border': design.secondaryButtonBorderColor,
+    '--uploader-danger-button-bg': design.dangerButtonBackgroundColor,
+    '--uploader-danger-button-text': design.dangerButtonTextColor,
+    '--uploader-danger-button-border': design.dangerButtonBorderColor,
     '--uploader-active-tab': design.activeTabColor,
+    '--uploader-active-tab-text': design.activeTabTextColor,
+    '--uploader-muted-text': design.mutedTextColor,
+    '--uploader-success': design.successColor,
     '--uploader-error': design.errorColor,
+    '--uploader-message-bg': design.messageBackgroundColor,
+    '--uploader-message-text': design.messageTextColor,
+    '--uploader-message-border': design.messageBorderColor,
+    '--uploader-overlay': design.overlayColor,
   } as CSSProperties;
 }
 

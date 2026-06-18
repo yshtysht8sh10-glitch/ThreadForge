@@ -3811,6 +3811,7 @@ function restoreSqliteBackup(string $path): void
         $requiredTable = match (FRONTEND_ID) {
             'file-uploader' => 'uploader_files',
             'materials-library' => 'material_items',
+            'proxy-release' => 'material_items',
             default => 'posts',
         };
         $test->query('SELECT COUNT(*) FROM ' . $requiredTable)->fetchColumn();
@@ -4473,14 +4474,15 @@ function materialsSettings(PDO $pdo): void
     jsonResponse([
         'success' => true,
         'settings' => [
-            'title' => (string)($config['materialsTitle'] ?? '■素材庫■'),
-            'description' => (string)($config['materialsDescription'] ?? '制作に役立つ素材を、用途と作者ごとに整理して保管しています。'),
+            'title' => (string)($config['materialsTitle'] ?? (FRONTEND_ID === 'proxy-release' ? 'Proxy Release' : '■素材庫■')),
+            'description' => (string)($config['materialsDescription'] ?? (FRONTEND_ID === 'proxy-release' ? 'MUGEN character release archives grouped by author and category.' : '制作に役立つ素材を、用途と作者ごとに整理して保管しています。')),
             'homePageUrl' => (string)($config['materialsHomePageUrl'] ?? '../'),
+            'trialPlayUrl' => (string)($config['proxyTrialPlayUrl'] ?? ''),
             'manualBody' => (string)($config['materialsManualBody'] ?? materialsDefaultManualBody()),
             'groupParent' => in_array(($config['materialsGroupParent'] ?? 'tag'), ['tag', 'author'], true) ? (string)$config['materialsGroupParent'] : 'tag',
             'maxArchiveKb' => max(1, (int)($config['materialsMaxArchiveKb'] ?? 102400)),
             'maxImageKb' => max(1, (int)($config['materialsMaxImageKb'] ?? 10240)),
-            'allowedArchiveExtensions' => (string)($config['materialsAllowedArchiveExtensions'] ?? 'zip 7z rar'),
+            'allowedArchiveExtensions' => (string)($config['materialsAllowedArchiveExtensions'] ?? (FRONTEND_ID === 'proxy-release' ? 'zip' : 'zip 7z rar')),
             'ssoEnabled' => toBoolFlag($config['ssoEnabled'] ?? false),
             'design' => [
                 'pageBackgroundColor' => (string)($skin['materialsPageBackgroundColor'] ?? '#050505'),
@@ -4973,8 +4975,8 @@ function updateMaterialProfile(PDO $pdo): void
 
 function ensureMaterialsFrontend(): void
 {
-    if (FRONTEND_ID !== 'materials-library' && !isPackagedSingleFrontendApp()) {
-        jsonResponse(['success' => false, 'message' => 'このAPIはmaterials-library専用です。'], 403);
+    if (!in_array(FRONTEND_ID, ['materials-library', 'proxy-release'], true) && !isPackagedSingleFrontendApp()) {
+        jsonResponse(['success' => false, 'message' => 'このAPIはmaterials-library/proxy-release専用です。'], 403);
     }
 }
 
@@ -4989,9 +4991,24 @@ function requireMaterialTag(PDO $pdo, int $id): void
 
 function validateMaterialUpload(PDO $pdo, mixed $file, string $kind): void
 {
-    if (!is_array($file) || (int)($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file((string)($file['tmp_name'] ?? ''))) {
+    if (!is_array($file)) {
         jsonResponse(['success' => false, 'message' => $kind === 'archive' ? '素材ファイルを選択してください。' : '説明画像を受信できませんでした。'], 400);
     }
+
+    $uploadError = (int)($file['error'] ?? UPLOAD_ERR_NO_FILE);
+    if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) {
+        jsonResponse([
+            'success' => false,
+            'message' => 'ファイルがPHPのアップロード上限を超えています。upload_max_filesize=' . ini_get('upload_max_filesize') . ' / post_max_size=' . ini_get('post_max_size'),
+        ], 400);
+    }
+    if ($uploadError === UPLOAD_ERR_NO_FILE) {
+        jsonResponse(['success' => false, 'message' => $kind === 'archive' ? '素材ファイルを選択してください。' : '説明画像を選択してください。'], 400);
+    }
+    if ($uploadError !== UPLOAD_ERR_OK || !is_uploaded_file((string)($file['tmp_name'] ?? ''))) {
+        jsonResponse(['success' => false, 'message' => 'ファイルの受信に失敗しました。アップロードをやり直してください。'], 400);
+    }
+
     $config = loadSettings($pdo)['config'] ?? [];
     $extension = strtolower((string)pathinfo((string)$file['name'], PATHINFO_EXTENSION));
     if ($kind === 'archive') {
@@ -5011,7 +5028,6 @@ function validateMaterialUpload(PDO $pdo, mixed $file, string $kind): void
         jsonResponse(['success' => false, 'message' => 'ファイルサイズが上限を超えています。'], 400);
     }
 }
-
 function materialUploadedFiles(string $key): array
 {
     $files = $_FILES[$key] ?? null;
@@ -5122,14 +5138,15 @@ function defaultSettings(): array
             'bbsTitle' => 'ThreadForge',
             'homePageUrl' => '/',
             'uploaderHomePageUrl' => '../',
-            'materialsTitle' => '■素材庫■',
-            'materialsDescription' => '制作に役立つ素材を、用途と作者ごとに整理して保管しています。',
+            'materialsTitle' => FRONTEND_ID === 'proxy-release' ? 'Proxy Release' : '■素材庫■',
+            'materialsDescription' => FRONTEND_ID === 'proxy-release' ? 'MUGEN character release archives grouped by author and category.' : '制作に役立つ素材を、用途と作者ごとに整理して保管しています。',
             'materialsHomePageUrl' => '../',
+            'proxyTrialPlayUrl' => '',
             'materialsManualBody' => materialsDefaultManualBody(),
             'materialsGroupParent' => 'tag',
             'materialsMaxArchiveKb' => 102400,
             'materialsMaxImageKb' => 10240,
-            'materialsAllowedArchiveExtensions' => 'zip 7z rar',
+            'materialsAllowedArchiveExtensions' => FRONTEND_ID === 'proxy-release' ? 'zip' : 'zip 7z rar',
             'manualTitle' => 'ThreadForge',
             'manualBody' => defaultManualBody(),
             'tweetEnabled' => false,

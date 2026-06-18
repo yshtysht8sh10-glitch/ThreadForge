@@ -15,6 +15,7 @@ a {
 }
 
 a:hover {
+  color: var(--uploader-link-hover, #b9d6f7);
   text-decoration: underline;
 }
 
@@ -39,7 +40,7 @@ a:hover {
   gap: 12px;
   padding: 10px 14px;
   background: linear-gradient(var(--uploader-title-start, #626b76), var(--uploader-title-end, #4f5863));
-  color: #fff;
+  color: var(--uploader-title-text, #fff);
   font-size: 21px;
   font-weight: bold;
 }
@@ -51,9 +52,9 @@ a:hover {
 .uploader-home-link {
   flex: 0 0 auto;
   padding: 1px 5px;
-  border: 1px solid var(--uploader-border, #666);
-  background: var(--uploader-button-bg, #f5f5f5);
-  color: var(--uploader-button-text, #000);
+  border: 1px solid var(--uploader-secondary-button-border, #778291);
+  background: var(--uploader-secondary-button-bg, #303640);
+  color: var(--uploader-secondary-button-text, #fff);
 }
 
 .title-admin-letter {
@@ -67,15 +68,15 @@ a:hover {
 }
 
 .title-admin-letter:hover {
-  color: #0000cc;
+  color: var(--uploader-link-hover, #b9d6f7);
   text-decoration: underline;
 }
 
 .title-admin-button {
   margin-left: 8px;
-  border: 1px solid var(--uploader-border, #666);
-  background: var(--uploader-button-bg, #f5f5f5);
-  color: var(--uploader-button-text, #000);
+  border: 1px solid var(--uploader-secondary-button-border, #778291);
+  background: var(--uploader-secondary-button-bg, #303640);
+  color: var(--uploader-secondary-button-text, #fff);
   cursor: pointer;
 }
 
@@ -98,7 +99,7 @@ a:hover {
   align-items: center;
   gap: 4px;
   margin-bottom: 10px;
-  color: var(--uploader-link);
+  color: var(--uploader-label, var(--uploader-link));
   font-weight: bold;
 }
 
@@ -107,14 +108,20 @@ a:hover {
 .admin-settings-form input {
   min-width: 0;
   padding: 8px;
-  border: 1px solid var(--uploader-border, #707b88);
-  background: #2d333b;
-  color: #fff;
+  border: 1px solid var(--uploader-input-border, #707b88);
+  background: var(--uploader-input-bg, #2d333b);
+  color: var(--uploader-input-text, #fff);
+}
+
+.upload-form input::placeholder,
+.admin-auth-form input::placeholder,
+.admin-settings-form input::placeholder {
+  color: var(--uploader-placeholder, #aeb8c5);
 }
 
 .upload-form button {
   width: max-content;
-  border: 1px solid var(--uploader-border, #666);
+  border: 1px solid var(--uploader-button-border, #8fb0ff);
   background: var(--uploader-button-bg, #3974ee);
   color: var(--uploader-button-text, #fff);
   padding: 8px 16px;
@@ -128,17 +135,13 @@ a:hover {
 
 .upload-note {
   margin: 8px 0 0;
-  color: #aeb8c5;
+  color: var(--uploader-muted-text, #aeb8c5);
   line-height: 1.4;
-}
-
-.upload-note span {
-  float: right;
 }
 
 .upload-status {
   margin: 8px 0 0;
-  color: #197019;
+  color: var(--uploader-success, #8bd39a);
 }
 
 .upload-status.error {
@@ -159,7 +162,8 @@ a:hover {
 .upload-table th,
 .upload-table td {
   border: 1px solid var(--uploader-border, #d0d0d0);
-  background: var(--uploader-content-bg, #151b22);
+  background: var(--uploader-table-cell-bg, #151b22);
+  color: var(--uploader-table-cell-text, #eef1f4);
   padding: 9px 7px;
   text-align: left;
   vertical-align: top;
@@ -167,7 +171,7 @@ a:hover {
 
 .upload-table th {
   background: var(--uploader-table-header, #59636f);
-  color: #fff;
+  color: var(--uploader-table-header-text, #fff);
   font-weight: bold;
 }
 
@@ -185,15 +189,17 @@ a:hover {
 
 .file-actions button {
   width: max-content;
-  border: 1px solid var(--uploader-border, #666);
-  background: var(--uploader-button-bg, #f5f5f5);
-  color: var(--uploader-button-text, #000);
+  border: 1px solid var(--uploader-secondary-button-border, #778291);
+  background: var(--uploader-secondary-button-bg, #303640);
+  color: var(--uploader-secondary-button-text, #fff);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .file-actions .file-delete-button {
-  color: var(--uploader-error, #9b1c1c);
+  border-color: var(--uploader-danger-button-border, #ff8585);
+  background: var(--uploader-danger-button-bg, #8b3030);
+  color: var(--uploader-danger-button-text, #fff);
 }
 
 .admin-overlay {
@@ -205,7 +211,7 @@ a:hover {
   justify-content: center;
   overflow: auto;
   padding: 24px 12px;
-  background: rgba(0, 0, 0, 0.35);
+  background: color-mix(in srgb, var(--uploader-overlay, #000) 35%, transparent);
 }
 
 .uploader-admin {
@@ -222,7 +228,7 @@ a:hover {
   border-bottom: 1px solid var(--uploader-border, #999);
   padding: 8px;
   background: linear-gradient(var(--uploader-title-start, #626b76), var(--uploader-title-end, #4f5863));
-  color: #fff;
+  color: var(--uploader-title-text, #fff);
 }
 
 .uploader-admin__header h2 {
@@ -231,10 +237,16 @@ a:hover {
 }
 
 .uploader-admin button {
-  border: 1px solid var(--uploader-border, #666);
+  border: 1px solid var(--uploader-button-border, #8fb0ff);
   background: var(--uploader-button-bg, #f5f5f5);
   color: var(--uploader-button-text, #000);
   cursor: pointer;
+}
+
+.uploader-admin__header button {
+  border-color: var(--uploader-secondary-button-border, #778291);
+  background: var(--uploader-secondary-button-bg, #303640);
+  color: var(--uploader-secondary-button-text, #fff);
 }
 
 .admin-auth-form,
@@ -252,13 +264,15 @@ a:hover {
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
+  color: var(--uploader-label, var(--uploader-link));
 }
 
 .admin-auth-form input,
 .admin-settings-form input {
   min-width: 0;
-  border: 1px solid #999;
-  background: #fff;
+  border: 1px solid var(--uploader-input-border, #707b88);
+  background: var(--uploader-input-bg, #2d333b);
+  color: var(--uploader-input-text, #fff);
 }
 
 .admin-tabs {
@@ -270,11 +284,14 @@ a:hover {
 
 .admin-tabs button {
   padding: 5px 10px;
-  background: var(--uploader-form-bg, #ddd);
+  border-color: var(--uploader-secondary-button-border, #778291);
+  background: var(--uploader-secondary-button-bg, #303640);
+  color: var(--uploader-secondary-button-text, #fff);
 }
 
 .admin-tabs button.active {
   background: var(--uploader-active-tab, #8eb4e3);
+  color: var(--uploader-active-tab-text, #fff);
   font-weight: bold;
 }
 
@@ -297,8 +314,9 @@ a:hover {
 }
 
 .admin-actions .danger {
-  border-color: var(--uploader-error, #9b1c1c);
-  color: var(--uploader-error, #9b1c1c);
+  border-color: var(--uploader-danger-button-border, #ff8585);
+  background: var(--uploader-danger-button-bg, #8b3030);
+  color: var(--uploader-danger-button-text, #fff);
 }
 
 .visually-hidden-file {
@@ -340,15 +358,16 @@ a:hover {
 
 .admin-message {
   margin: 10px;
-  border: 1px solid #aac2dd;
-  background: #17283a;
+  border: 1px solid var(--uploader-message-border, #6e91b8);
+  background: var(--uploader-message-bg, #17283a);
+  color: var(--uploader-message-text, #eef1f4);
   padding: 8px;
 }
 
 .admin-message.error {
-  border-color: #cc9999;
-  background: #fff0f0;
-  color: var(--uploader-error, #9b1c1c);
+  border-color: var(--uploader-error, #ff8585);
+  background: var(--uploader-danger-button-bg, #8b3030);
+  color: var(--uploader-danger-button-text, #fff);
 }
 
 .analytics-summary {
@@ -360,12 +379,13 @@ a:hover {
 
 .analytics-summary div {
   border: 1px solid var(--uploader-border);
-  background: #10151b;
+  background: var(--uploader-table-cell-bg, #151b22);
+  color: var(--uploader-table-cell-text, #eef1f4);
   padding: 8px;
 }
 
 .analytics-summary dt {
-  color: #aeb8c5;
+  color: var(--uploader-muted-text, #aeb8c5);
 }
 
 .analytics-summary dd {
@@ -394,7 +414,9 @@ a:hover {
 
 .design-color-row input:not([type="color"]) {
   min-width: 0;
-  border: 1px solid var(--uploader-border, #999);
+  border: 1px solid var(--uploader-input-border, #707b88);
+  background: var(--uploader-input-bg, #2d333b);
+  color: var(--uploader-input-text, #fff);
 }
 
 .design-preview {
@@ -422,11 +444,6 @@ a:hover {
     grid-template-columns: 1fr;
   }
 
-  .upload-note span {
-    float: none;
-    display: block;
-  }
-
   #list,
   #list tbody,
   #list tr,
@@ -447,7 +464,8 @@ a:hover {
   #list tr {
     margin-bottom: 8px;
     border: 1px solid var(--uploader-border, #d0d0d0);
-    background: var(--uploader-content-bg, #fff);
+    background: var(--uploader-table-cell-bg, #151b22);
+    color: var(--uploader-table-cell-text, #eef1f4);
   }
 
   #list td {

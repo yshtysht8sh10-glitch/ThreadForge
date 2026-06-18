@@ -43,6 +43,34 @@ describe('file-uploader helpers', () => {
     expect(normalized.maxUploadKb).toBe(20000);
     expect(normalized.design.pageBackgroundColor).toBe('#123456');
     expect(normalized.design.buttonTextColor).toBe('#ffffff');
+    expect(normalized.design.inputBackgroundColor).toBe('#282f38');
+    expect(normalized.design.dangerButtonTextColor).toBe('#ffffff');
+    expect(normalized.design.messageBorderColor).toBe('#7fa2ce');
+  });
+
+  it('maps the old light uploader default to the current gray default', () => {
+    const normalized = normalizeSettings({
+      design: {
+        pageBackgroundColor: '#eeeeee',
+        pageTextColor: '#000000',
+        linkColor: '#0000ff',
+        shellBackgroundColor: '#2a2a2a',
+        contentBackgroundColor: '#ffffff',
+        formBackgroundColor: '#eeeeee',
+        titleStartColor: '#f7f7f7',
+        titleEndColor: '#d8d8d8',
+        tableHeaderColor: '#eeeeee',
+        borderColor: '#808080',
+        buttonBackgroundColor: '#f5f5f5',
+        buttonTextColor: '#000000',
+        activeTabColor: '#8eb4e3',
+        errorColor: '#9b1c1c',
+      } as never,
+    });
+
+    expect(normalized.design.pageBackgroundColor).toBe('#050505');
+    expect(normalized.design.contentBackgroundColor).toBe('#111820');
+    expect(normalized.design.buttonBackgroundColor).toBe('#4f75e8');
   });
 
   it('normalizes configured HOME URLs', () => {

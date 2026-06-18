@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { acceptExtensions, defaultTermAnswers, exportFullBackup, formatBytes, generateSharedSecret, importBackup, isPlainObject, materialManagementPasswordError, normalizeMaterialDesign, toBoolean } from './App';
+import { acceptExtensions, defaultTermAnswers, exportFullBackup, formatBytes, generateSharedSecret, importBackup, isPlainObject, materialManagementPasswordError, normalizeMaterialDesign, removeSsoTokenFromUrl, ssoTokenFromUrl, toBoolean } from './App';
 import { api, defaultMaterialDesign, groupMaterials, homeHref, MaterialItem, packAuthorGroups } from './api';
 
 describe('materials-library helpers', () => {
@@ -81,6 +81,16 @@ describe('materials-library helpers', () => {
     expect(toBoolean(false)).toBe(false);
     expect(toBoolean('false')).toBe(false);
     expect(generateSharedSecret()).toMatch(/^[A-Za-z0-9_-]{48}$/);
+  });
+
+  it('reads and removes SSO tokens from search params while preserving anchor targets', () => {
+    const searchUrl = 'https://mugendoteita.main.jp/DotoEita/15_materials_library/index.html?sso=signed-token#author-tag3A2-guest3AMPL';
+    expect(ssoTokenFromUrl(searchUrl)).toBe('signed-token');
+    expect(removeSsoTokenFromUrl(searchUrl)).toBe('https://mugendoteita.main.jp/DotoEita/15_materials_library/index.html#author-tag3A2-guest3AMPL');
+
+    const hashUrl = 'https://mugendoteita.main.jp/DotoEita/15_materials_library/index.html#/login?sso=hash-token&tab=1';
+    expect(ssoTokenFromUrl(hashUrl)).toBe('hash-token');
+    expect(removeSsoTokenFromUrl(hashUrl)).toBe('https://mugendoteita.main.jp/DotoEita/15_materials_library/index.html#/login?tab=1');
   });
 
   it('packs small adjacent authors into rows without exceeding four cards', () => {

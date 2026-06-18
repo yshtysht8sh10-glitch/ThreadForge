@@ -25,7 +25,12 @@ if (!defined('STORAGE_PUBLIC_BASE')) {
 
 function resolveFrontendId(): string
 {
-    $raw = trim((string)(getenv('THREADFORGE_FRONTEND_ID') ?: ''));
+    $raw = !isPackagedSingleFrontendApp()
+        ? trim((string)($_GET['frontend_id'] ?? $_POST['frontend_id'] ?? ''))
+        : '';
+    if ($raw === '') {
+        $raw = trim((string)(getenv('THREADFORGE_FRONTEND_ID') ?: ''));
+    }
     $frontendIdFile = __DIR__ . '/FRONTEND_ID';
     if ($raw === '' && basename(__DIR__) !== 'server' && is_file($frontendIdFile)) {
         $raw = trim((string)file_get_contents($frontendIdFile));

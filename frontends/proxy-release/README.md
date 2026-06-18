@@ -1,13 +1,14 @@
 # Proxy Release Frontend
 
-MUGEN character/plugin proxy release frontend.
+MUGEN character proxy release frontend.
 
 ## Role
 
-- Publish proxy-hosted plugin or character releases.
-- Display release descriptions and downloadable assets.
-- Reuse the common ThreadForge backend where possible.
-- Share frontend primitives from `../shared`.
+- Publish proxy-hosted MUGEN character releases.
+- Reuse the materials-library item model for archive uploads, terms, authors, tags, editing, deletion, login, and admin.
+- Generate an idle-motion GIF from AIR/SFF files in a selected character zip when possible.
+- Allow a manual explanation image to override the generated preview.
+- Provide an admin-configurable trial-play link in the top navigation.
 
 ## Commands
 

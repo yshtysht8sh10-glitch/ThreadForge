@@ -4,24 +4,32 @@
 
 ## Purpose
 
-`proxy-release` is the MUGEN proxy release frontend for characters, plugins, or related packages.
+`proxy-release` is a ThreadForge frontend for proxy-hosted MUGEN character releases.
+It uses the materials-library data model because its main workflow is also to collect
+uploaded archives and organize them by tag and author.
 
-It is based on the legacy dark page with bright green text.
+## Current Behavior
 
-## Planned Behavior
-
-- Publish proxy-hosted release entries.
-- Display release descriptions and downloadable assets.
-- Support release lists and details.
-- Keep moderation and editing compatible with the common backend.
-- Keep runtime DB and storage isolated from every other frontend.
+- Uses the shared material item API and runtime tables.
+- Accepts archive uploads, with `zip` as the proxy-release default.
+- When a MUGEN character zip is selected, the frontend attempts to read `.air` and
+  `.sff` files in the browser and generate an idle-motion GIF preview.
+- A manually selected explanation image overrides the generated GIF.
+- HOME, list, post, delete, edit, manual, login, and admin screens follow the
+  materials-library workflow.
+- The navigation includes a `Trial Play` link. The destination is configurable from
+  the admin settings screen.
 
 ## Visual Direction
 
-- Dark background.
-- Bright green text.
-- Legacy proxy-release atmosphere preserved where readable.
+- The default color palette follows materials-library's gray theme.
+- The list card body keeps the materials-library layout, but the card outer border is
+  removed and the preview image can overflow outside the card body.
+- A green legacy skin can be configured through the design settings, but it is not the
+  default.
 
-## Current Status
+## Notes
 
-Initial React/Vite frontend exists. Release-specific data behavior is still being designed.
+- The automatic GIF generator currently targets SFF v1/PCX sprites, matching the
+  WebMUGEN parser support used as the source implementation.
+- If AIR/SFF parsing fails, users can still upload a manual explanation image.

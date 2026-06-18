@@ -4,6 +4,12 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## file-uploader 1.0.2 - 2026-06-17
+
+- Expanded file-uploader design settings to cover title and table text, cells, labels, inputs, placeholders, button variants, tabs, status messages, admin messages, links, and the admin overlay while retaining old JSON compatibility
+- Replaced the old pale file-uploader default colors with a darker gray ThreadForge theme and remapped the legacy light default palette to the new default
+- Removed the fixed legacy `count:80747` display because it was not connected to any live counter
+
 ## materials-library 0.9.2 - 2026-06-16
 
 - Required post-password entry and verification for all material edits and deletes, including the logged-in owner

@@ -17,6 +17,7 @@ function App() {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [previewDesign, setPreviewDesign] = useState<MaterialDesign | null>(null);
+  const ssoHandled = useRef(false);
 
   const reload = async () => {
     const [settingsResponse, itemResponse] = await Promise.all([api.settings(), api.items()]);
@@ -43,6 +44,22 @@ function App() {
       setToken('');
     });
   }, [token]);
+
+  useEffect(() => {
+    if (ssoHandled.current) return;
+    const sso = ssoTokenFromUrl(window.location.href);
+    if (!sso) return;
+    ssoHandled.current = true;
+    api.sso(sso)
+      .then((response) => {
+        localStorage.setItem(TOKEN_KEY, response.token);
+        setToken(response.token);
+        setUser(response.user);
+        setNotice('ログインしました。');
+        window.history.replaceState(null, '', removeSsoTokenFromUrl(window.location.href));
+      })
+      .catch((reason) => setError((reason as Error).message));
+  }, []);
 
   const navigate = (next: Page) => {
     if (next !== 'admin') setPreviewDesign(null);
@@ -349,7 +366,6 @@ function LoginPage(props: CommonProps) {
   const [postPassword, setPostPassword] = useState(props.user?.post_password ?? '');
   const [defaults, setDefaults] = useState<Record<string, boolean>>(() => defaultTermAnswers(props.terms, props.user?.materials_default_terms));
   const [icon, setIcon] = useState<File | null>(null);
-  const ssoDone = useRef(false);
 
   useEffect(() => {
     if (!props.user) return;
@@ -364,14 +380,6 @@ function LoginPage(props: CommonProps) {
       setPasswordConfirm('');
     }
   }, [props.settings.ssoEnabled, mode]);
-
-  useEffect(() => {
-    if (ssoDone.current) return;
-    const sso = new URLSearchParams(location.hash.split('?')[1] ?? location.search).get('sso');
-    if (!sso) return;
-    ssoDone.current = true;
-    api.sso(sso).then((response) => completeLogin(response.token, response.user)).catch((reason) => props.setError((reason as Error).message));
-  }, []);
 
   const completeLogin = (nextToken: string, nextUser: User) => {
     localStorage.setItem(TOKEN_KEY, nextToken); props.setToken(nextToken); props.setUser(nextUser);
@@ -903,6 +911,26 @@ export function generateSharedSecret(length = 48) {
   const bytes = new Uint8Array(length);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (value) => alphabet[value % alphabet.length]).join('');
+}
+export function ssoTokenFromUrl(url: string): string {
+  const parsed = new URL(url, urlBase());
+  const hashQuery = parsed.hash.includes('?') ? parsed.hash.slice(parsed.hash.indexOf('?') + 1) : '';
+  return new URLSearchParams(hashQuery).get('sso') ?? parsed.searchParams.get('sso') ?? '';
+}
+export function removeSsoTokenFromUrl(url: string): string {
+  const parsed = new URL(url, urlBase());
+  parsed.searchParams.delete('sso');
+  if (parsed.hash.includes('?')) {
+    const [hashPath, hashQuery = ''] = parsed.hash.split('?');
+    const hashParams = new URLSearchParams(hashQuery);
+    hashParams.delete('sso');
+    const nextHashQuery = hashParams.toString();
+    parsed.hash = nextHashQuery ? `${hashPath}?${nextHashQuery}` : hashPath;
+  }
+  return parsed.toString();
+}
+function urlBase(): string {
+  return typeof window === 'undefined' ? 'https://mugendoteita.main.jp/' : window.location.origin;
 }
 async function copyText(value: string, notice: (message: string) => void, error: (message: string) => void) {
   try {

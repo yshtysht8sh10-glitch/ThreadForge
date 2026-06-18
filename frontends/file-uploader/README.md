@@ -56,4 +56,4 @@ npm run test:file-uploader
 npm run release:file-uploader
 ```
 
-The standalone ZIP is written to `release/threadforge-file-uploader-1.0.0.zip`. It contains the deployment directory `12_file_uploader/`.
+The standalone ZIP is written to `release/threadforge-file-uploader-1.0.2.zip`. It contains the deployment directory `12_file_uploader/`.
