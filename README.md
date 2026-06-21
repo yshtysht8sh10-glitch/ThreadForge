@@ -126,7 +126,7 @@ Extract the release ZIP and upload the included deployment directory to `/DotoEi
 ```
 
 The image-board ZIP contains `11_image_board/`. The file-uploader ZIP contains `12_file_uploader/`.
-The materials-library ZIP contains `15_materials_library/`.
+The materials-library ZIP contains `15_materials_library/`. Other frontend ZIPs use the frontend id with hyphens converted to underscores, such as `proxy_release/`.
 
 The frontend calls `./api.php` on the same site. Runtime DB files and uploaded images are intentionally excluded from the ZIP. On first access, the SQLite DB is created automatically if PHP can write to the deployed directory.
 

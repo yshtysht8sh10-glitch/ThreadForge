@@ -1,30 +1,26 @@
 # ThreadForge ドキュメント
 
-人が読むドキュメントは、日本語/Englishを画面上で切り替えられるHTMLとして生成します。[`../index.html`](../index.html) を開いてください。
+人間が読むためのドキュメントは、日本語/英語を切り替えられるHTMLとして生成します。Markdown は保守用の原稿です。
 
-Markdownファイルは更新しやすい原稿として残します。編集後は次のコマンドでHTMLを再生成します。
+HTMLを再生成する場合:
 
 ```powershell
 npm run build:docs
 ```
 
-このディレクトリは日本語ドキュメントの索引です。
-
 ## 共通ドキュメント
 
-- `SPEC.md`: 仕様索引と共通契約
-- `DB.md`: DB/ランタイムデータの索引と共通ルール
+- `SPEC.md`: 仕様索引と共通仕様
+- `DB.md`: DB/runtime データの索引と運用ルール
 - `API.md`: PHP API のアクションとリクエスト/レスポンス
 - `ARCHITECTURE.md`: フロントエンド/バックエンド構成
-- `FRONTEND_ARCHITECTURE.md`: 複数フロント構成と移行方針
-- `MIGRATION.md`: ローカルアーカイブログの取り込みメモ
+- `FRONTEND_ARCHITECTURE.md`: 複数フロントエンド構成
+- `MIGRATION.md`: ローカルアーカイブログ取り込みメモ
 - `TESTING.md`: テストコマンドと確認範囲
 - `../../CHANGELOG.md`: 英語変更履歴
 - `../../CHANGELOG.ja.md`: 日本語変更履歴
 
-## フロント別ドキュメント
-
-各フロントは README、DB、SPEC を持ちます。
+## フロントエンド別ドキュメント
 
 - `frontends/image-board/README.md`
 - `frontends/image-board/DB.md`
@@ -42,13 +38,20 @@ npm run build:docs
 - `frontends/materials-library/DB.md`
 - `frontends/materials-library/SPEC.md`
 
-## 運用ツール
-
-リリースZip作成やローカルアーカイブ取り込み用のスクリプトは `tools/` にあります。
+## リリースZip
 
 ```powershell
 npm run release:image-board
 npm run release:file-uploader
+npm run release:proxy-release
+npm run release:materials-library
 ```
 
-リリースZipは `release/threadforge-<frontend-id>-<version>.zip` に作られます。image-board のZipには `11_image_board/`、file-uploader のZipには `12_file_uploader/` が入り、`/DotoEita/` 直下へ配置できます。開発環境では `server/runtime/<frontend-id>/...`、配置後は各公開用ディレクトリ内の `database.sqlite` と `storage/data/` を使います。
+リリースZipは `release/threadforge-<frontend-id>-<version>.zip` に作られます。
+
+- image-board: `11_image_board/`
+- file-uploader: `12_file_uploader/`
+- materials-library: `15_materials_library/`
+- その他のフロント: frontend id の `-` を `_` に置き換えたディレクトリ
+
+開発環境では `server/runtime/<frontend-id>/...`、配置後は各公開用ディレクトリ内の `database.sqlite` と `storage/data/` を使います。リリースZipには実運用のDBとアップロード済みファイルは含めません。

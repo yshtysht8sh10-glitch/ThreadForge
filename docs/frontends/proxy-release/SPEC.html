@@ -69,45 +69,72 @@
       <article class="docs-article" data-language-panel="ja"><h1 id="proxy-release-仕様">proxy-release 仕様</h1>
 <p><a href="../../SPEC.html">仕様索引へ戻る</a></p>
 <h2 id="目的">目的</h2>
-<p><code>proxy-release</code> は MUGEN キャラ、プラグイン、関連パッケージの代理公開用フロントです。</p>
-<p>legacy の暗い背景と明るい緑文字の雰囲気を参考にします。</p>
-<h2 id="予定機能">予定機能</h2>
+<p><code>proxy-release</code> は、MUGENキャラクターやステージなどの代理公開所向けフロントエンドです。投稿されたzipを保管し、タグと作者で整理して一覧表示します。データモデルと管理機能は materials-library をベースにします。</p>
+<h2 id="現在の挙動">現在の挙動</h2>
 <ul>
-<li>代理公開リリース項目の投稿</li>
-<li>説明文とダウンロード可能なアセットの表示</li>
-<li>リリース一覧と詳細表示</li>
-<li>共通バックエンドによる編集/管理</li>
-<li>他フロントから独立したDBとストレージ</li>
+<li>materials-library と同じ素材投稿APIと runtime テーブルを利用します。</li>
+<li>代理公開の初期設定では、投稿ファイル形式を <code>zip</code> に限定します。</li>
+<li>MUGENキャラクターzipを選択すると、ブラウザ内で <code>.air</code> と <code>.sff</code> を読み取り、待機モーションGIFの自動生成を試みます。</li>
+<li>説明用画像を手動選択した場合は、自動生成GIFより手動画像を優先します。</li>
+<li>HOME、一覧、投稿、削除、編集、取説、ログイン、管理画面は materials-library 相当の操作体系です。</li>
+<li>上部メニューの <code>試遊</code> は <code>ログイン</code> の右側に表示します。</li>
+<li>試遊リンク先は管理画面の設定から変更できます。URL未設定時はクリックできない無効表示にします。</li>
+</ul>
+<h2 id="代理公開向け設定">代理公開向け設定</h2>
+<ul>
+<li>legacy 代理公開データの取り込み後は、タグとして <code>MUGENキャラクター</code> と <code>MUGENステージ</code> などを使います。</li>
+<li>利用規約は、動画使用、改変、AI作成、素材流用、改変物配布、2次配布など、MUGEN代理公開に必要な項目を設定できます。</li>
+<li>管理画面のデザイン機能で legacy 風の緑基調へ変更できます。ただしデフォルトカラーは materials-library と同系統のグレー基調です。</li>
 </ul>
 <h2 id="見た目">見た目</h2>
 <ul>
-<li>暗い背景</li>
-<li>明るい緑文字</li>
-<li>読みやすさを保ちつつ legacy の雰囲気を残す</li>
+<li>一覧カードは materials-library の構成をベースにしつつ、カード外枠を抑え、説明画像がカードからはみ出して見える表示を許容します。</li>
+<li>メニューやフォームは他の ThreadForge フロントエンドと同じ操作感に寄せます。</li>
 </ul>
-<h2 id="現在の状態">現在の状態</h2>
-<p>React/Vite の初期フロントがあります。リリース専用のデータ構造は設計中です。</p></article>
+<h2 id="注意">注意</h2>
+<ul>
+<li>自動GIF生成は、WebMUGEN由来の SFF v1 / PCX パーサで読めるデータを対象にします。</li>
+<li>AIR/SFF の解析に失敗しても、手動で説明用画像を添付できます。</li>
+<li>リリースZipには runtime DB とアップロード済みファイルは含めません。</li>
+</ul></article>
       <article class="docs-article" data-language-panel="en"><h1 id="proxy-release-spec">proxy-release Spec</h1>
 <p><a href="../../SPEC.html">Back to specification index</a></p>
 <h2 id="purpose">Purpose</h2>
-<p><code>proxy-release</code> is the MUGEN proxy release frontend for characters, plugins, or related packages.</p>
-<p>It is based on the legacy dark page with bright green text.</p>
-<h2 id="planned-behavior">Planned Behavior</h2>
+<p><code>proxy-release</code> is a ThreadForge frontend for proxy-hosted MUGEN character releases.<br>It uses the materials-library data model because its main workflow is also to collect<br>uploaded archives and organize them by tag and author.</p>
+<h2 id="current-behavior">Current Behavior</h2>
 <ul>
-<li>Publish proxy-hosted release entries.</li>
-<li>Display release descriptions and downloadable assets.</li>
-<li>Support release lists and details.</li>
-<li>Keep moderation and editing compatible with the common backend.</li>
-<li>Keep runtime DB and storage isolated from every other frontend.</li>
+<li>Uses the shared material item API and runtime tables.</li>
+<li>Accepts archive uploads, with <code>zip</code> as the proxy-release default.</li>
+<li>When a MUGEN character zip is selected, the frontend attempts to read <code>.air</code> and</li>
 </ul>
+<p><code>.sff</code> files in the browser and generate an idle-motion GIF preview.</p>
+<ul>
+<li>A manually selected explanation image overrides the generated GIF.</li>
+<li>HOME, list, post, delete, edit, manual, login, and admin screens follow the</li>
+</ul>
+<p>materials-library workflow.</p>
+<ul>
+<li>The navigation includes a <code>Trial Play</code> link to the right of the login item. The</li>
+</ul>
+<p>destination is configurable from the admin settings screen. If no URL is set, the<br>item is displayed as disabled instead of linking to a fallback page.</p>
 <h2 id="visual-direction">Visual Direction</h2>
 <ul>
-<li>Dark background.</li>
-<li>Bright green text.</li>
-<li>Legacy proxy-release atmosphere preserved where readable.</li>
+<li>The default color palette follows materials-library's gray theme.</li>
+<li>The list card body keeps the materials-library layout, but the card outer border is</li>
 </ul>
-<h2 id="current-status">Current Status</h2>
-<p>Initial React/Vite frontend exists. Release-specific data behavior is still being designed.</p></article>
+<p>removed and the preview image can overflow outside the card body.</p>
+<ul>
+<li>A green legacy skin can be configured through the design settings, but it is not the</li>
+</ul>
+<p>default.</p>
+<h2 id="notes">Notes</h2>
+<ul>
+<li>The automatic GIF generator currently targets SFF v1/PCX sprites, matching the</li>
+</ul>
+<p>WebMUGEN parser support used as the source implementation.</p>
+<ul>
+<li>If AIR/SFF parsing fails, users can still upload a manual explanation image.</li>
+</ul></article>
       <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
     </main>
   </div>

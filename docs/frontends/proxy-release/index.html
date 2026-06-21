@@ -67,15 +67,30 @@
         </div>
       </header>
       <article class="docs-article" data-language-panel="ja"><h1 id="proxy-release">proxy-release</h1>
-<p>MUGEN キャラやプラグインなどの代理公開用フロントです。</p>
+<p>MUGENキャラクターやステージなどの代理公開向けフロントエンドです。materials-library をベースに、zip投稿、作者・タグ整理、管理画面、説明画像表示を代理公開向けに調整しています。</p>
 <ul>
 <li><a href="SPEC.html">仕様</a></li>
 <li><a href="DB.html">DB</a></li>
-<li>フロント実装: <code>frontends/proxy-release/</code></li>
+<li>フロントエンド実装: <code>frontends/proxy-release/</code></li>
 </ul>
-<p>開発環境ランタイム:</p>
+<h2 id="主な機能">主な機能</h2>
+<ul>
+<li>投稿zipから AIR/SFF を読み取り、待機モーションGIFの自動生成を試みます。</li>
+<li>手動の説明用画像も選択できます。手動画像がある場合はそちらを優先します。</li>
+<li>上部メニューに <code>試遊</code> リンクを持ちます。リンク先は管理画面で設定できます。</li>
+<li>試遊リンクが未設定の場合、メニューには無効表示として出します。</li>
+<li>管理画面の設定とデザイン機能で、legacy風の緑基調にも変更できます。</li>
+</ul>
+<h2 id="ローカル実行">ローカル実行</h2>
+<pre><code class="language-powershell">npm run dev:proxy-release</code></pre>
+<p>開発時の runtime データ:</p>
 <pre><code class="language-text">server/runtime/proxy-release/database.sqlite
-server/runtime/proxy-release/storage/data/</code></pre></article>
+server/runtime/proxy-release/storage/data/</code></pre>
+<h2 id="リリースzip">リリースZip</h2>
+<pre><code class="language-powershell">npm run release:proxy-release</code></pre>
+<p>出力先:</p>
+<pre><code class="language-text">release/threadforge-proxy-release-&lt;version&gt;.zip</code></pre>
+<p>リリースZipには runtime DB とアップロード済みファイルは含めません。運用データを移す場合は、管理画面のフルバックアップとインポートを使います。</p></article>
       <article class="docs-article" data-language-panel="en"><h1 id="proxy-release">proxy-release</h1>
 <p>MUGEN character/plugin proxy release frontend.</p>
 <ul>

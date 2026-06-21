@@ -17,8 +17,9 @@ uploaded archives and organize them by tag and author.
 - A manually selected explanation image overrides the generated GIF.
 - HOME, list, post, delete, edit, manual, login, and admin screens follow the
   materials-library workflow.
-- The navigation includes a `Trial Play` link. The destination is configurable from
-  the admin settings screen.
+- The navigation includes a `Trial Play` link to the right of the login item. The
+  destination is configurable from the admin settings screen. If no URL is set, the
+  item is displayed as disabled instead of linking to a fallback page.
 
 ## Visual Direction
 

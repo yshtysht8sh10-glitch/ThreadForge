@@ -98,18 +98,21 @@ function Header({ settings, page, navigate, user }: { settings: MaterialSettings
   const tab = (target: Page, label: string) => (
     <button className={page === target ? 'active' : ''} onClick={() => navigate(target)}>{label}</button>
   );
+  const trialUrl = String(settings.trialPlayUrl ?? '').trim();
   return (
     <header className="site-header">
       <nav aria-label="素材庫メニュー">
         <span className="decoration-square" aria-hidden="true">■</span>
         <a href={homeHref(settings.homePageUrl)}>HOME</a>
         {tab('list', '一覧')}
-        <a href={homeHref(settings.trialPlayUrl || './')} target="_blank" rel="noreferrer">試遊</a>
         {tab('post', '投稿')}
         {tab('delete', '削除')}
         {tab('edit', '編集')}
         {tab('manual', '取説')}
         {tab('login', user ? user.materials_author_name || user.display_name : 'ログイン')}
+        {trialUrl
+          ? <a href={homeHref(trialUrl)} target="_blank" rel="noreferrer">試遊</a>
+          : <span className="disabled-link" aria-disabled="true">試遊</span>}
         <button className="admin-square" aria-label="管理画面" title="" onClick={() => navigate('admin')}>■</button>
       </nav>
     </header>

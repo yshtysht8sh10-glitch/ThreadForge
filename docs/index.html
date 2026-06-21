@@ -67,24 +67,22 @@
         </div>
       </header>
       <article class="docs-article" data-language-panel="ja"><h1 id="threadforge-ドキュメント">ThreadForge ドキュメント</h1>
-<p>人が読むドキュメントは、日本語/Englishを画面上で切り替えられるHTMLとして生成します。<a href="index.html"><code>../index.html</code></a> を開いてください。</p>
-<p>Markdownファイルは更新しやすい原稿として残します。編集後は次のコマンドでHTMLを再生成します。</p>
+<p>人間が読むためのドキュメントは、日本語/英語を切り替えられるHTMLとして生成します。Markdown は保守用の原稿です。</p>
+<p>HTMLを再生成する場合:</p>
 <pre><code class="language-powershell">npm run build:docs</code></pre>
-<p>このディレクトリは日本語ドキュメントの索引です。</p>
 <h2 id="共通ドキュメント">共通ドキュメント</h2>
 <ul>
-<li><code>SPEC.md</code>: 仕様索引と共通契約</li>
-<li><code>DB.md</code>: DB/ランタイムデータの索引と共通ルール</li>
+<li><code>SPEC.md</code>: 仕様索引と共通仕様</li>
+<li><code>DB.md</code>: DB/runtime データの索引と運用ルール</li>
 <li><code>API.md</code>: PHP API のアクションとリクエスト/レスポンス</li>
 <li><code>ARCHITECTURE.md</code>: フロントエンド/バックエンド構成</li>
-<li><code>FRONTEND_ARCHITECTURE.md</code>: 複数フロント構成と移行方針</li>
-<li><code>MIGRATION.md</code>: ローカルアーカイブログの取り込みメモ</li>
+<li><code>FRONTEND_ARCHITECTURE.md</code>: 複数フロントエンド構成</li>
+<li><code>MIGRATION.md</code>: ローカルアーカイブログ取り込みメモ</li>
 <li><code>TESTING.md</code>: テストコマンドと確認範囲</li>
 <li><code>../../CHANGELOG.md</code>: 英語変更履歴</li>
 <li><code>../../CHANGELOG.ja.md</code>: 日本語変更履歴</li>
 </ul>
-<h2 id="フロント別ドキュメント">フロント別ドキュメント</h2>
-<p>各フロントは README、DB、SPEC を持ちます。</p>
+<h2 id="フロントエンド別ドキュメント">フロントエンド別ドキュメント</h2>
 <ul>
 <li><code>frontends/image-board/README.md</code></li>
 <li><code>frontends/image-board/DB.md</code></li>
@@ -102,11 +100,19 @@
 <li><code>frontends/materials-library/DB.md</code></li>
 <li><code>frontends/materials-library/SPEC.md</code></li>
 </ul>
-<h2 id="運用ツール">運用ツール</h2>
-<p>リリースZip作成やローカルアーカイブ取り込み用のスクリプトは <code>tools/</code> にあります。</p>
+<h2 id="リリースzip">リリースZip</h2>
 <pre><code class="language-powershell">npm run release:image-board
-npm run release:file-uploader</code></pre>
-<p>リリースZipは <code>release/threadforge-&lt;frontend-id&gt;-&lt;version&gt;.zip</code> に作られます。image-board のZipには <code>11_image_board/</code>、file-uploader のZipには <code>12_file_uploader/</code> が入り、<code>/DotoEita/</code> 直下へ配置できます。開発環境では <code>server/runtime/&lt;frontend-id&gt;/...</code>、配置後は各公開用ディレクトリ内の <code>database.sqlite</code> と <code>storage/data/</code> を使います。</p></article>
+npm run release:file-uploader
+npm run release:proxy-release
+npm run release:materials-library</code></pre>
+<p>リリースZipは <code>release/threadforge-&lt;frontend-id&gt;-&lt;version&gt;.zip</code> に作られます。</p>
+<ul>
+<li>image-board: <code>11_image_board/</code></li>
+<li>file-uploader: <code>12_file_uploader/</code></li>
+<li>materials-library: <code>15_materials_library/</code></li>
+<li>その他のフロント: frontend id の <code>-</code> を <code>_</code> に置き換えたディレクトリ</li>
+</ul>
+<p>開発環境では <code>server/runtime/&lt;frontend-id&gt;/...</code>、配置後は各公開用ディレクトリ内の <code>database.sqlite</code> と <code>storage/data/</code> を使います。リリースZipには実運用のDBとアップロード済みファイルは含めません。</p></article>
       <article class="docs-article" data-language-panel="en"><h1 id="threadforge-docs">ThreadForge Docs</h1>
 <p>The human-facing documentation is generated as bilingual HTML. Open <a href="index.html"><code>index.html</code></a> and switch Japanese/English on the page.</p>
 <p>The Markdown files remain the maintainable source. Regenerate HTML after editing them:</p>
@@ -149,8 +155,9 @@ npm run release:file-uploader</code></pre>
 <p>Create a release ZIP:</p>
 <pre><code class="language-powershell">npm run release:image-board
 npm run release:file-uploader
+npm run release:proxy-release
 npm run release:materials-library</code></pre>
-<p>Release ZIPs are written to <code>release/threadforge-&lt;frontend-id&gt;-&lt;version&gt;.zip</code>. Image Board uses <code>11_image_board/</code>, File Uploader uses <code>12_file_uploader/</code>, and Materials Library uses <code>15_materials_library/</code>.</p>
+<p>Release ZIPs are written to <code>release/threadforge-&lt;frontend-id&gt;-&lt;version&gt;.zip</code>. Image Board uses <code>11_image_board/</code>, File Uploader uses <code>12_file_uploader/</code>, Materials Library uses <code>15_materials_library/</code>, and other frontends use their frontend id with hyphens converted to underscores.</p>
 <p>For a GitHub release, update <code>VERSION</code> and the changelog, generate and verify the ZIP, then create the matching <code>v&lt;version&gt;</code> tag and attach the ZIP to the GitHub Release.</p>
 <p>Import local archive logs:</p>
 <pre><code class="language-powershell">tools\import_local_archive.bat legacy\data</code></pre>

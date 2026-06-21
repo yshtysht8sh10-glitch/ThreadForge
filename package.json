@@ -28,6 +28,7 @@
     "test:materials-library": "npm --prefix frontends/materials-library test -- --run",
     "release:image-board": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId image-board",
     "release:file-uploader": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId file-uploader",
+    "release:proxy-release": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId proxy-release",
     "release:materials-library": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId materials-library"
   }
 }

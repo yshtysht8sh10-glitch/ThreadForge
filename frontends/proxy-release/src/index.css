@@ -16,6 +16,7 @@ a { color: var(--accent); }
 .site-header nav > *:first-child { border-right: 0; }
 .site-header nav a { text-decoration: none; }
 .site-header nav button.active, .site-header nav button:hover, .site-header nav a:hover { color: var(--accent); filter: none; }
+.site-header nav .disabled-link { color: var(--muted-text); opacity: .45; cursor: default; }
 .site-header .decoration-square, .site-header .admin-square { color: #626d78; padding-inline: 8px; font-size: 12px; border: 0; }
 .site-header .admin-square { color: #626d78; width: auto; }
 .page-shell { width: min(1180px, calc(100% - 32px)); margin: 22px auto 80px; }

@@ -4,6 +4,12 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## proxy-release 0.9.7 - 2026-06-21
+
+- Added proxy-release release packaging through `npm run release:proxy-release`
+- Moved the Trial Play navigation item to the right of login and disabled it visually when no URL is configured
+- Documented proxy-release runtime behavior, release packaging, legacy-style tags, usage terms, and trial-play settings
+
 ## file-uploader 1.0.2 - 2026-06-17
 
 - Expanded file-uploader design settings to cover title and table text, cells, labels, inputs, placeholders, button variants, tabs, status messages, admin messages, links, and the admin overlay while retaining old JSON compatibility
