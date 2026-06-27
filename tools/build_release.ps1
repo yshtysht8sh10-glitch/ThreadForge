@@ -1,6 +1,6 @@
 param(
     [switch]$SkipClientBuild,
-    [ValidateSet('image-board', 'file-uploader', 'guide-posts', 'proxy-release', 'materials-library')]
+    [ValidateSet('image-board', 'file-uploader', 'document-holder', 'proxy-release', 'materials-library')]
     [string]$FrontendId = 'image-board',
     [string]$Version = ''
 )
@@ -25,7 +25,9 @@ $packageName = "threadforge-$FrontendId-$Version"
 $deployDirectory = switch ($FrontendId) {
     'image-board' { '11_image_board' }
     'file-uploader' { '12_file_uploader' }
+    'document-holder' { '14_document_holder' }
     'materials-library' { '15_materials_library' }
+    'proxy-release' { '16_proxy_release' }
     default { $FrontendId.Replace('-', '_') }
 }
 $releaseDir = Join-Path $repoRoot 'release'

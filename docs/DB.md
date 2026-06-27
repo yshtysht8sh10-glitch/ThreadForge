@@ -1,4 +1,4 @@
-# DB / Runtime Data
+﻿# DB / Runtime Data
 
 [Japanese DB notes](ja/DB.md)
 
@@ -17,7 +17,7 @@ Current frontend ids:
 
 - `image-board`
 - `file-uploader`
-- `guide-posts`
+- `document-holder`
 - `proxy-release`
 - `materials-library`
 
@@ -38,7 +38,7 @@ This means `file-uploader` release ZIP and `image-board` release ZIP are separat
 
 - [image-board DB](frontends/image-board/DB.md)
 - [file-uploader DB](frontends/file-uploader/DB.md)
-- [guide-posts DB](frontends/guide-posts/DB.md)
+- [document-holder DB](frontends/document-holder/DB.md)
 - [proxy-release DB](frontends/proxy-release/DB.md)
 - [materials-library DB](frontends/materials-library/DB.md)
 
@@ -68,3 +68,4 @@ Release deployment:
 Remove-Item database.sqlite
 Get-ChildItem storage\data -File | Remove-Item
 ```
+

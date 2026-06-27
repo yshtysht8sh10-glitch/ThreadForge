@@ -6,28 +6,29 @@
   "workspaces": [
     "frontends/image-board",
     "frontends/file-uploader",
-    "frontends/guide-posts",
+    "frontends/document-holder",
     "frontends/proxy-release",
     "frontends/materials-library"
   ],
   "scripts": {
     "dev:image-board": "npm --prefix frontends/image-board run dev",
     "dev:file-uploader": "npm --prefix frontends/file-uploader run dev",
-    "dev:guide-posts": "npm --prefix frontends/guide-posts run dev",
+    "dev:document-holder": "npm --prefix frontends/document-holder run dev",
     "dev:proxy-release": "npm --prefix frontends/proxy-release run dev",
     "dev:materials-library": "npm --prefix frontends/materials-library run dev",
     "build:image-board": "npm --prefix frontends/image-board run build",
     "build:file-uploader": "npm --prefix frontends/file-uploader run build",
-    "build:guide-posts": "npm --prefix frontends/guide-posts run build",
+    "build:document-holder": "npm --prefix frontends/document-holder run build",
     "build:proxy-release": "npm --prefix frontends/proxy-release run build",
     "build:materials-library": "npm --prefix frontends/materials-library run build",
-    "build:frontends": "npm run build:image-board && npm run build:file-uploader && npm run build:guide-posts && npm run build:proxy-release && npm run build:materials-library",
+    "build:frontends": "npm run build:image-board && npm run build:file-uploader && npm run build:document-holder && npm run build:proxy-release && npm run build:materials-library",
     "build:docs": "node tools/build_docs.mjs",
     "test:image-board": "npm --prefix frontends/image-board test -- --run",
     "test:file-uploader": "npm --prefix frontends/file-uploader test -- --run",
     "test:materials-library": "npm --prefix frontends/materials-library test -- --run",
     "release:image-board": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId image-board",
     "release:file-uploader": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId file-uploader",
+    "release:document-holder": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId document-holder",
     "release:proxy-release": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId proxy-release",
     "release:materials-library": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId materials-library"
   }

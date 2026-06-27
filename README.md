@@ -11,7 +11,7 @@ The current image-board release is `0.9.7`. The standalone file-uploader release
 - `frontends/image-board/`: current production image posting board frontend
 - `frontends/shared/`: shared frontend code for future frontend apps
 - `frontends/file-uploader/`: file uploader frontend
-- `frontends/guide-posts/`: MUGEN and dot-art guide posting frontend
+- `frontends/document-holder/`: document holder frontend for articles, HTML folders, and guide documents
 - `frontends/proxy-release/`: proxy release frontend
 - `frontends/materials-library/`: production archive-first materials library
 - `server/`: PHP API, SQLite storage, PHPUnit tests
@@ -28,7 +28,7 @@ Root shortcut:
 ```powershell
 npm run dev:image-board
 npm run dev:file-uploader
-npm run dev:guide-posts
+npm run dev:document-holder
 npm run dev:proxy-release
 npm run dev:materials-library
 ```
@@ -126,7 +126,7 @@ Extract the release ZIP and upload the included deployment directory to `/DotoEi
 ```
 
 The image-board ZIP contains `11_image_board/`. The file-uploader ZIP contains `12_file_uploader/`.
-The materials-library ZIP contains `15_materials_library/`. Other frontend ZIPs use the frontend id with hyphens converted to underscores, such as `proxy_release/`.
+The materials-library ZIP contains `15_materials_library/`. The proxy-release ZIP contains `16_proxy_release/`.
 
 The frontend calls `./api.php` on the same site. Runtime DB files and uploaded images are intentionally excluded from the ZIP. On first access, the SQLite DB is created automatically if PHP can write to the deployed directory.
 

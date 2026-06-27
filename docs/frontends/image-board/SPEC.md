@@ -1,4 +1,4 @@
-# ThreadForge Current Specification
+﻿# ThreadForge Current Specification
 
 [Back to specification index](../../SPEC.md)
 [Japanese image-board specification](../../../ja/frontends/image-board/SPEC.md)
@@ -11,7 +11,7 @@ ThreadForge is presented as a new self-hosted board engine that can be adapted f
 
 - `frontends/image-board/`: React 18 + TypeScript + Vite SPA for the current image posting board
 - `frontends/shared/`: shared frontend code
-- `frontends/file-uploader/`, `frontends/guide-posts/`, `frontends/proxy-release/`, `frontends/materials-library/`: frontend app slots
+- `frontends/file-uploader/`, `frontends/document-holder/`, `frontends/proxy-release/`, `frontends/materials-library/`: frontend app slots
 - `server/api.php`: PHP API entrypoint
 - `server/db.php`: SQLite connection, schema initialization, storage helpers
 - `server/runtime/<frontend-id>/database.sqlite`: runtime SQLite DB, ignored by Git
@@ -241,3 +241,4 @@ The PHP API exposes the current version through `?action=version`.
 - CSRF protection.
 - Production deployment packaging.
 - Analytics feature implementation is the next TODO.
+

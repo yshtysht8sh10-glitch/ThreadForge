@@ -23,8 +23,8 @@
         <h2>ファイルアップローダー</h2>
         <ul><li><a href="./frontends/file-uploader/index.html">ファイルアップローダー</a></li><li><a href="./frontends/file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="./frontends/file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
       
-        <h2>指南記事</h2>
-        <ul><li><a href="./frontends/guide-posts/index.html">指南記事</a></li><li><a href="./frontends/guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="./frontends/guide-posts/DB.html">指南記事 DB</a></li></ul>
+        <h2>ドキュメントホルダー</h2>
+        <ul><li><a href="./frontends/document-holder/index.html">ドキュメントホルダー</a></li><li><a href="./frontends/document-holder/SPEC.html">ドキュメントホルダー仕様</a></li><li><a href="./frontends/document-holder/DB.html">ドキュメントホルダー DB</a></li></ul>
       
         <h2>代理公開</h2>
         <ul><li><a href="./frontends/proxy-release/index.html">代理公開</a></li><li><a href="./frontends/proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="./frontends/proxy-release/DB.html">代理公開 DB</a></li></ul>
@@ -45,8 +45,8 @@
         <h2>File Uploader</h2>
         <ul><li><a href="./frontends/file-uploader/index.html">File Uploader</a></li><li><a href="./frontends/file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="./frontends/file-uploader/DB.html">File Uploader DB</a></li></ul>
       
-        <h2>Guide Posts</h2>
-        <ul><li><a href="./frontends/guide-posts/index.html">Guide Posts</a></li><li><a href="./frontends/guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="./frontends/guide-posts/DB.html">Guide Posts DB</a></li></ul>
+        <h2>Document Holder</h2>
+        <ul><li><a href="./frontends/document-holder/index.html">Document Holder</a></li><li><a href="./frontends/document-holder/SPEC.html">Document Holder Spec</a></li><li><a href="./frontends/document-holder/DB.html">Document Holder DB</a></li></ul>
       
         <h2>Proxy Release</h2>
         <ul><li><a href="./frontends/proxy-release/index.html">Proxy Release</a></li><li><a href="./frontends/proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="./frontends/proxy-release/DB.html">Proxy Release DB</a></li></ul>
@@ -66,82 +66,52 @@
           <button type="button" data-language-button="en">English</button>
         </div>
       </header>
-      <article class="docs-article" data-language-panel="ja"><h1 id="フロントエンド構成">フロントエンド構成</h1>
-<p>ThreadForge は、共通バックエンドをひとつ持ち、その上に複数のフロントエンドを載せる構成へ移行します。現在のドット絵板は「唯一の画面」ではなく、最初のフロントエンドとして扱います。</p>
-<h2 id="現在の配置">現在の配置</h2>
+      <article class="docs-article" data-language-panel="ja"><h1 id="繝輔ο繝ｳ繝医お繝ｳ繝画ｧ区">繝輔Ο繝ｳ繝医お繝ｳ繝画ｧ区・</h1>
+<p>ThreadForge 縺ｯ縲∝・騾壹ヰ繝・け繧ｨ繝ｳ繝峨ｒ縺ｲ縺ｨ縺､謖√■縲√◎縺ｮ荳翫↓隍・焚縺ｮ繝輔Ο繝ｳ繝医お繝ｳ繝峨ｒ霈峨○繧区ｧ区・縺ｸ遘ｻ陦後＠縺ｾ縺吶ら樟蝨ｨ縺ｮ繝峨ャ繝育ｵｵ譚ｿ縺ｯ縲悟髪荳縺ｮ逕ｻ髱｢縲阪〒縺ｯ縺ｪ縺上∵怙蛻昴・繝輔Ο繝ｳ繝医お繝ｳ繝峨→縺励※謇ｱ縺・∪縺吶・</p>
+<h2 id="迴ｾ蝨ｨ縺ｮ驟咲ｽｮ">迴ｾ蝨ｨ縺ｮ驟咲ｽｮ</h2>
 <pre><code class="language-text">frontends/
-  image-board/          現在の本番画像投稿掲示板フロント
-  file-uploader/        ファイルアップローダ用フロント
-  guide-posts/          制作指南・記事投稿所用フロント
-  proxy-release/        MUGEN キャラ代理公開所用フロント
-  materials-library/    制作素材提供所用フロント
-  shared/               フロント共通部品
-server/                 共通 PHP バックエンドと SQLite ストレージ</code></pre>
-<p><code>frontends/image-board</code> は、これまで <code>client/</code> にあった既存の本番アプリです。<br>それ以外のフロントにも、各 <code>legacy/</code> サイトを元にした React/Vite の初期実装があります。</p>
-<h2 id="目指す形">目指す形</h2>
+  image-board/          迴ｾ蝨ｨ縺ｮ譛ｬ逡ｪ逕ｻ蜒乗兜遞ｿ謗ｲ遉ｺ譚ｿ繝輔Ο繝ｳ繝・  file-uploader/        繝輔ぃ繧､繝ｫ繧｢繝・・繝ｭ繝ｼ繝逕ｨ繝輔Ο繝ｳ繝・  document-holder/          蛻ｶ菴懈欠蜊励・險倅ｺ区兜遞ｿ謇逕ｨ繝輔Ο繝ｳ繝・  proxy-release/        MUGEN 繧ｭ繝｣繝ｩ莉｣逅・・髢区園逕ｨ繝輔Ο繝ｳ繝・  materials-library/    蛻ｶ菴懃ｴ譚先署萓帶園逕ｨ繝輔Ο繝ｳ繝・  shared/               繝輔Ο繝ｳ繝亥・騾夐Κ蜩・server/                 蜈ｱ騾・PHP 繝舌ャ繧ｯ繧ｨ繝ｳ繝峨→ SQLite 繧ｹ繝医Ξ繝ｼ繧ｸ</code></pre>
+<p><code>frontends/image-board</code> 縺ｯ縲√％繧後∪縺ｧ <code>client/</code> 縺ｫ縺ゅ▲縺滓里蟄倥・譛ｬ逡ｪ繧｢繝励Μ縺ｧ縺吶・縺昴ｌ莉･螟悶・繝輔Ο繝ｳ繝医↓繧ゅ∝推 <code>legacy/</code> 繧ｵ繧､繝医ｒ蜈・↓縺励◆ React/Vite 縺ｮ蛻晄悄螳溯｣・′縺ゅｊ縺ｾ縺吶・</p>
+<h2 id="逶ｮ謖-蠖">逶ｮ謖・☆蠖｢</h2>
 <ul>
-<li>認証、投稿、返信、ファイル、分析、SSO、設定はできるだけ <code>server/</code> の共通バックエンドコードに集約します。</li>
-<li>バックエンドコードは共通にしますが、DB とアップロードファイル置き場はフロントエンドIDごとに分離します。</li>
-<li>画面遷移、レイアウト、見た目、文言、ルート構成は各フロントエンドの中に閉じます。</li>
-<li>UI 部品、hooks、型、API ヘルパーは、複数フロントで本当に使うことが見えてから <code>frontends/shared/</code> に移します。</li>
-<li>ビルドとリリースはフロントエンド単位で進めます。リリーススクリプトにフロントIDを指定し、そのフロントと共通バックエンドを梱包します。</li>
-<li>フロントごとの差分は、バックエンドを分岐させるより小さなアダプタで吸収する方針です。</li>
+<li>隱崎ｨｼ縲∵兜遞ｿ縲∬ｿ比ｿ｡縲√ヵ繧｡繧､繝ｫ縲∝・譫舌ヾSO縲∬ｨｭ螳壹・縺ｧ縺阪ｋ縺縺・<code>server/</code> 縺ｮ蜈ｱ騾壹ヰ繝・け繧ｨ繝ｳ繝峨さ繝ｼ繝峨↓髮・ｴ・＠縺ｾ縺吶・- 繝舌ャ繧ｯ繧ｨ繝ｳ繝峨さ繝ｼ繝峨・蜈ｱ騾壹↓縺励∪縺吶′縲．B 縺ｨ繧｢繝・・繝ｭ繝ｼ繝峨ヵ繧｡繧､繝ｫ鄂ｮ縺榊ｴ縺ｯ繝輔Ο繝ｳ繝医お繝ｳ繝迂D縺斐→縺ｫ蛻・屬縺励∪縺吶・- 逕ｻ髱｢驕ｷ遘ｻ縲√Ξ繧､繧｢繧ｦ繝医∬ｦ九◆逶ｮ縲∵枚險縲√Ν繝ｼ繝域ｧ区・縺ｯ蜷・ヵ繝ｭ繝ｳ繝医お繝ｳ繝峨・荳ｭ縺ｫ髢峨§縺ｾ縺吶・- UI 驛ｨ蜩√”ooks縲∝梛縲、PI 繝倥Ν繝代・縺ｯ縲∬､・焚繝輔Ο繝ｳ繝医〒譛ｬ蠖薙↓菴ｿ縺・％縺ｨ縺瑚ｦ九∴縺ｦ縺九ｉ <code>frontends/shared/</code> 縺ｫ遘ｻ縺励∪縺吶・- 繝薙Ν繝峨→繝ｪ繝ｪ繝ｼ繧ｹ縺ｯ繝輔Ο繝ｳ繝医お繝ｳ繝牙腰菴阪〒騾ｲ繧√∪縺吶ゅΜ繝ｪ繝ｼ繧ｹ繧ｹ繧ｯ繝ｪ繝励ヨ縺ｫ繝輔Ο繝ｳ繝・D繧呈欠螳壹＠縲√◎縺ｮ繝輔Ο繝ｳ繝医→蜈ｱ騾壹ヰ繝・け繧ｨ繝ｳ繝峨ｒ譴ｱ蛹・＠縺ｾ縺吶・- 繝輔Ο繝ｳ繝医＃縺ｨ縺ｮ蟾ｮ蛻・・縲√ヰ繝・け繧ｨ繝ｳ繝峨ｒ蛻・ｲ舌＆縺帙ｋ繧医ｊ蟆上＆縺ｪ繧｢繝繝励ち縺ｧ蜷ｸ蜿弱☆繧区婿驥昴〒縺吶・</li>
 </ul>
-<h2 id="ランタイムデータの分離">ランタイムデータの分離</h2>
-<p>各フロントエンドは、それぞれ別の <code>THREADFORGE_FRONTEND_ID</code> で動かします。標準では次の場所にデータを保存します。</p>
+<h2 id="繝ｩ繝ｳ繧ｿ繧-繝-繝-繧ｿ縺ｮ蛻-屬">繝ｩ繝ｳ繧ｿ繧､繝繝・・繧ｿ縺ｮ蛻・屬</h2>
+<p>蜷・ヵ繝ｭ繝ｳ繝医お繝ｳ繝峨・縲√◎繧後◇繧悟挨縺ｮ <code>THREADFORGE_FRONTEND_ID</code> 縺ｧ蜍輔°縺励∪縺吶よｨ呎ｺ悶〒縺ｯ谺｡縺ｮ蝣ｴ謇縺ｫ繝・・繧ｿ繧剃ｿ晏ｭ倥＠縺ｾ縺吶・</p>
 <pre><code class="language-text">server/runtime/&lt;frontend-id&gt;/database.sqlite
 server/runtime/&lt;frontend-id&gt;/storage/data/</code></pre>
-<p>たとえば <code>image-board</code> と <code>file-uploader</code> は、投稿、ユーザー、設定、セッション、アップロードファイルを共有しません。PHP のバックエンドコードは共通でも、DB とファイルは完全に別になります。</p>
-<p>ローカル起動例:</p>
+<p>縺溘→縺医・ <code>image-board</code> 縺ｨ <code>file-uploader</code> 縺ｯ縲∵兜遞ｿ縲√Θ繝ｼ繧ｶ繝ｼ縲∬ｨｭ螳壹√そ繝・す繝ｧ繝ｳ縲√い繝・・繝ｭ繝ｼ繝峨ヵ繧｡繧､繝ｫ繧貞・譛峨＠縺ｾ縺帙ｓ縲１HP 縺ｮ繝舌ャ繧ｯ繧ｨ繝ｳ繝峨さ繝ｼ繝峨・蜈ｱ騾壹〒繧ゅ．B 縺ｨ繝輔ぃ繧､繝ｫ縺ｯ螳悟・縺ｫ蛻･縺ｫ縺ｪ繧翫∪縺吶・<br>繝ｭ繝ｼ繧ｫ繝ｫ襍ｷ蜍穂ｾ・</p>
 <pre><code class="language-powershell">$env:THREADFORGE_FRONTEND_ID = 'image-board'
 php -S 127.0.0.1:8000 -t server</code></pre>
 <pre><code class="language-powershell">$env:THREADFORGE_FRONTEND_ID = 'file-uploader'
 php -S 127.0.0.1:8001 -t server</code></pre>
-<h2 id="フロントエンド">フロントエンド</h2>
+<h2 id="繝輔ο繝ｳ繝医お繝ｳ繝">繝輔Ο繝ｳ繝医お繝ｳ繝・</h2>
 <ul>
-<li><code>image-board</code>: 現在の ThreadForge 画像投稿掲示板。</li>
-<li><code>file-uploader</code>: コメント、サイズ情報、削除キー、ページングを持つファイルアップローダ。</li>
-<li><code>guide-posts</code>: MUGEN やドット絵制作知識を扱う記事投稿型サイト。</li>
-<li><code>proxy-release</code>: MUGEN キャラやプラグインなどの代理公開サイト。</li>
-<li><code>materials-library</code>: 利用条件付きの素材とダウンロードを一覧できる素材庫。</li>
+<li><code>image-board</code>: 迴ｾ蝨ｨ縺ｮ ThreadForge 逕ｻ蜒乗兜遞ｿ謗ｲ遉ｺ譚ｿ縲・- <code>file-uploader</code>: 繧ｳ繝｡繝ｳ繝医√し繧､繧ｺ諠・ｱ縲∝炎髯､繧ｭ繝ｼ縲√・繝ｼ繧ｸ繝ｳ繧ｰ繧呈戟縺､繝輔ぃ繧､繝ｫ繧｢繝・・繝ｭ繝ｼ繝縲・- <code>document-holder</code>: MUGEN 繧・ラ繝・ヨ邨ｵ蛻ｶ菴懃衍隴倥ｒ謇ｱ縺・ｨ倅ｺ区兜遞ｿ蝙九し繧､繝医・- <code>proxy-release</code>: MUGEN 繧ｭ繝｣繝ｩ繧・・繝ｩ繧ｰ繧､繝ｳ縺ｪ縺ｩ縺ｮ莉｣逅・・髢九し繧､繝医・- <code>materials-library</code>: 蛻ｩ逕ｨ譚｡莉ｶ莉倥″縺ｮ邏譚舌→繝繧ｦ繝ｳ繝ｭ繝ｼ繝峨ｒ荳隕ｧ縺ｧ縺阪ｋ邏譚仙ｺｫ縲・</li>
 </ul>
-<h2 id="legacy-からの移植方針">legacy からの移植方針</h2>
+<h2 id="legacy-縺九ｉ縺ｮ遘ｻ讀肴婿驥">legacy 縺九ｉ縺ｮ遘ｻ讀肴婿驥・</h2>
 <ul>
-<li>各新規フロントの <code>legacy/</code> は、見た目と内容の参照元として残します。</li>
-<li>初期 React アプリは、legacy の色合いと大まかなレイアウトを残しつつ、Vite でビルドできる現代的な構成にします。</li>
-<li><code>file-uploader</code> は、薄いグレーのアップロードフォームと表組みを維持します。</li>
-<li><code>guide-posts</code> は、白背景、青緑の固定ヘッダ、左メニューと記事本文の構成を維持します。</li>
-<li><code>proxy-release</code> は、暗い背景と明るい緑文字の雰囲気を維持します。</li>
-<li><code>materials-library</code> は、黒背景、淡い黄色文字、利用条件表付き素材カードを維持します。</li>
-<li>legacy の画像を使う場合は <code>new URL('../legacy/...', import.meta.url).href</code> で React 側へ取り込みます。</li>
+<li>蜷・眠隕上ヵ繝ｭ繝ｳ繝医・ <code>legacy/</code> 縺ｯ縲∬ｦ九◆逶ｮ縺ｨ蜀・ｮｹ縺ｮ蜿ら・蜈・→縺励※谿九＠縺ｾ縺吶・- 蛻晄悄 React 繧｢繝励Μ縺ｯ縲〕egacy 縺ｮ濶ｲ蜷医＞縺ｨ螟ｧ縺ｾ縺九↑繝ｬ繧､繧｢繧ｦ繝医ｒ谿九＠縺､縺､縲〃ite 縺ｧ繝薙Ν繝峨〒縺阪ｋ迴ｾ莉｣逧・↑讒区・縺ｫ縺励∪縺吶・- <code>file-uploader</code> 縺ｯ縲∬埋縺・げ繝ｬ繝ｼ縺ｮ繧｢繝・・繝ｭ繝ｼ繝峨ヵ繧ｩ繝ｼ繝縺ｨ陦ｨ邨・∩繧堤ｶｭ謖√＠縺ｾ縺吶・- <code>document-holder</code> 縺ｯ縲∫區閭梧勹縲・搨邱代・蝗ｺ螳壹・繝・ム縲∝ｷｦ繝｡繝九Η繝ｼ縺ｨ險倅ｺ区悽譁・・讒区・繧堤ｶｭ謖√＠縺ｾ縺吶・- <code>proxy-release</code> 縺ｯ縲∵囓縺・レ譎ｯ縺ｨ譏弱ｋ縺・ｷ第枚蟄励・髮ｰ蝗ｲ豌励ｒ邯ｭ謖√＠縺ｾ縺吶・- <code>materials-library</code> 縺ｯ縲・ｻ定レ譎ｯ縲∵ｷ｡縺・ｻ・牡譁・ｭ励∝茜逕ｨ譚｡莉ｶ陦ｨ莉倥″邏譚舌き繝ｼ繝峨ｒ邯ｭ謖√＠縺ｾ縺吶・- legacy 縺ｮ逕ｻ蜒上ｒ菴ｿ縺・ｴ蜷医・ <code>new URL('../legacy/...', import.meta.url).href</code> 縺ｧ React 蛛ｴ縺ｸ蜿悶ｊ霎ｼ縺ｿ縺ｾ縺吶・</li>
 </ul>
-<h2 id="作業ルール">作業ルール</h2>
+<h2 id="菴懈-ｭ繝ｫ繝ｼ繝ｫ">菴懈･ｭ繝ｫ繝ｼ繝ｫ</h2>
 <ol>
-<li>新しいフロントは <code>frontends/&lt;name&gt;/</code> の下に作ります。</li>
-<li>具体的な別フロントから直接 import しません。</li>
-<li>重複が出たら最初はローカルに持ち、再利用が確定してから <code>frontends/shared/</code> に移します。</li>
-<li>共通バックエンドの契約は <code>docs/ja/SPEC.md</code> に残します。</li>
-<li>リリーススクリプトは、どのフロントを梱包するか明示します。</li>
+<li>譁ｰ縺励＞繝輔Ο繝ｳ繝医・ <code>frontends/&lt;name&gt;/</code> 縺ｮ荳九↓菴懊ｊ縺ｾ縺吶・2. 蜈ｷ菴鍋噪縺ｪ蛻･繝輔Ο繝ｳ繝医°繧臥峩謗･ import 縺励∪縺帙ｓ縲・3. 驥崎､・′蜃ｺ縺溘ｉ譛蛻昴・繝ｭ繝ｼ繧ｫ繝ｫ縺ｫ謖√■縲∝・蛻ｩ逕ｨ縺檎｢ｺ螳壹＠縺ｦ縺九ｉ <code>frontends/shared/</code> 縺ｫ遘ｻ縺励∪縺吶・4. 蜈ｱ騾壹ヰ繝・け繧ｨ繝ｳ繝峨・螂醍ｴ・・ <code>docs/ja/SPEC.md</code> 縺ｫ谿九＠縺ｾ縺吶・5. 繝ｪ繝ｪ繝ｼ繧ｹ繧ｹ繧ｯ繝ｪ繝励ヨ縺ｯ縲√←縺ｮ繝輔Ο繝ｳ繝医ｒ譴ｱ蛹・☆繧九°譏守､ｺ縺励∪縺吶・</li>
 </ol>
-<p>リリース例:</p>
+<p>繝ｪ繝ｪ繝ｼ繧ｹ萓・</p>
 <pre><code class="language-powershell">npm run release:image-board
 npm run release:file-uploader</code></pre>
-<h2 id="バージョン管理">バージョン管理</h2>
+<h2 id="繝舌-繧ｸ繝ｧ繝ｳ邂-逅">繝舌・繧ｸ繝ｧ繝ｳ邂｡逅・</h2>
 <ul>
-<li>各フロントは独立したセマンティックバージョンを持ちます。<code>image-board</code> と <code>file-uploader</code> のバージョンは一致させる必要がありません。</li>
-<li>アプリのバージョンは各 <code>frontends/&lt;frontend-id&gt;/package.json</code> を基準にし、リリースZIP名にも含めます。</li>
-<li>Gitタグは <code>image-board-v0.9.7</code>、<code>file-uploader-v0.1.0</code> のようにフロントIDを付けます。</li>
-<li>ルートのバージョンは開発ワークスペース全体の管理用とし、単体アプリのリリース番号には使いません。</li>
-<li>共通バックエンドは各アプリのリリースへ同梱します。APIに互換性のない変更が入る場合だけ、別途API互換バージョンを更新します。</li>
+<li>蜷・ヵ繝ｭ繝ｳ繝医・迢ｬ遶九＠縺溘そ繝槭Φ繝・ぅ繝・け繝舌・繧ｸ繝ｧ繝ｳ繧呈戟縺｡縺ｾ縺吶Ａimage-board<code> 縺ｨ </code>file-uploader<code> 縺ｮ繝舌・繧ｸ繝ｧ繝ｳ縺ｯ荳閾ｴ縺輔○繧句ｿ・ｦ√′縺ゅｊ縺ｾ縺帙ｓ縲・- 繧｢繝励Μ縺ｮ繝舌・繧ｸ繝ｧ繝ｳ縺ｯ蜷・</code>frontends/&lt;frontend-id&gt;/package.json<code> 繧貞渕貅悶↓縺励√Μ繝ｪ繝ｼ繧ｹZIP蜷阪↓繧ょ性繧√∪縺吶・- Git繧ｿ繧ｰ縺ｯ </code>image-board-v0.9.7<code>縲～file-uploader-v0.1.0</code> 縺ｮ繧医≧縺ｫ繝輔Ο繝ｳ繝・D繧剃ｻ倥￠縺ｾ縺吶・- 繝ｫ繝ｼ繝医・繝舌・繧ｸ繝ｧ繝ｳ縺ｯ髢狗匱繝ｯ繝ｼ繧ｯ繧ｹ繝壹・繧ｹ蜈ｨ菴薙・邂｡逅・畑縺ｨ縺励∝腰菴薙い繝励Μ縺ｮ繝ｪ繝ｪ繝ｼ繧ｹ逡ｪ蜿ｷ縺ｫ縺ｯ菴ｿ縺・∪縺帙ｓ縲・- 蜈ｱ騾壹ヰ繝・け繧ｨ繝ｳ繝峨・蜷・い繝励Μ縺ｮ繝ｪ繝ｪ繝ｼ繧ｹ縺ｸ蜷梧｢ｱ縺励∪縺吶・PI縺ｫ莠呈鋤諤ｧ縺ｮ縺ｪ縺・､画峩縺悟・繧句ｴ蜷医□縺代∝挨騾尿PI莠呈鋤繝舌・繧ｸ繝ｧ繝ｳ繧呈峩譁ｰ縺励∪縺吶・</li>
 </ul>
-<p>これで今のドット絵板を守りながら、新しい掲示板たちをひとつずつ育てられる状態にします。</p></article>
+<p>縺薙ｌ縺ｧ莉翫・繝峨ャ繝育ｵｵ譚ｿ繧貞ｮ医ｊ縺ｪ縺後ｉ縲∵眠縺励＞謗ｲ遉ｺ譚ｿ縺溘■繧偵・縺ｨ縺､縺壹▽閧ｲ縺ｦ繧峨ｌ繧狗憾諷九↓縺励∪縺吶・</p></article>
       <article class="docs-article" data-language-panel="en"><h1 id="frontend-architecture">Frontend Architecture</h1>
 <p>ThreadForge is moving toward one common backend with multiple frontend applications. The current image posting board is now treated as the first frontend, not as the only frontend.</p>
 <h2 id="current-layout">Current Layout</h2>
 <pre><code class="language-text">frontends/
   image-board/          Current production image posting board frontend
   file-uploader/        File uploader frontend
-  guide-posts/          Guide/article posting frontend
+  document-holder/          Guide/article posting frontend
   proxy-release/        MUGEN proxy release frontend
   materials-library/    Materials library frontend
   shared/               Shared frontend code
@@ -168,7 +138,7 @@ storage/data/</code></pre>
 <ul>
 <li><code>image-board</code>: the current ThreadForge image posting board.</li>
 <li><code>file-uploader</code>: a file upload list with comments, size metadata, delete keys, and paging.</li>
-<li><code>guide-posts</code>: an article-style posting site for MUGEN and dot-art production knowledge.</li>
+<li><code>document-holder</code>: an article-style posting site for MUGEN and dot-art production knowledge.</li>
 <li><code>proxy-release</code>: a proxy release site for MUGEN characters, plugins, or related packages.</li>
 <li><code>materials-library</code>: a browseable material library with downloads and usage flags.</li>
 </ul>
@@ -177,7 +147,7 @@ storage/data/</code></pre>
 <li>Each new frontend keeps the source legacy site in <code>legacy/</code> for visual and content reference.</li>
 <li>The first-pass React apps intentionally copy the color palette and broad layout from legacy while using modern components and Vite builds.</li>
 <li><code>file-uploader</code> keeps the gray table/upload-form feel.</li>
-<li><code>guide-posts</code> keeps the white page, fixed teal header, and left menu/article layout.</li>
+<li><code>document-holder</code> keeps the white page, fixed teal header, and left menu/article layout.</li>
 <li><code>proxy-release</code> keeps the dark background and bright green text.</li>
 <li><code>materials-library</code> keeps the black background, pale yellow text, and material cards with rule tables.</li>
 <li>Legacy assets can be imported into React with <code>new URL('../legacy/...', import.meta.url).href</code> when a screen needs representative images.</li>

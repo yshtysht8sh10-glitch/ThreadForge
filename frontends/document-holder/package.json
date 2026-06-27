@@ -1,5 +1,5 @@
 {
-  "name": "@threadforge/guide-posts-frontend",
+  "name": "@threadforge/document-holder-frontend",
   "private": true,
   "version": "0.9.7",
   "type": "module",
@@ -18,3 +18,4 @@
     "vite": "^5.4.1"
   }
 }
+

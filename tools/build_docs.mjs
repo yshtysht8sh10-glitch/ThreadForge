@@ -9,7 +9,7 @@ const docsDir = path.join(rootDir, 'docs');
 const frontends = [
   ['image-board', 'Image Board', '画像掲示板'],
   ['file-uploader', 'File Uploader', 'ファイルアップローダー'],
-  ['guide-posts', 'Guide Posts', '指南記事'],
+  ['document-holder', 'Document Holder', 'ドキュメントホルダー'],
   ['proxy-release', 'Proxy Release', '代理公開'],
   ['materials-library', 'Materials Library', '素材ライブラリ'],
 ];

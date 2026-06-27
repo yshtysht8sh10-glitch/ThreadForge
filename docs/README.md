@@ -1,4 +1,4 @@
-# ThreadForge Docs
+﻿# ThreadForge Docs
 
 The human-facing documentation is generated as bilingual HTML. Open [`index.html`](index.html) and switch Japanese/English on the page.
 
@@ -32,9 +32,9 @@ Each frontend owns its own README, DB notes, and spec.
 - `frontends/file-uploader/README.md`
 - `frontends/file-uploader/DB.md`
 - `frontends/file-uploader/SPEC.md`
-- `frontends/guide-posts/README.md`
-- `frontends/guide-posts/DB.md`
-- `frontends/guide-posts/SPEC.md`
+- `frontends/document-holder/README.md`
+- `frontends/document-holder/DB.md`
+- `frontends/document-holder/SPEC.md`
 - `frontends/proxy-release/README.md`
 - `frontends/proxy-release/DB.md`
 - `frontends/proxy-release/SPEC.md`
@@ -57,7 +57,7 @@ npm run release:proxy-release
 npm run release:materials-library
 ```
 
-Release ZIPs are written to `release/threadforge-<frontend-id>-<version>.zip`. Image Board uses `11_image_board/`, File Uploader uses `12_file_uploader/`, Materials Library uses `15_materials_library/`, and other frontends use their frontend id with hyphens converted to underscores.
+Release ZIPs are written to `release/threadforge-<frontend-id>-<version>.zip`. Image Board uses `11_image_board/`, File Uploader uses `12_file_uploader/`, Materials Library uses `15_materials_library/`, and Proxy Release uses `16_proxy_release/`.
 
 For a GitHub release, update `VERSION` and the changelog, generate and verify the ZIP, then create the matching `v<version>` tag and attach the ZIP to the GitHub Release.
 
@@ -105,3 +105,4 @@ The local archive importer reads `LOG_*.cgi` files and referenced images from th
 - CSRF protection
 - Production deployment packaging
 - Analytics feature implementation
+

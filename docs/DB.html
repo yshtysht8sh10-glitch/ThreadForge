@@ -23,8 +23,8 @@
         <h2>ファイルアップローダー</h2>
         <ul><li><a href="./frontends/file-uploader/index.html">ファイルアップローダー</a></li><li><a href="./frontends/file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="./frontends/file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
       
-        <h2>指南記事</h2>
-        <ul><li><a href="./frontends/guide-posts/index.html">指南記事</a></li><li><a href="./frontends/guide-posts/SPEC.html">指南記事仕様</a></li><li><a href="./frontends/guide-posts/DB.html">指南記事 DB</a></li></ul>
+        <h2>ドキュメントホルダー</h2>
+        <ul><li><a href="./frontends/document-holder/index.html">ドキュメントホルダー</a></li><li><a href="./frontends/document-holder/SPEC.html">ドキュメントホルダー仕様</a></li><li><a href="./frontends/document-holder/DB.html">ドキュメントホルダー DB</a></li></ul>
       
         <h2>代理公開</h2>
         <ul><li><a href="./frontends/proxy-release/index.html">代理公開</a></li><li><a href="./frontends/proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="./frontends/proxy-release/DB.html">代理公開 DB</a></li></ul>
@@ -45,8 +45,8 @@
         <h2>File Uploader</h2>
         <ul><li><a href="./frontends/file-uploader/index.html">File Uploader</a></li><li><a href="./frontends/file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="./frontends/file-uploader/DB.html">File Uploader DB</a></li></ul>
       
-        <h2>Guide Posts</h2>
-        <ul><li><a href="./frontends/guide-posts/index.html">Guide Posts</a></li><li><a href="./frontends/guide-posts/SPEC.html">Guide Posts Spec</a></li><li><a href="./frontends/guide-posts/DB.html">Guide Posts DB</a></li></ul>
+        <h2>Document Holder</h2>
+        <ul><li><a href="./frontends/document-holder/index.html">Document Holder</a></li><li><a href="./frontends/document-holder/SPEC.html">Document Holder Spec</a></li><li><a href="./frontends/document-holder/DB.html">Document Holder DB</a></li></ul>
       
         <h2>Proxy Release</h2>
         <ul><li><a href="./frontends/proxy-release/index.html">Proxy Release</a></li><li><a href="./frontends/proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="./frontends/proxy-release/DB.html">Proxy Release DB</a></li></ul>
@@ -67,34 +67,33 @@
         </div>
       </header>
       <article class="docs-article" data-language-panel="ja"><h1 id="db-ランタイムデータ">DB / ランタイムデータ</h1>
-<p>ThreadForge は共通の PHP バックエンドを使いますが、DB とアップロードファイルはフロントごとに独立させます。</p>
-<h2 id="開発環境">開発環境</h2>
+<p>ThreadForge は共通のPHPバックエンドを使いますが、DBとアップロードファイルはフロントエンドごとに分離します。</p>
 <p>開発中は <code>THREADFORGE_FRONTEND_ID</code> ごとに次の場所へ保存します。</p>
 <pre><code class="language-text">server/runtime/&lt;frontend-id&gt;/database.sqlite
 server/runtime/&lt;frontend-id&gt;/storage/data/</code></pre>
-<p>現在のフロントID:</p>
+<p>現在のフロントエンドID:</p>
 <ul>
 <li><code>image-board</code></li>
 <li><code>file-uploader</code></li>
-<li><code>guide-posts</code></li>
+<li><code>document-holder</code></li>
 <li><code>proxy-release</code></li>
 <li><code>materials-library</code></li>
 </ul>
-<p>5つのフロントは、投稿、設定、セッション、ユーザー、アップロードファイルを共有しません。</p>
+<p>5つのフロントエンドは、投稿、設定、セッション、ユーザー、アップロードファイルを共有しません。</p>
 <h2 id="リリースzip">リリースZip</h2>
-<p>リリースZipはフロント単体のソフトとして作ります。展開後は、その単体アプリ内に保存します。</p>
+<p>リリースZipはフロントエンド単体のソフトとして作ります。展開後は、その単体アプリ内に保存します。</p>
 <pre><code class="language-text">database.sqlite
 storage/data/</code></pre>
-<p>つまり <code>file-uploader</code> のZipと <code>image-board</code> のZipは別アプリで、それぞれ自分の <code>database.sqlite</code> を持ちます。</p>
-<h2 id="フロント別dbドキュメント">フロント別DBドキュメント</h2>
+<p>つまり <code>file-uploader</code> のZipと <code>image-board</code> のZipは別アプリで、それぞれが自分の <code>database.sqlite</code> を持ちます。</p>
+<h2 id="フロントエンド別dbドキュメント">フロントエンド別DBドキュメント</h2>
 <ul>
 <li><a href="frontends/image-board/DB.html">image-board DB</a></li>
 <li><a href="frontends/file-uploader/DB.html">file-uploader DB</a></li>
-<li><a href="frontends/guide-posts/DB.html">guide-posts DB</a></li>
+<li><a href="frontends/document-holder/DB.html">document-holder DB</a></li>
 <li><a href="frontends/proxy-release/DB.html">proxy-release DB</a></li>
 <li><a href="frontends/materials-library/DB.html">materials-library DB</a></li>
 </ul>
-<h2 id="環境変数">環境変数</h2>
+<h2 id="主な環境変数">主な環境変数</h2>
 <ul>
 <li><code>THREADFORGE_FRONTEND_ID</code>: 開発中のランタイム保存先を選ぶ</li>
 <li><code>THREADFORGE_DB_FILE</code>: SQLiteファイルの完全なパス</li>
@@ -103,12 +102,9 @@ storage/data/</code></pre>
 </ul>
 <h2 id="クリーン初期化">クリーン初期化</h2>
 <p>本当に初期化したいときだけ使います。</p>
-<p>開発環境:</p>
-<pre><code class="language-powershell">Remove-Item server\runtime\&lt;frontend-id&gt;\database.sqlite
-Get-ChildItem server\runtime\&lt;frontend-id&gt;\storage\data -File | Remove-Item</code></pre>
-<p>リリース配置先:</p>
-<pre><code class="language-powershell">Remove-Item database.sqlite
-Get-ChildItem storage\data -File | Remove-Item</code></pre></article>
+<pre><code class="language-powershell">Remove-Item server/runtime/&lt;frontend-id&gt;/database.sqlite
+Remove-Item server/runtime/&lt;frontend-id&gt;/storage/data/* -Recurse</code></pre>
+<p>リリース配置先では、そのアプリ配下の <code>database.sqlite</code> と <code>storage/data/</code> をバックアップしてから削除してください。</p></article>
       <article class="docs-article" data-language-panel="en"><h1 id="db-runtime-data">DB / Runtime Data</h1>
 <p>ThreadForge uses one common PHP backend, but each frontend owns its own runtime database and uploaded-file storage.</p>
 <h2 id="development-layout">Development Layout</h2>
@@ -119,7 +115,7 @@ server/runtime/&lt;frontend-id&gt;/storage/data/</code></pre>
 <ul>
 <li><code>image-board</code></li>
 <li><code>file-uploader</code></li>
-<li><code>guide-posts</code></li>
+<li><code>document-holder</code></li>
 <li><code>proxy-release</code></li>
 <li><code>materials-library</code></li>
 </ul>
@@ -133,7 +129,7 @@ storage/data/</code></pre>
 <ul>
 <li><a href="frontends/image-board/DB.html">image-board DB</a></li>
 <li><a href="frontends/file-uploader/DB.html">file-uploader DB</a></li>
-<li><a href="frontends/guide-posts/DB.html">guide-posts DB</a></li>
+<li><a href="frontends/document-holder/DB.html">document-holder DB</a></li>
 <li><a href="frontends/proxy-release/DB.html">proxy-release DB</a></li>
 <li><a href="frontends/materials-library/DB.html">materials-library DB</a></li>
 </ul>

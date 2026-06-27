@@ -118,6 +118,9 @@ function handleApiRequest(): void
         case 'materialAnalytics':
             materialAnalytics($pdo);
             break;
+        case 'recordMaterialView':
+            recordMaterialView($pdo);
+            break;
         case 'updateMaterialProfile':
             updateMaterialProfile($pdo);
             break;
@@ -3812,6 +3815,7 @@ function restoreSqliteBackup(string $path): void
             'file-uploader' => 'uploader_files',
             'materials-library' => 'material_items',
             'proxy-release' => 'material_items',
+            'document-holder' => 'material_items',
             default => 'posts',
         };
         $test->query('SELECT COUNT(*) FROM ' . $requiredTable)->fetchColumn();
@@ -4464,25 +4468,120 @@ function changeAdminPassword(PDO $pdo): void
     jsonResponse(['success' => true, 'message' => '管理パスワードを変更しました。']);
 }
 
+
+function materialDefaultTitle(): string
+{
+    return match (FRONTEND_ID) {
+        'proxy-release' => 'Proxy Release',
+        'document-holder' => 'DollMu,File',
+        default => '■素材庫■',
+    };
+}
+
+function materialDefaultDescription(): string
+{
+    return match (FRONTEND_ID) {
+        'proxy-release' => 'MUGEN character release archives grouped by author and category.',
+        'document-holder' => 'MUGENやドット絵制作に関する投稿ページを、タグと作者名で整理して保管します。',
+        default => '制作に役立つ素材を、用途と作者ごとに整理して保管します。',
+    };
+}
+
+function materialDefaultDescriptionBannerEnabled(): bool
+{
+    return FRONTEND_ID === 'document-holder';
+}
+
+function materialDefaultDescriptionBannerImageUrl(): string
+{
+    return FRONTEND_ID === 'document-holder' ? './assets/dollmu-file-banner.gif' : '';
+}
+
+function materialDefaultDescriptionBannerAlt(): string
+{
+    return FRONTEND_ID === 'document-holder' ? 'DollMu,File' : materialDefaultTitle();
+}
+
+function materialDefaultDescriptionBanners(): array
+{
+    if (FRONTEND_ID !== 'document-holder') {
+        return [];
+    }
+    return array_map(
+        static fn(string $file): array => ['imageUrl' => './assets/' . $file, 'linkUrl' => '', 'alt' => 'DollMu,File'],
+        ['title01.gif', 'title02.gif', 'title03.gif', 'title04.gif']
+    );
+}
+
+function materialDescriptionBanners(array $config): array
+{
+    $raw = $config['materialsDescriptionBanners'] ?? null;
+    $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+    if (is_array($decoded) && $decoded !== []) {
+        return array_values(array_filter(array_map(static function ($banner): ?array {
+            if (!is_array($banner)) {
+                return null;
+            }
+            $imageUrl = trim((string)($banner['imageUrl'] ?? $banner['image_url'] ?? ''));
+            if ($imageUrl === '') {
+                return null;
+            }
+            return [
+                'imageUrl' => $imageUrl,
+                'linkUrl' => trim((string)($banner['linkUrl'] ?? $banner['link_url'] ?? '')),
+                'alt' => trim((string)($banner['alt'] ?? materialDefaultDescriptionBannerAlt())),
+            ];
+        }, $decoded)));
+    }
+
+    if (!array_key_exists('materialsDescriptionBannerImageUrl', $config)) {
+        return materialDefaultDescriptionBanners();
+    }
+    $single = trim((string)$config['materialsDescriptionBannerImageUrl']);
+    if ($single !== '') {
+        return [[
+            'imageUrl' => $single,
+            'linkUrl' => trim((string)($config['materialsDescriptionBannerLinkUrl'] ?? '')),
+            'alt' => trim((string)($config['materialsDescriptionBannerAlt'] ?? materialDefaultDescriptionBannerAlt())),
+        ]];
+    }
+    return materialDefaultDescriptionBanners();
+}
+
+function materialDefaultArchiveExtensions(): string
+{
+    return match (FRONTEND_ID) {
+        'proxy-release' => 'zip',
+        'document-holder' => 'zip',
+        default => 'zip 7z rar',
+    };
+}
+
 function materialsSettings(PDO $pdo): void
 {
     $settings = loadSettings($pdo);
     $config = $settings['config'] ?? [];
     $skin = $settings['skin'] ?? [];
-    $tags = $pdo->query('SELECT id, name, sort_order FROM material_tags ORDER BY sort_order, id')->fetchAll(PDO::FETCH_ASSOC);
+    $tags = $pdo->query('SELECT id, name, parent_id, sort_order FROM material_tags ORDER BY COALESCE(parent_id, id), parent_id IS NOT NULL, sort_order, id')->fetchAll(PDO::FETCH_ASSOC);
     $terms = $pdo->query('SELECT id, label, description, sort_order FROM material_terms ORDER BY sort_order, id')->fetchAll(PDO::FETCH_ASSOC);
     jsonResponse([
         'success' => true,
         'settings' => [
-            'title' => (string)($config['materialsTitle'] ?? (FRONTEND_ID === 'proxy-release' ? 'Proxy Release' : '■素材庫■')),
-            'description' => (string)($config['materialsDescription'] ?? (FRONTEND_ID === 'proxy-release' ? 'MUGEN character release archives grouped by author and category.' : '制作に役立つ素材を、用途と作者ごとに整理して保管しています。')),
+            'title' => (string)($config['materialsTitle'] ?? materialDefaultTitle()),
+            'description' => (string)($config['materialsDescription'] ?? materialDefaultDescription()),
+            'descriptionBannerEnabled' => toBoolFlag($config['materialsDescriptionBannerEnabled'] ?? materialDefaultDescriptionBannerEnabled()),
+            'descriptionBannerImageUrl' => (string)($config['materialsDescriptionBannerImageUrl'] ?? materialDefaultDescriptionBannerImageUrl()),
+            'descriptionBannerLinkUrl' => (string)($config['materialsDescriptionBannerLinkUrl'] ?? ''),
+            'descriptionBannerAlt' => (string)($config['materialsDescriptionBannerAlt'] ?? materialDefaultDescriptionBannerAlt()),
+            'descriptionBannerIntervalMs' => max(1000, (int)($config['materialsDescriptionBannerIntervalMs'] ?? 5000)),
+            'descriptionBanners' => materialDescriptionBanners($config),
             'homePageUrl' => (string)($config['materialsHomePageUrl'] ?? '../'),
             'trialPlayUrl' => (string)($config['proxyTrialPlayUrl'] ?? ''),
             'manualBody' => (string)($config['materialsManualBody'] ?? materialsDefaultManualBody()),
             'groupParent' => in_array(($config['materialsGroupParent'] ?? 'tag'), ['tag', 'author'], true) ? (string)$config['materialsGroupParent'] : 'tag',
             'maxArchiveKb' => max(1, (int)($config['materialsMaxArchiveKb'] ?? 102400)),
             'maxImageKb' => max(1, (int)($config['materialsMaxImageKb'] ?? 10240)),
-            'allowedArchiveExtensions' => (string)($config['materialsAllowedArchiveExtensions'] ?? (FRONTEND_ID === 'proxy-release' ? 'zip' : 'zip 7z rar')),
+            'allowedArchiveExtensions' => (string)($config['materialsAllowedArchiveExtensions'] ?? materialDefaultArchiveExtensions()),
             'ssoEnabled' => toBoolFlag($config['ssoEnabled'] ?? false),
             'design' => [
                 'pageBackgroundColor' => (string)($skin['materialsPageBackgroundColor'] ?? '#050505'),
@@ -4493,6 +4592,7 @@ function materialsSettings(PDO $pdo): void
                 'panelBackgroundColor' => (string)($skin['materialsPanelBackgroundColor'] ?? '#111820'),
                 'panelBorderColor' => (string)($skin['materialsPanelBorderColor'] ?? '#6c7787'),
                 'headingBackgroundColor' => (string)($skin['materialsHeadingBackgroundColor'] ?? '#59636f'),
+                'headingBackgroundImageUrl' => (string)($skin['materialsHeadingBackgroundImageUrl'] ?? ''),
                 'headingTextColor' => (string)($skin['materialsHeadingTextColor'] ?? '#ffffff'),
                 'accentColor' => (string)($skin['materialsAccentColor'] ?? '#8fb0ff'),
                 'buttonBackgroundColor' => (string)($skin['materialsButtonBackgroundColor'] ?? '#3974ee'),
@@ -4503,15 +4603,28 @@ function materialsSettings(PDO $pdo): void
                 'dangerButtonTextColor' => (string)($skin['materialsDangerButtonTextColor'] ?? '#ffffff'),
                 'inputBackgroundColor' => (string)($skin['materialsInputBackgroundColor'] ?? '#282f38'),
                 'inputTextColor' => (string)($skin['materialsInputTextColor'] ?? '#ffffff'),
+                'formLabelColor' => (string)($skin['materialsFormLabelColor'] ?? '#aac4df'),
+                'editorBackgroundColor' => (string)($skin['materialsEditorBackgroundColor'] ?? '#070b10'),
+                'editorTextColor' => (string)($skin['materialsEditorTextColor'] ?? '#f5f7fb'),
+                'editorBorderColor' => (string)($skin['materialsEditorBorderColor'] ?? '#6c7787'),
+                'toolbarBackgroundColor' => (string)($skin['materialsToolbarBackgroundColor'] ?? '#0c1219'),
+                'selectionBackgroundColor' => (string)($skin['materialsSelectionBackgroundColor'] ?? '#090e14'),
+                'selectionHoverBackgroundColor' => (string)($skin['materialsSelectionHoverBackgroundColor'] ?? '#151f2a'),
+                'selectionTextColor' => (string)($skin['materialsSelectionTextColor'] ?? '#f2f2f2'),
+                'selectionMetaColor' => (string)($skin['materialsSelectionMetaColor'] ?? '#aab4c0'),
                 'imageBackgroundColor' => (string)($skin['materialsImageBackgroundColor'] ?? '#020202'),
                 'mutedTextColor' => (string)($skin['materialsMutedTextColor'] ?? '#aab4c0'),
+                'listRowTextColor' => (string)($skin['materialsListRowTextColor'] ?? '#f2f2f2'),
+                'listRowMetaColor' => (string)($skin['materialsListRowMetaColor'] ?? '#aab4c0'),
+                'listRowBorderColor' => (string)($skin['materialsListRowBorderColor'] ?? '#3e4753'),
+                'tocGroupTitleColor' => (string)($skin['materialsTocGroupTitleColor'] ?? '#f2f2f2'),
                 'positiveColor' => (string)($skin['materialsPositiveColor'] ?? '#72e9a2'),
                 'negativeColor' => (string)($skin['materialsNegativeColor'] ?? '#ff9292'),
                 'unknownColor' => (string)($skin['materialsUnknownColor'] ?? '#f0cf78'),
             ],
         ],
         'tags' => array_map(static fn(array $row): array => [
-            'id' => (int)$row['id'], 'name' => (string)$row['name'], 'sortOrder' => (int)$row['sort_order'],
+            'id' => (int)$row['id'], 'name' => (string)$row['name'], 'parentId' => $row['parent_id'] === null ? null : (int)$row['parent_id'], 'sortOrder' => (int)$row['sort_order'],
         ], $tags),
         'terms' => array_map(static fn(array $row): array => [
             'id' => (int)$row['id'], 'label' => (string)$row['label'],
@@ -4522,6 +4635,12 @@ function materialsSettings(PDO $pdo): void
 
 function materialsDefaultManualBody(): string
 {
+    if (FRONTEND_ID === 'document-holder') {
+        return "ドキュメントホルダーでは、HTMLフォルダや画面上で書いた文章を投稿できます。\n\n"
+            . "投稿時は index.html / index.htm を含むフォルダ、単体HTML、または画面上で作成した文章を登録できます。\n"
+            . "投稿されたドキュメントはタグと作者名で整理されます。\n"
+            . "編集・削除には投稿パスワード、または投稿したユーザーでのログインが必要です。";
+    }
     return "素材庫では、圧縮ファイルを主役として配布素材を保管します。\n\n"
         . "投稿時は素材ファイル、説明画像、名称、作者名、タグ、利用規約への回答を登録してください。\n"
         . "ログイン投稿はユーザーID単位、ゲスト投稿は作者名単位で一覧に整理されます。\n"
@@ -4531,8 +4650,9 @@ function materialsDefaultManualBody(): string
 function listMaterialItems(PDO $pdo): void
 {
     $stmt = $pdo->query(
-        'SELECT m.*, t.name AS tag_name, u.icon_path AS user_icon_path, u.login_id AS user_login_id
+        'SELECT m.*, t.name AS tag_name, t.parent_id AS tag_parent_id, COALESCE(pt.id, t.id) AS primary_tag_id, COALESCE(pt.name, t.name) AS primary_tag_name, CASE WHEN t.parent_id IS NULL THEN NULL ELSE t.id END AS subtag_id, CASE WHEN t.parent_id IS NULL THEN NULL ELSE t.name END AS subtag_name, u.icon_path AS user_icon_path, u.login_id AS user_login_id
          FROM material_items m JOIN material_tags t ON t.id = m.tag_id
+         LEFT JOIN material_tags pt ON pt.id = t.parent_id
          LEFT JOIN users u ON u.id = m.user_id
          WHERE m.deleted_at IS NULL
          ORDER BY t.sort_order, t.id, lower(m.author_name), m.name, m.id'
@@ -4578,6 +4698,10 @@ function buildMaterialItem(PDO $pdo, array $row): array
         'notes' => (string)$row['notes'],
         'tagId' => (int)$row['tag_id'],
         'tagName' => (string)$row['tag_name'],
+        'primaryTagId' => (int)($row['primary_tag_id'] ?? $row['tag_id']),
+        'primaryTagName' => (string)($row['primary_tag_name'] ?? $row['tag_name']),
+        'subtagId' => ($row['subtag_id'] ?? null) === null ? null : (int)$row['subtag_id'],
+        'subtagName' => $row['subtag_name'] ?? null,
         'archiveUrl' => publicStoragePath((string)$row['archive_path']),
         'archiveOriginalName' => (string)$row['archive_original_name'],
         'archiveSizeBytes' => (int)$row['archive_size_bytes'],
@@ -4585,6 +4709,8 @@ function buildMaterialItem(PDO $pdo, array $row): array
         'imageOriginalName' => $row['image_original_name'] ?? null,
         'createdAt' => (string)$row['created_at'],
         'updatedAt' => (string)$row['updated_at'],
+        'viewCount' => (int)($row['view_count'] ?? 0),
+        'draft' => toBoolFlag($row['draft'] ?? false),
         'deletedAt' => $row['deleted_at'] ?? null,
         'adminOnly' => materialItemIsAdminOnly($row),
         'terms' => array_map(static fn(array $term): array => [
@@ -4603,8 +4729,9 @@ function buildMaterialItem(PDO $pdo, array $row): array
 
 function findMaterialItem(PDO $pdo, int $id, bool $includeDeleted = true): ?array
 {
-    $sql = 'SELECT m.*, t.name AS tag_name, u.icon_path AS user_icon_path, u.login_id AS user_login_id
+    $sql = 'SELECT m.*, t.name AS tag_name, t.parent_id AS tag_parent_id, COALESCE(pt.id, t.id) AS primary_tag_id, COALESCE(pt.name, t.name) AS primary_tag_name, CASE WHEN t.parent_id IS NULL THEN NULL ELSE t.id END AS subtag_id, CASE WHEN t.parent_id IS NULL THEN NULL ELSE t.name END AS subtag_name, u.icon_path AS user_icon_path, u.login_id AS user_login_id
             FROM material_items m JOIN material_tags t ON t.id = m.tag_id
+            LEFT JOIN material_tags pt ON pt.id = t.parent_id
             LEFT JOIN users u ON u.id = m.user_id WHERE m.id = :id';
     if (!$includeDeleted) {
         $sql .= ' AND m.deleted_at IS NULL';
@@ -4627,13 +4754,14 @@ function createMaterialItem(PDO $pdo): void
     $archive = $_FILES['archive'] ?? null;
     $image = $_FILES['image'] ?? null;
     $audioFiles = materialUploadedFiles('audio');
+    $draft = toBoolFlag($_POST['draft'] ?? false);
     if ($authorName === '' && $user) {
         $authorName = normalizeString((string)($user['materials_author_name'] ?? $user['display_name'] ?? ''));
     }
     if ($name === '' || $authorName === '' || !$tagId || $password === '') {
         jsonResponse(['success' => false, 'message' => '名称、作者名、タグ、投稿パスワードは必須です。'], 400);
     }
-    requireMaterialTag($pdo, (int)$tagId);
+    $tagId = resolveMaterialTagFromRequest($pdo, (int)$tagId);
     validateMaterialUpload($pdo, $archive, 'archive');
     if (is_array($image) && (int)($image['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
         validateMaterialUpload($pdo, $image, 'image');
@@ -4647,9 +4775,9 @@ function createMaterialItem(PDO $pdo): void
         $stmt = $pdo->prepare(
             'INSERT INTO material_items
              (user_id, author_name, name, notes, tag_id, archive_path, archive_original_name, archive_size_bytes,
-              image_path, image_original_name, password_hash, created_at, updated_at)
+              image_path, image_original_name, password_hash, draft, created_at, updated_at)
              VALUES (:user_id, :author_name, :name, :notes, :tag_id, "", :archive_original_name, :archive_size_bytes,
-              null, null, :password_hash, :created_at, :updated_at)'
+              null, null, :password_hash, :draft, :created_at, :updated_at)'
         );
         $stmt->execute([
             ':user_id' => $user ? (int)$user['id'] : null,
@@ -4657,6 +4785,7 @@ function createMaterialItem(PDO $pdo): void
             ':archive_original_name' => basename((string)$archive['name']),
             ':archive_size_bytes' => (int)$archive['size'],
             ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            ':draft' => $draft ? 1 : 0,
             ':created_at' => $now, ':updated_at' => $now,
         ]);
         $id = (int)$pdo->lastInsertId();
@@ -4697,7 +4826,7 @@ function updateMaterialItem(PDO $pdo): void
     if ($name === '' || $authorName === '' || !$tagId) {
         jsonResponse(['success' => false, 'message' => '名称、作者名、タグは必須です。'], 400);
     }
-    requireMaterialTag($pdo, (int)$tagId);
+    $tagId = resolveMaterialTagFromRequest($pdo, (int)$tagId);
     $archivePath = (string)$item['archive_path'];
     $archiveName = (string)$item['archive_original_name'];
     $archiveSize = (int)$item['archive_size_bytes'];
@@ -4715,17 +4844,18 @@ function updateMaterialItem(PDO $pdo): void
         $imageName = basename((string)$_FILES['image']['name']);
     }
     $audioFiles = materialUploadedFiles('audio');
+    $draft = toBoolFlag($_POST['draft'] ?? false);
     foreach ($audioFiles as $audioFile) {
         validateMaterialUpload($pdo, $audioFile, 'audio');
     }
     $pdo->prepare(
         'UPDATE material_items SET author_name = :author_name, name = :name, notes = :notes, tag_id = :tag_id,
          archive_path = :archive_path, archive_original_name = :archive_name, archive_size_bytes = :archive_size,
-         image_path = :image_path, image_original_name = :image_name, updated_at = :updated_at WHERE id = :id'
+         image_path = :image_path, image_original_name = :image_name, draft = :draft, updated_at = :updated_at WHERE id = :id'
     )->execute([
         ':author_name' => $authorName, ':name' => $name, ':notes' => $notes, ':tag_id' => (int)$tagId,
         ':archive_path' => $archivePath, ':archive_name' => $archiveName, ':archive_size' => $archiveSize,
-        ':image_path' => $imagePath, ':image_name' => $imageName, ':updated_at' => currentTimestamp(), ':id' => (int)$id,
+        ':image_path' => $imagePath, ':image_name' => $imageName, ':draft' => toBoolFlag($_POST['draft'] ?? ($item['draft'] ?? false)) ? 1 : 0, ':updated_at' => currentTimestamp(), ':id' => (int)$id,
     ]);
     if (isset($_POST['terms'])) {
         replaceMaterialTerms($pdo, (int)$id, materialTermAnswersFromRequest());
@@ -4768,8 +4898,9 @@ function listDeletedMaterialItems(PDO $pdo): void
 {
     requireAdmin();
     $stmt = $pdo->query(
-        'SELECT m.*, t.name AS tag_name, u.icon_path AS user_icon_path, u.login_id AS user_login_id
+        'SELECT m.*, t.name AS tag_name, t.parent_id AS tag_parent_id, COALESCE(pt.id, t.id) AS primary_tag_id, COALESCE(pt.name, t.name) AS primary_tag_name, CASE WHEN t.parent_id IS NULL THEN NULL ELSE t.id END AS subtag_id, CASE WHEN t.parent_id IS NULL THEN NULL ELSE t.name END AS subtag_name, u.icon_path AS user_icon_path, u.login_id AS user_login_id
          FROM material_items m JOIN material_tags t ON t.id = m.tag_id
+         LEFT JOIN material_tags pt ON pt.id = t.parent_id
          LEFT JOIN users u ON u.id = m.user_id WHERE m.deleted_at IS NOT NULL ORDER BY m.deleted_at DESC, m.id DESC'
     );
     jsonResponse(['success' => true, 'items' => array_map(
@@ -4863,13 +4994,18 @@ function upsertMaterialTags(PDO $pdo, array $tags): array
         $name = normalizeString((string)($tag['name'] ?? ''));
         if ($name === '') continue;
         $id = filter_var($tag['id'] ?? null, FILTER_VALIDATE_INT);
+        $parentIdRaw = $tag['parentId'] ?? $tag['parent_id'] ?? null;
+        $parentId = filter_var($parentIdRaw, FILTER_VALIDATE_INT);
+        if ($parentId !== false && $parentId !== null && $id && (int)$parentId === (int)$id) {
+            $parentId = null;
+        }
         if ($id) {
-            $pdo->prepare('UPDATE material_tags SET name = :name, sort_order = :sort_order WHERE id = :id')
-                ->execute([':name' => $name, ':sort_order' => $index, ':id' => (int)$id]);
+            $pdo->prepare('UPDATE material_tags SET name = :name, parent_id = :parent_id, sort_order = :sort_order WHERE id = :id')
+                ->execute([':name' => $name, ':parent_id' => $parentId ?: null, ':sort_order' => $index, ':id' => (int)$id]);
             $seen[] = (int)$id;
         } else {
-            $pdo->prepare('INSERT INTO material_tags (name, sort_order, created_at) VALUES (:name, :sort_order, :created_at)')
-                ->execute([':name' => $name, ':sort_order' => $index, ':created_at' => currentTimestamp()]);
+            $pdo->prepare('INSERT INTO material_tags (name, parent_id, sort_order, created_at) VALUES (:name, :parent_id, :sort_order, :created_at)')
+                ->execute([':name' => $name, ':parent_id' => $parentId ?: null, ':sort_order' => $index, ':created_at' => currentTimestamp()]);
             $seen[] = (int)$pdo->lastInsertId();
         }
     }
@@ -4936,6 +5072,7 @@ function materialAnalytics(PDO $pdo): void
     requireAdmin();
     $summary = $pdo->query(
         'SELECT COUNT(*) AS total_items, COALESCE(SUM(archive_size_bytes), 0) AS total_bytes,
+         COALESCE(SUM(view_count), 0) AS total_views,
          COUNT(DISTINCT tag_id) AS used_tags,
          COUNT(DISTINCT CASE WHEN user_id IS NULL THEN "guest:" || author_name ELSE "user:" || user_id END) AS authors
          FROM material_items WHERE deleted_at IS NULL'
@@ -4945,6 +5082,20 @@ function materialAnalytics(PDO $pdo): void
          FROM material_items GROUP BY substr(created_at, 1, 7) ORDER BY month DESC'
     )->fetchAll(PDO::FETCH_ASSOC);
     jsonResponse(['success' => true, 'summary' => $summary, 'months' => $months]);
+}
+
+function recordMaterialView(PDO $pdo): void
+{
+    ensureMaterialsFrontend();
+    $id = filter_var($_POST['id'] ?? $_GET['id'] ?? null, FILTER_VALIDATE_INT);
+    if (!$id) {
+        jsonResponse(['success' => false, 'message' => '記事IDが正しくありません。'], 400);
+    }
+    $stmt = $pdo->prepare('UPDATE material_items SET view_count = view_count + 1 WHERE id = :id AND deleted_at IS NULL');
+    $stmt->execute([':id' => (int)$id]);
+    $select = $pdo->prepare('SELECT view_count FROM material_items WHERE id = :id');
+    $select->execute([':id' => (int)$id]);
+    jsonResponse(['success' => true, 'view_count' => (int)$select->fetchColumn()]);
 }
 
 function updateMaterialProfile(PDO $pdo): void
@@ -4975,7 +5126,7 @@ function updateMaterialProfile(PDO $pdo): void
 
 function ensureMaterialsFrontend(): void
 {
-    if (!in_array(FRONTEND_ID, ['materials-library', 'proxy-release'], true) && !isPackagedSingleFrontendApp()) {
+    if (!in_array(FRONTEND_ID, ['materials-library', 'proxy-release', 'document-holder'], true) && !isPackagedSingleFrontendApp()) {
         jsonResponse(['success' => false, 'message' => 'このAPIはmaterials-library/proxy-release専用です。'], 403);
     }
 }
@@ -4987,6 +5138,38 @@ function requireMaterialTag(PDO $pdo, int $id): void
     if ((int)$stmt->fetchColumn() === 0) {
         jsonResponse(['success' => false, 'message' => '指定したタグが見つかりません。'], 400);
     }
+}
+
+function resolveMaterialTagFromRequest(PDO $pdo, int $tagId): int
+{
+    requireMaterialTag($pdo, $tagId);
+    $subtagId = filter_var($_POST['subtag_id'] ?? null, FILTER_VALIDATE_INT);
+    if ($subtagId) {
+        requireMaterialTag($pdo, (int)$subtagId);
+        return (int)$subtagId;
+    }
+    $newSubtag = normalizeString((string)($_POST['new_subtag_name'] ?? ''));
+    if ($newSubtag === '') {
+        return $tagId;
+    }
+
+    $parentStmt = $pdo->prepare('SELECT parent_id FROM material_tags WHERE id = :id');
+    $parentStmt->execute([':id' => $tagId]);
+    $parentId = $parentStmt->fetchColumn();
+    $parent = $parentId === false || $parentId === null ? $tagId : (int)$parentId;
+
+    $existing = $pdo->prepare('SELECT id FROM material_tags WHERE parent_id = :parent_id AND name = :name LIMIT 1');
+    $existing->execute([':parent_id' => $parent, ':name' => $newSubtag]);
+    $existingId = $existing->fetchColumn();
+    if ($existingId) {
+        return (int)$existingId;
+    }
+    $sortStmt = $pdo->prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 FROM material_tags WHERE parent_id = :parent_id');
+    $sortStmt->execute([':parent_id' => $parent]);
+    $sortOrder = (int)$sortStmt->fetchColumn();
+    $insert = $pdo->prepare('INSERT INTO material_tags (name, parent_id, sort_order, created_at) VALUES (:name, :parent_id, :sort_order, :created_at)');
+    $insert->execute([':name' => $newSubtag, ':parent_id' => $parent, ':sort_order' => $sortOrder, ':created_at' => currentTimestamp()]);
+    return (int)$pdo->lastInsertId();
 }
 
 function validateMaterialUpload(PDO $pdo, mixed $file, string $kind): void
@@ -5138,15 +5321,21 @@ function defaultSettings(): array
             'bbsTitle' => 'ThreadForge',
             'homePageUrl' => '/',
             'uploaderHomePageUrl' => '../',
-            'materialsTitle' => FRONTEND_ID === 'proxy-release' ? 'Proxy Release' : '■素材庫■',
-            'materialsDescription' => FRONTEND_ID === 'proxy-release' ? 'MUGEN character release archives grouped by author and category.' : '制作に役立つ素材を、用途と作者ごとに整理して保管しています。',
+            'materialsTitle' => materialDefaultTitle(),
+            'materialsDescription' => materialDefaultDescription(),
+            'materialsDescriptionBannerEnabled' => materialDefaultDescriptionBannerEnabled(),
+            'materialsDescriptionBannerImageUrl' => materialDefaultDescriptionBannerImageUrl(),
+            'materialsDescriptionBannerLinkUrl' => '',
+            'materialsDescriptionBannerAlt' => materialDefaultDescriptionBannerAlt(),
+            'materialsDescriptionBannerIntervalMs' => 5000,
+            'materialsDescriptionBanners' => materialDefaultDescriptionBanners(),
             'materialsHomePageUrl' => '../',
             'proxyTrialPlayUrl' => '',
             'materialsManualBody' => materialsDefaultManualBody(),
             'materialsGroupParent' => 'tag',
             'materialsMaxArchiveKb' => 102400,
             'materialsMaxImageKb' => 10240,
-            'materialsAllowedArchiveExtensions' => FRONTEND_ID === 'proxy-release' ? 'zip' : 'zip 7z rar',
+            'materialsAllowedArchiveExtensions' => materialDefaultArchiveExtensions(),
             'manualTitle' => 'ThreadForge',
             'manualBody' => defaultManualBody(),
             'tweetEnabled' => false,

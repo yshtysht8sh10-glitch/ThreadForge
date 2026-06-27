@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ja" data-lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ThreadForge bilingual documentation">
+  <title>Document Holder Spec / ドキュメントホルダー仕様 | ThreadForge</title>
+  <link rel="stylesheet" href="../../assets/docs.css">
+  <script src="../../assets/docs.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content / 本文へ</a>
+  <div class="docs-shell">
+    <div data-language-panel="ja">
+    <nav class="docs-nav" aria-label="ドキュメント目次">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>共通資料</h2>
+      <ul><li><a href="../../index.html">ドキュメント</a></li><li><a href="../../SPEC.html">仕様</a></li><li><a href="../../API.html">API</a></li><li><a href="../../DB.html">データベース</a></li><li><a href="../../ARCHITECTURE.html">構成</a></li><li><a href="../../FRONTEND_ARCHITECTURE.html">フロントエンド構成</a></li><li><a href="../../MIGRATION.html">移行</a></li><li><a href="../../TESTING.html">テスト</a></li></ul>
+      
+        <h2>画像掲示板</h2>
+        <ul><li><a href="../image-board/index.html">画像掲示板</a></li><li><a href="../image-board/SPEC.html">画像掲示板仕様</a></li><li><a href="../image-board/DB.html">画像掲示板 DB</a></li></ul>
+      
+        <h2>ファイルアップローダー</h2>
+        <ul><li><a href="../file-uploader/index.html">ファイルアップローダー</a></li><li><a href="../file-uploader/SPEC.html">ファイルアップローダー仕様</a></li><li><a href="../file-uploader/DB.html">ファイルアップローダー DB</a></li></ul>
+      
+        <h2>ドキュメントホルダー</h2>
+        <ul><li><a href="./index.html">ドキュメントホルダー</a></li><li><a href="./SPEC.html" aria-current="page">ドキュメントホルダー仕様</a></li><li><a href="./DB.html">ドキュメントホルダー DB</a></li></ul>
+      
+        <h2>代理公開</h2>
+        <ul><li><a href="../proxy-release/index.html">代理公開</a></li><li><a href="../proxy-release/SPEC.html">代理公開仕様</a></li><li><a href="../proxy-release/DB.html">代理公開 DB</a></li></ul>
+      
+        <h2>素材ライブラリ</h2>
+        <ul><li><a href="../materials-library/index.html">素材ライブラリ</a></li><li><a href="../materials-library/SPEC.html">素材ライブラリ仕様</a></li><li><a href="../materials-library/DB.html">素材ライブラリ DB</a></li></ul>
+      
+    </nav></div>
+    <div data-language-panel="en">
+    <nav class="docs-nav" aria-label="Documentation navigation">
+      <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
+      <h2>Core</h2>
+      <ul><li><a href="../../index.html">Documentation</a></li><li><a href="../../SPEC.html">Specification</a></li><li><a href="../../API.html">API</a></li><li><a href="../../DB.html">Database</a></li><li><a href="../../ARCHITECTURE.html">Architecture</a></li><li><a href="../../FRONTEND_ARCHITECTURE.html">Frontend Architecture</a></li><li><a href="../../MIGRATION.html">Migration</a></li><li><a href="../../TESTING.html">Testing</a></li></ul>
+      
+        <h2>Image Board</h2>
+        <ul><li><a href="../image-board/index.html">Image Board</a></li><li><a href="../image-board/SPEC.html">Image Board Spec</a></li><li><a href="../image-board/DB.html">Image Board DB</a></li></ul>
+      
+        <h2>File Uploader</h2>
+        <ul><li><a href="../file-uploader/index.html">File Uploader</a></li><li><a href="../file-uploader/SPEC.html">File Uploader Spec</a></li><li><a href="../file-uploader/DB.html">File Uploader DB</a></li></ul>
+      
+        <h2>Document Holder</h2>
+        <ul><li><a href="./index.html">Document Holder</a></li><li><a href="./SPEC.html" aria-current="page">Document Holder Spec</a></li><li><a href="./DB.html">Document Holder DB</a></li></ul>
+      
+        <h2>Proxy Release</h2>
+        <ul><li><a href="../proxy-release/index.html">Proxy Release</a></li><li><a href="../proxy-release/SPEC.html">Proxy Release Spec</a></li><li><a href="../proxy-release/DB.html">Proxy Release DB</a></li></ul>
+      
+        <h2>Materials Library</h2>
+        <ul><li><a href="../materials-library/index.html">Materials Library</a></li><li><a href="../materials-library/SPEC.html">Materials Library Spec</a></li><li><a href="../materials-library/DB.html">Materials Library DB</a></li></ul>
+      
+    </nav></div>
+    <main class="docs-main" id="content">
+      <header class="docs-toolbar">
+        <div>
+          <span class="docs-eyebrow">ThreadForge Docs</span>
+          <strong>Document Holder Spec / ドキュメントホルダー仕様</strong>
+        </div>
+        <div class="language-switch" role="group" aria-label="Language / 言語">
+          <button type="button" data-language-button="ja">日本語</button>
+          <button type="button" data-language-button="en">English</button>
+        </div>
+      </header>
+      <article class="docs-article" data-language-panel="ja"><h1 id="document-holder-仕様">document-holder 仕様</h1>
+<p><a href="../../SPEC.html">仕様一覧へ戻る</a></p>
+<h2 id="目的">目的</h2>
+<p><code>document-holder</code> は、文章、HTMLフォルダ、制作メモを投稿してサイト内で読めるように保管するドキュメントホルダーです。</p>
+<p><code>materials-library</code> と同じく「タグと作者名で整理する」考え方を使いますが、主役は素材ファイルではなく記事本文です。</p>
+<h2 id="一覧">一覧</h2>
+<ul>
+<li>管理画面で設定したタイトル、説明文、説明バナーを表示します。</li>
+<li>説明バナーは複数登録でき、約5秒ごとに滑らかに切り替わります。</li>
+<li>更新履歴は全記事を表示し、5件程度が見える高さで縦スクロールします。</li>
+<li>目次は第一階層タグ、第二階層タグ、作者、記事タイトルで整理します。</li>
+<li>目次の親は「タグ」または「投稿者名」を一覧画面で切り替えできます。</li>
+<li>管理画面とログイン後のユーザー画面で、目次の既定表示を設定できます。</li>
+<li>記事が書きかけの場合、一覧と記事内に赤い「書きかけ」表示を出します。</li>
+</ul>
+<h2 id="投稿">投稿</h2>
+<ul>
+<li>投稿方法は「その場で書く」と「index.html を含む zip を投稿」の2種類です。</li>
+<li>その場で書く場合は、本文欄で見出し、太字、リンク、表、文字色、表背景色、画像挿入をGUIで操作できます。</li>
+<li>書き途中の記事はブラウザのローカルストレージに一時保存できます。</li>
+<li>投稿時は第一階層タグを選択し、第二階層タグは既存選択または新規作成できます。</li>
+<li>第一階層タグは管理画面からのみ追加・変更できます。</li>
+<li>初期の第一階層タグは「指南」「感想文」「ドキュメント」「その他」です。</li>
+</ul>
+<h2 id="記事表示">記事表示</h2>
+<ul>
+<li>投稿されたHTMLを画面いっぱいに表示します。</li>
+<li>記事を開くたびに閲覧数をカウントし、記事内にも閲覧数を表示します。</li>
+<li>レガシー記事の画像やCSSは、移行時に記事ZIPへ格納しつつ、表示用HTMLへ必要な参照を埋め込みます。</li>
+</ul>
+<h2 id="管理">管理</h2>
+<ul>
+<li>タイトル、説明文、説明バナー、目次の既定表示、タグ、利用規約、デザインを管理できます。</li>
+<li>管理画面のアナリティクスでは、全体の記事数、総閲覧数、投稿者数などを確認できます。</li>
+<li>ユーザー画面のアナリティクスでは、そのユーザーの投稿数と合計閲覧数を確認できます。</li>
+</ul>
+<h2 id="レガシー移行">レガシー移行</h2>
+<ul>
+<li><code>tools/migrate_document_holder_runtime.php</code> で旧 <code>04_DMF</code> の記事をローカル実行用DBへ移行します。</li>
+<li>旧カテゴリは「指南」の第二階層タグとして移行します。</li>
+<li>記事日時は元HTMLファイルの更新日時を使用します。</li>
+<li>記事本体は <code>index.html</code> を含むZIPとして <code>storage/data/</code> に保存します。</li>
+</ul>
+<h2 id="現在の状態">現在の状態</h2>
+<p>React/Vite フロントエンドと共通 <code>material_items</code> API で実装済みです。</p></article>
+      <article class="docs-article" data-language-panel="en"><h1 id="document-holder-document-holder-spec">document-holder / Document Holder Spec</h1>
+<p><a href="../../SPEC.html">Back to specification index</a></p>
+<h2 id="purpose">Purpose</h2>
+<p><code>document-holder</code> is a document holder for articles, HTML folders, and production notes that should be read inside the site.</p>
+<p>It follows the same organization model as <code>materials-library</code>: entries are grouped by tag and author, but the primary content is article text rather than downloadable material.</p>
+<h2 id="list-view">List View</h2>
+<ul>
+<li>Shows the configured title, description, and description banners.</li>
+<li>Multiple description banners can be registered and cross-fade about every five seconds.</li>
+<li>The update history shows every article in a fixed-height scrolling area sized for about five rows.</li>
+<li>The table of contents groups articles by primary tag, secondary tag, author, and title.</li>
+<li>Users can switch the TOC parent between tag and author on the list page.</li>
+<li>The admin settings and logged-in user profile can define the default TOC parent.</li>
+<li>Draft articles show a red draft label in both the list and article views.</li>
+</ul>
+<h2 id="posting">Posting</h2>
+<ul>
+<li>Posts can be written in the browser or uploaded as a ZIP containing <code>index.html</code>.</li>
+<li>The browser editor is a single WYSIWYG-like surface with controls for headings, bold text, links, tables, text color, table background color, and image insertion.</li>
+<li>In-progress work can be saved to browser local storage.</li>
+<li>Authors choose a primary tag and either choose or create a secondary tag.</li>
+<li>Primary tags are managed only by administrators.</li>
+<li>The default primary tags are <code>指南</code>, <code>感想文</code>, <code>ドキュメント</code>, and <code>その他</code>.</li>
+</ul>
+<h2 id="article-view">Article View</h2>
+<ul>
+<li>Uploaded or written HTML is rendered as a full article page.</li>
+<li>Opening an article increments its view count, and the article page displays that count.</li>
+<li>During legacy migration, article images and CSS are preserved in the article ZIP and the display HTML is rewritten so those assets remain readable.</li>
+</ul>
+<h2 id="administration">Administration</h2>
+<ul>
+<li>Admins can manage the title, description, description banners, default TOC parent, tags, terms, and design.</li>
+<li>Admin analytics show total articles, total views, and author counts.</li>
+<li>User analytics show the logged-in user's article count and total views.</li>
+</ul>
+<h2 id="legacy-migration">Legacy Migration</h2>
+<ul>
+<li><code>tools/migrate_document_holder_runtime.php</code> imports old <code>04_DMF</code> articles into the local runtime DB.</li>
+<li>Old categories are imported as secondary tags under the <code>指南</code> primary tag.</li>
+<li>Article dates use the source HTML file modification time.</li>
+<li>Each article is stored as a ZIP containing <code>index.html</code> and related assets under <code>storage/data/</code>.</li>
+</ul>
+<h2 id="current-status">Current Status</h2>
+<p>Implemented as a React/Vite frontend backed by the common <code>material_items</code> API.</p></article>
+      <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
+    </main>
+  </div>
+</body>
+</html>

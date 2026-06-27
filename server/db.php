@@ -203,6 +203,7 @@ function initializeDatabase(PDO $pdo): void
         'CREATE TABLE IF NOT EXISTS material_tags (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
+            parent_id INTEGER,
             sort_order INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL
         )'
@@ -233,6 +234,8 @@ function initializeDatabase(PDO $pdo): void
             image_original_name TEXT,
             password_hash TEXT NOT NULL,
             legacy_source TEXT,
+            draft INTEGER NOT NULL DEFAULT 0,
+            view_count INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             deleted_at TEXT
@@ -293,7 +296,11 @@ function initializeDatabase(PDO $pdo): void
     ensureColumnExists($pdo, 'users', 'last_login_at', 'TEXT');
     ensureColumnExists($pdo, 'users', 'materials_author_name', 'TEXT');
     ensureColumnExists($pdo, 'users', 'materials_default_terms', 'TEXT NOT NULL DEFAULT "{}"');
+    ensureColumnExists($pdo, 'users', 'materials_default_group_parent', 'TEXT NOT NULL DEFAULT ""');
+    ensureColumnExists($pdo, 'material_tags', 'parent_id', 'INTEGER');
     ensureColumnExists($pdo, 'material_items', 'legacy_source', 'TEXT');
+    ensureColumnExists($pdo, 'material_items', 'draft', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'material_items', 'view_count', 'INTEGER NOT NULL DEFAULT 0');
 
     ensureDatabaseIndexes($pdo);
     ensureMaterialCatalogDefaults($pdo);
@@ -405,9 +412,17 @@ function publicStoragePath(?string $path): ?string
 function ensureMaterialCatalogDefaults(PDO $pdo): void
 {
     if ((int)$pdo->query('SELECT COUNT(*) FROM material_tags')->fetchColumn() === 0) {
-        $stmt = $pdo->prepare('INSERT INTO material_tags (name, sort_order, created_at) VALUES (:name, :sort_order, :created_at)');
-        foreach (['エフェクト素材', 'キャラクタースプライト素材', 'ドット絵素材', '音声・ボイス素材', 'テンプレート・その他'] as $index => $name) {
-            $stmt->execute([':name' => $name, ':sort_order' => $index, ':created_at' => currentTimestamp()]);
+        if (FRONTEND_ID === 'document-holder') {
+            $stmt = $pdo->prepare('INSERT INTO material_tags (name, parent_id, sort_order, created_at) VALUES (:name, null, :sort_order, :created_at)');
+            foreach (['指南', '感想文', 'ドキュメント', 'その他'] as $index => $name) {
+                $stmt->execute([':name' => $name, ':sort_order' => $index, ':created_at' => currentTimestamp()]);
+            }
+        } else {
+            $stmt = $pdo->prepare('INSERT INTO material_tags (name, sort_order, created_at) VALUES (:name, :sort_order, :created_at)');
+            $defaultTags = ['エフェクト素材', 'キャラクタースプライト素材', 'ドット絵素材', '音声・ボイス素材', 'テンプレート・その他'];
+            foreach ($defaultTags as $index => $name) {
+                $stmt->execute([':name' => $name, ':sort_order' => $index, ':created_at' => currentTimestamp()]);
+            }
         }
     }
     if ((int)$pdo->query('SELECT COUNT(*) FROM material_terms')->fetchColumn() === 0) {
@@ -415,13 +430,20 @@ function ensureMaterialCatalogDefaults(PDO $pdo): void
             'INSERT INTO material_terms (label, description, sort_order, created_at)
              VALUES (:label, :description, :sort_order, :created_at)'
         );
-        $defaults = [
-            ['改変', '素材を改変して利用できるか'],
-            ['2次配布', '素材を再配布できるか'],
-            ['readmeへの記載しなくてよい', 'readmeへ作者・配布元を記載せずに利用できるか'],
-            ['mugen以外での利用（非営利目的）', 'MUGEN以外の非営利作品で利用できるか'],
-            ['mugen以外での利用（営利目的）', 'MUGEN以外の営利作品で利用できるか'],
-        ];
+        $defaults = FRONTEND_ID === 'document-holder'
+            ? [
+                ['転載', '本文やHTMLを別サイトへ転載できるか'],
+                ['引用', '一部を引用して利用できるか'],
+                ['改変', '内容を改変して利用できるか'],
+                ['商用利用', '商用コンテンツで利用できるか'],
+            ]
+            : [
+                ['改変', '素材を改変して利用できるか'],
+                ['2次配布', '素材を再配布できるか'],
+                ['readmeへの記載しなくてよい', 'readmeへ作者・配布元を記載せずに利用できるか'],
+                ['mugen以外での利用（非営利目的）', 'MUGEN以外の非営利作品で利用できるか'],
+                ['mugen以外での利用（営利目的）', 'MUGEN以外の営利作品で利用できるか'],
+            ];
         foreach ($defaults as $index => [$label, $description]) {
             $stmt->execute([
                 ':label' => $label,
@@ -1411,6 +1433,7 @@ function buildUser(?array $user): ?array
         'icon_path' => publicStoragePath($user['icon_path'] ?? null),
         'materials_author_name' => $user['materials_author_name'] ?? null,
         'materials_default_terms' => json_decode((string)($user['materials_default_terms'] ?? '{}'), true) ?: [],
+        'materials_default_group_parent' => in_array(($user['materials_default_group_parent'] ?? ''), ['tag', 'author'], true) ? (string)$user['materials_default_group_parent'] : null,
     ];
 }
 

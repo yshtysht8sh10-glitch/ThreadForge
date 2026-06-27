@@ -1,4 +1,4 @@
-# Frontend Architecture
+﻿# Frontend Architecture
 
 ThreadForge is moving toward one common backend with multiple frontend applications. The current image posting board is now treated as the first frontend, not as the only frontend.
 
@@ -8,7 +8,7 @@ ThreadForge is moving toward one common backend with multiple frontend applicati
 frontends/
   image-board/          Current production image posting board frontend
   file-uploader/        File uploader frontend
-  guide-posts/          Guide/article posting frontend
+  document-holder/          Guide/article posting frontend
   proxy-release/        MUGEN proxy release frontend
   materials-library/    Materials library frontend
   shared/               Shared frontend code
@@ -49,7 +49,7 @@ This means `image-board` and `file-uploader` do not share posts, users, settings
 
 - `image-board`: the current ThreadForge image posting board.
 - `file-uploader`: a file upload list with comments, size metadata, delete keys, and paging.
-- `guide-posts`: an article-style posting site for MUGEN and dot-art production knowledge.
+- `document-holder`: an article-style posting site for MUGEN and dot-art production knowledge.
 - `proxy-release`: a proxy release site for MUGEN characters, plugins, or related packages.
 - `materials-library`: a browseable material library with downloads and usage flags.
 
@@ -58,7 +58,7 @@ This means `image-board` and `file-uploader` do not share posts, users, settings
 - Each new frontend keeps the source legacy site in `legacy/` for visual and content reference.
 - The first-pass React apps intentionally copy the color palette and broad layout from legacy while using modern components and Vite builds.
 - `file-uploader` keeps the gray table/upload-form feel.
-- `guide-posts` keeps the white page, fixed teal header, and left menu/article layout.
+- `document-holder` keeps the white page, fixed teal header, and left menu/article layout.
 - `proxy-release` keeps the dark background and bright green text.
 - `materials-library` keeps the black background, pale yellow text, and material cards with rule tables.
 - Legacy assets can be imported into React with `new URL('../legacy/...', import.meta.url).href` when a screen needs representative images.
@@ -87,3 +87,4 @@ npm run release:file-uploader
 - Bundle the common backend with each application release. Track a separate API compatibility version only when a breaking backend contract change is introduced.
 
 This keeps the current board recoverable while allowing each new board type to grow its own personality.
+

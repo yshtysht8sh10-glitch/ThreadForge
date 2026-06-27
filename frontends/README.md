@@ -1,4 +1,4 @@
-# ThreadForge Frontends
+﻿# ThreadForge Frontends
 
 ThreadForge is being reorganized into multiple frontend applications that share one backend.
 
@@ -22,7 +22,7 @@ storage/data/
 
 - `image-board/`: Current image posting board frontend. See `image-board/README.md`.
 - `file-uploader/`: File uploader frontend. See `file-uploader/README.md`.
-- `guide-posts/`: MUGEN and dot-art production guide posting frontend. See `guide-posts/README.md`.
+- `document-holder/`: Document holder frontend for articles, HTML folders, and guide documents. See `document-holder/README.md`.
 - `proxy-release/`: MUGEN character proxy release frontend. See `proxy-release/README.md`.
 - `materials-library/`: Production material library frontend. See `materials-library/README.md`.
 
@@ -33,7 +33,7 @@ From the repository root:
 ```powershell
 npm run dev:image-board
 npm run dev:file-uploader
-npm run dev:guide-posts
+npm run dev:document-holder
 npm run dev:proxy-release
 npm run dev:materials-library
 npm run test:image-board
@@ -86,8 +86,9 @@ Do not make frontend-specific styling or page flow depend on another frontend di
 The new non-image-board frontends keep their source site snapshots under `legacy/`.
 
 - `file-uploader/legacy/`: gray PHP uploader source and uploaded file archive
-- `guide-posts/legacy/`: Do||Mu,File static HTML/CSS guide site
+- `document-holder/legacy/`: legacy document/guide references
 - `proxy-release/legacy/`: dark green proxy release site and character assets
 - `materials-library/legacy/`: black/yellow material library and asset archive
 
 Keep `legacy/` as reference material. Build new behavior in `src/` and move reusable pieces to `shared/`.
+
