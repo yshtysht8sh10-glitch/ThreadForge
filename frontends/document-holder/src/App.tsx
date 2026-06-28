@@ -249,8 +249,7 @@ function DocumentForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
   const [name, setName] = useState(item?.name ?? 'blank');
   const [author, setAuthor] = useState(item?.authorName ?? user?.materials_author_name ?? user?.display_name ?? '');
   const [tagId, setTagId] = useState(String(initialPrimaryId ?? ''));
-  const [subtagId, setSubtagId] = useState(String(item?.subtagId ?? ''));
-  const [newSubtagName, setNewSubtagName] = useState('');
+  const [subtagInput, setSubtagInput] = useState(item?.subtagName ?? '');
   const [draftFlag, setDraftFlag] = useState(Boolean(item?.draft));
   const [password, setPassword] = useState(mode === 'edit' ? props.initialPassword ?? '' : user?.post_password ?? '');
   const [draftMode, setDraftMode] = useState<DraftMode>('write');
@@ -275,7 +274,7 @@ function DocumentForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
     document.execCommand(command, false, value);
   };
   const saveDraft = (silent = false) => {
-    const draft = { name, author, tagId, subtagId, newSubtagName, draftFlag, password, draftMode, editorHtml: editorHtml(), textColor, tableBg, savedAt: new Date().toISOString() };
+    const draft = { name, author, tagId, subtagInput, draftFlag, password, draftMode, editorHtml: editorHtml(), textColor, tableBg, savedAt: new Date().toISOString() };
     localStorage.setItem(draftKey, JSON.stringify(draft));
     if (!silent) setStatus(`下書きを保存しました。${formatDate(draft.savedAt)}`);
   };
@@ -289,8 +288,7 @@ function DocumentForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
     setName(draft.name ?? name);
     setAuthor(draft.author ?? author);
     setTagId(draft.tagId ?? tagId);
-    setSubtagId(draft.subtagId ?? '');
-    setNewSubtagName(draft.newSubtagName ?? '');
+    setSubtagInput(draft.subtagInput ?? draft.newSubtagName ?? '');
     setDraftFlag(Boolean(draft.draftFlag));
     setPassword(draft.password ?? password);
     setDraftMode(draft.draftMode ?? 'write');
@@ -308,7 +306,7 @@ function DocumentForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
     if (draftMode !== 'write') return;
     const timer = window.setInterval(() => saveDraft(true), 30000);
     return () => window.clearInterval(timer);
-  }, [name, author, tagId, subtagId, newSubtagName, draftFlag, password, draftMode, textColor, tableBg]);
+  }, [name, author, tagId, subtagInput, draftFlag, password, draftMode, textColor, tableBg]);
 
   const insertLink = () => {
     const url = window.prompt('リンク先URL');
@@ -343,8 +341,10 @@ function DocumentForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
       body.set('name', name);
       body.set('author_name', author);
       body.set('tag_id', tagId);
-      if (subtagId) body.set('subtag_id', subtagId);
-      if (newSubtagName.trim()) body.set('new_subtag_name', newSubtagName.trim());
+      const subtagValue = subtagInput.trim();
+      const selectedSubtag = subtagValue ? childTags.find((tag) => tag.name === subtagValue) : null;
+      if (selectedSubtag) body.set('subtag_id', String(selectedSubtag.id));
+      else if (subtagValue) body.set('new_subtag_name', subtagValue);
       body.set('draft', draftFlag ? '1' : '0');
       body.set('password', password);
       body.set('terms', JSON.stringify({}));
@@ -382,18 +382,22 @@ function DocumentForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
         </div>
         <div className="form-grid two-columns">
           <label><span>第一階層タグ<span className="required-marker" aria-hidden="true">*</span></span>
-            <select value={tagId} onChange={(event) => { setTagId(event.target.value); setSubtagId(''); }} required>
+            <select value={tagId} onChange={(event) => { setTagId(event.target.value); setSubtagInput(''); }} required>
               {primaryTags.map((tag) => <option value={tag.id} key={tag.id}>{tag.name}</option>)}
             </select>
           </label>
           <label><span>第二階層タグ</span>
-            <select value={subtagId} onChange={(event) => setSubtagId(event.target.value)}>
-              <option value="">未指定</option>
-              {childTags.map((tag) => <option value={tag.id} key={tag.id}>{tag.name}</option>)}
-            </select>
+            <input
+              list="document-subtag-options"
+              value={subtagInput}
+              onChange={(event) => setSubtagInput(event.target.value)}
+              placeholder="未指定"
+            />
+            <datalist id="document-subtag-options">
+              {childTags.map((tag) => <option value={tag.name} key={tag.id} />)}
+            </datalist>
           </label>
         </div>
-        <label>新しい第二階層タグ<input value={newSubtagName} onChange={(event) => setNewSubtagName(event.target.value)} placeholder="既存にない分類を作る場合だけ入力" /></label>
         <label className="inline-check"><input type="checkbox" checked={draftFlag} onChange={(event) => setDraftFlag(event.target.checked)} />書きかけとして表示する</label>
         <fieldset className="post-mode">
           <legend>投稿方法</legend>
