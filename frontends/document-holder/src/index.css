@@ -189,7 +189,9 @@ button.danger { background: var(--danger-button-bg, #c44141); border-color: var(
   filter: none;
 }
 .article-link-title {
-  font-weight: bold;
+  color: var(--list-row-text, var(--page-text, #f2f2f2));
+  font-size: 15px;
+  font-weight: normal;
 }
 .draft-badge {
   display: inline-block;

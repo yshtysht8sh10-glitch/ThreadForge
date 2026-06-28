@@ -234,7 +234,7 @@ function rewriteArticleHtml(string $html, string $sourceDir, string $legacyRoot)
     $body = preg_replace('/<div id="PAGEHEADMENU"[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/iu', '', $body) ?? $body;
     $body = preg_replace('/<script[\s\S]*?<\/script>/iu', '', $body) ?? $body;
     $body = preg_replace('/<link[^>]+>/iu', '', $body) ?? $body;
-    $body = preg_replace_callback('/\s(src|href)=["\']([^"\']+)["\']/iu', function (array $match) use ($sourceDir): string {
+    $body = preg_replace_callback('/\s(src|href)\s*=\s*["\']([^"\']+)["\']/iu', function (array $match) use ($sourceDir): string {
         $attr = $match[1];
         $url = $match[2];
         if (preg_match('/^(https?:|data:|mailto:|#)/i', $url)) {
@@ -299,6 +299,7 @@ function dataUrl(string $filePath): string
         'gif' => 'image/gif',
         'png' => 'image/png',
         'jpg', 'jpeg' => 'image/jpeg',
+        'bmp' => 'image/bmp',
         'webp' => 'image/webp',
         'css' => 'text/css',
         default => 'application/octet-stream',
