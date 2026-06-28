@@ -54,7 +54,19 @@ function App() {
     window.scrollTo({ top: 0 });
   };
 
-  if (!settings) return <main className="loading">ドキュメントを読み込んでいます...</main>;
+  if (!settings) {
+    return (
+      <main className="loading">
+        {error ? (
+          <div className="message error">
+            {error}
+          </div>
+        ) : (
+          'ドキュメントを読み込んでいます...'
+        )}
+      </main>
+    );
+  }
 
   const visibleSettings = previewDesign ? { ...settings, design: previewDesign } : settings;
   const common = { settings, tags, terms, items, token, user, setToken, setUser, reload, navigate, setNotice, setError, setPreviewDesign };
