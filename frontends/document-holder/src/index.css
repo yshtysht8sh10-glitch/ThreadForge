@@ -640,6 +640,9 @@ textarea.large { min-height: 330px; }
 .legacy-document {
   color: var(--page-text, #1f2a30);
 }
+.legacy-document p {
+  position: relative;
+}
 .legacy-document .body_width {
   max-width: 760px;
   margin: 0 auto;
