@@ -177,19 +177,21 @@ button.danger { background: var(--danger-button-bg, #c44141); border-color: var(
   gap: 14px;
   align-items: baseline;
   width: 100%;
-  padding: 9px 0;
-  border: 0;
-  border-bottom: 1px solid var(--list-row-border, #3e4753);
-  background: transparent;
-  color: var(--list-row-text, var(--page-text, #f2f2f2));
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-bottom-color: color-mix(in srgb, var(--list-row-border, #7f989d) 65%, transparent);
+  background: color-mix(in srgb, var(--panel-bg, #fff) 98%, var(--accent, #1e6b78));
+  color: var(--accent, #8fb0ff);
   text-align: left;
 }
 .article-link-row:hover {
+  border-color: var(--accent, #8fb0ff);
+  background: color-mix(in srgb, var(--panel-bg, #fff) 88%, var(--accent, #1e6b78));
   color: var(--accent, #8fb0ff);
   filter: none;
 }
 .article-link-title {
-  color: var(--list-row-text, var(--page-text, #f2f2f2));
+  color: inherit;
   font-size: 15px;
   font-weight: normal;
 }
