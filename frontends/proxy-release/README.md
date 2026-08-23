@@ -56,7 +56,7 @@ WebMUGEN API Token=<same server-only Bearer token as WebMUGEN>
 
 The Token is stored under the SQLite server-side `security` settings. Its plaintext is not returned by either the administrator settings API or the public settings API; the form only reports whether a Token is configured. The environment variables `THREADFORGE_WEBMUGEN_CATALOG_SECRET` and `THREADFORGE_WEBMUGEN_CATALOG_API_URL` remain server-side fallbacks for existing deployments.
 
-After the proxy-release database transaction commits, the API sends the publication ID, the basename of the actual stored ZIP, and the configured Stage ID to WebMUGEN. A successful response stores the returned Character ID and `?character=...&stage=...` URL on the item. Registration failure does not roll back or hide the proxy publication; the card shows `試遊登録失敗`, and the stored structured error remains available for retry/diagnosis.
+After the proxy-release database transaction commits, the API sends the publication ID, the basename of the actual stored ZIP, and the configured Stage ID to WebMUGEN. The same server-only Token is sent in both `Authorization: Bearer ...` and `X-WebMUGEN-Token: ...`; WebMUGEN prefers Bearer when the hosting environment preserves it and otherwise uses the X header. The Token is never placed in the JSON body. A successful response stores the returned Character ID and `?character=...&stage=...` URL on the item. Registration failure does not roll back or hide the proxy publication; the card shows `試遊登録失敗`, and the stored structured error remains available for retry/diagnosis.
 
 ## Docs
 

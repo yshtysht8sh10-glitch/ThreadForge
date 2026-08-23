@@ -47,3 +47,6 @@ uploaded archives and organize them by tag and author.
   `/api/catalog.php`; the action query is supplied by the server.
 - `THREADFORGE_WEBMUGEN_CATALOG_SECRET` and `THREADFORGE_WEBMUGEN_CATALOG_API_URL` remain
   server-only fallbacks for existing deployments. Neither value is part of public settings.
+- Server-to-server Catalog requests send the configured Token in both the standard
+  `Authorization: Bearer ...` header and the rental-hosting-compatible
+  `X-WebMUGEN-Token: ...` header. The Token is never added to the JSON request body.

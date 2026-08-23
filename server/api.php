@@ -4941,7 +4941,11 @@ function publishProxyReleaseToWebMugen(PDO $pdo, int $itemId, string $frontendId
         'stageId' => $stageId,
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $requester ??= static fn(string $url, array $headers, string $body): array => httpRawRequest('POST', $url, $headers, $body);
-    $result = $requester($endpoint, ['Content-Type: application/json', 'Authorization: Bearer ' . $secret], (string)$payload);
+    $result = $requester($endpoint, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $secret,
+        'X-WebMUGEN-Token: ' . $secret,
+    ], (string)$payload);
     $body = is_array($result['body'] ?? null) ? $result['body'] : [];
     if (!($result['success'] ?? false) || !($body['success'] ?? false) || !is_string($body['characterId'] ?? null) || !is_string($body['characterPath'] ?? null) || !is_string($body['playUrl'] ?? null)) {
         $message = (string)($result['message'] ?? $body['error']['message'] ?? 'WebMUGEN Catalog API returned an invalid response.');

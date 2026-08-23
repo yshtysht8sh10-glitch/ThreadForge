@@ -44,6 +44,8 @@ final class WebMugenProxyIntegrationTest extends TestCase
         $requester = function (string $url, array $headers, string $body): array {
             self::assertSame('https://example.test/webmugen/api/catalog.php?action=publish-character', $url);
             self::assertContains('Authorization: Bearer database-token-value', $headers);
+            self::assertContains('X-WebMUGEN-Token: database-token-value', $headers);
+            self::assertStringNotContainsString('database-token-value', $body);
             self::assertSame([
                 'publicationId' => '17',
                 'archiveFile' => 'uploaded_938472.zip',
