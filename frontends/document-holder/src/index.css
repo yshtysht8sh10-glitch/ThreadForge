@@ -7,6 +7,10 @@ body {
   color: var(--page-text, #f2f2f2);
   font-family: "MS PGothic", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
 }
+#root {
+  min-height: 100vh;
+  background: inherit;
+}
 button, input, select, textarea { font: inherit; }
 a { color: var(--accent, #8fb0ff); }
 button, .button-link {
@@ -26,6 +30,9 @@ button.danger { background: var(--danger-button-bg, #c44141); border-color: var(
   min-height: 100vh;
   background: var(--page-bg, #050505);
   color: var(--page-text, #f2f2f2);
+}
+.document-app-reader {
+  background: var(--editor-bg, var(--panel-bg, var(--page-bg, #050505)));
 }
 .loading {
   min-height: 100vh;
@@ -206,6 +213,17 @@ button.danger { background: var(--danger-button-bg, #c44141); border-color: var(
   font-size: .75em;
   vertical-align: .12em;
 }
+.subtag-combo {
+  display: grid;
+  grid-template-columns: minmax(150px, .65fr) minmax(220px, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+.subtag-combo select,
+.subtag-combo input {
+  width: 100%;
+  min-width: 0;
+}
 .article-link-meta {
   color: var(--list-row-meta, var(--muted-text, #aab4c0));
   font-size: 13px;
@@ -251,18 +269,20 @@ button.danger { background: var(--danger-button-bg, #c44141); border-color: var(
 }
 .toc-author {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
-  gap: 10px;
-  padding: 8px 10px;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: 12px;
+  margin-left: 18px;
+  padding: 8px 10px 8px 14px;
+  border-left: 4px solid color-mix(in srgb, var(--accent, #8fb0ff) 65%, transparent);
   border-bottom: 1px solid var(--list-row-border, #343d49);
 }
 .toc-author:last-child {
   border-bottom: 0;
 }
 .toc-author h4 {
-  margin: 5px 0 0;
+  margin: 6px 0 0;
   padding-left: 7px;
-  border-left: 4px solid var(--accent, #8fb0ff);
+  border-left: 0;
   color: var(--toc-group-title, var(--page-text, #f2f2f2));
   font-size: 15px;
 }
@@ -279,6 +299,7 @@ button.danger { background: var(--danger-button-bg, #c44141); border-color: var(
   gap: 12px;
   width: 100%;
   padding: 6px 8px;
+  margin-left: 12px;
   border: 1px solid transparent;
   border-bottom-color: color-mix(in srgb, var(--list-row-border, #7f989d) 65%, transparent);
   background: color-mix(in srgb, var(--panel-bg, #fff) 98%, var(--accent, #1e6b78));
@@ -294,6 +315,12 @@ button.danger { background: var(--danger-button-bg, #c44141); border-color: var(
 .toc-author small {
   color: var(--list-row-meta, var(--muted-text, #aab4c0));
   white-space: nowrap;
+}
+.toc-item-author {
+  display: inline-block;
+  min-width: 7em;
+  margin-right: 10px;
+  color: var(--toc-group-title, var(--page-text, #f2f2f2));
 }
 .document-grid {
   display: grid;
@@ -777,6 +804,45 @@ textarea.large { min-height: 330px; }
 }
 .user-profile-form {
   margin-top: 14px;
+}
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+.admin-tabs button {
+  padding: 7px 14px;
+}
+.admin-item-table {
+  display: grid;
+  gap: 0;
+  margin-top: 12px;
+  border: 1px solid var(--panel-border, #6c7787);
+}
+.admin-item-row {
+  display: grid;
+  grid-template-columns: auto 72px minmax(160px, 1.4fr) minmax(120px, .8fr) minmax(150px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--list-row-border, #3e4753);
+  color: var(--selection-text, var(--page-text, #f2f2f2));
+}
+.admin-item-row:last-child {
+  border-bottom: 0;
+}
+.admin-item-row input {
+  width: auto;
+}
+.admin-item-row small {
+  color: var(--selection-meta, var(--muted-text, #aab4c0));
+  white-space: nowrap;
+}
+.hint {
+  color: var(--muted-text, #aab4c0);
+  font-size: 13px;
 }
 .color-input {
   display: grid;

@@ -174,6 +174,7 @@ export const api = {
   items: () => request<{ items: MaterialItem[] }>('listMaterialItems'),
   create: (body: FormData, token: string) => request<{ message: string }>('createMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
   update: (body: FormData, token: string) => request<{ message: string }>('updateMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
+  verifyPassword: (id: number, password: string, token: string) => request<{ message: string }>('verifyMaterialPassword', { id: String(id), password, ...(token ? { auth_token: token } : {}) }, 'POST'),
   remove: (id: number, password: string, token: string) => request<{ message: string }>('deleteMaterialItem', { id: String(id), password, ...(token ? { auth_token: token } : {}) }, 'POST'),
   login: (loginId: string, password: string) => request<{ token: string; user: User }>('loginUser', { login_id: loginId, password }, 'POST'),
   currentUser: (token: string) => request<{ user: User }>('currentUser', { auth_token: token }),
@@ -181,6 +182,10 @@ export const api = {
   updateMaterialProfile: (body: FormData, token: string) => request<{ user: User }>('updateMaterialProfile', { auth_token: token }, 'POST', body),
   recordView: (id: number) => request<{ view_count: number }>('recordMaterialView', { id: String(id) }, 'POST'),
   materialAnalytics: (password: string) => request<{ summary: Record<string, number>; months: Array<Record<string, string | number>> }>('materialAnalytics', { admin_password: password }),
+  deletedItems: (password: string) => request<{ items: MaterialItem[] }>('listDeletedMaterialItems', { admin_password: password }),
+  adminDelete: (password: string, ids: number[]) => request<{ message: string }>('adminDeleteMaterialItems', { admin_password: password, ids: ids.join(',') }, 'POST'),
+  restoreItems: (password: string, ids: number[]) => request<{ message: string }>('restoreMaterialItems', { admin_password: password, ids: ids.join(',') }, 'POST'),
+  purgeItems: (password: string, ids: number[]) => request<{ message: string }>('purgeMaterialItems', { admin_password: password, ids: ids.join(',') }, 'POST'),
   adminStatus: () => request<{ adminPasswordConfigured: boolean }>('adminStatus'),
   getAdmin: (password: string) => request<{ settings: { config: Record<string, unknown>; skin: Record<string, unknown> } }>('getSettings', { admin_password: password }),
   updateSettings: (password: string, settings: unknown) => request<{ message: string }>('updateSettings', {
@@ -215,10 +220,10 @@ export function groupMaterials(items: MaterialItem[], parent: 'tag' | 'author') 
     const outerKey = parent === 'tag' ? `tag:${item.primaryTagId}` : item.authorKey;
     const outerLabel = parent === 'tag' ? item.primaryTagName : item.authorName;
     const innerKey = parent === 'tag'
-      ? `${item.authorKey}:sub:${item.subtagId ?? 0}`
+      ? `sub:${item.subtagId ?? 0}`
       : `tag:${item.primaryTagId}:sub:${item.subtagId ?? 0}`;
     const innerLabel = parent === 'tag'
-      ? [item.authorName, item.subtagName].filter(Boolean).join(' / ')
+      ? item.subtagName || '未分類'
       : [item.primaryTagName, item.subtagName].filter(Boolean).join(' / ');
     if (!outer.has(outerKey)) outer.set(outerKey, { label: outerLabel, groups: new Map() });
     const group = outer.get(outerKey)!;

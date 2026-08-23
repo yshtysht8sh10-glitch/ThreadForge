@@ -4,6 +4,7 @@ import { api, defaultMaterialDesign, DescriptionBanner as Banner, groupMaterials
 type Page = 'list' | 'article' | 'post' | 'delete' | 'edit' | 'manual' | 'login' | 'admin';
 type DraftMode = 'write' | 'upload';
 type Route = { page: Page; id?: number };
+type AdminTab = 'posts' | 'deleted' | 'settings' | 'design';
 
 const TOKEN_KEY = 'threadforgeDocumentHolderUserToken';
 const DOCUMENT_HTML_PREFIX = '<!-- threadforge-document-html -->';
@@ -47,6 +48,28 @@ function App() {
     });
   }, [token]);
 
+  useEffect(() => {
+    if (!settings || route.page !== 'article') return;
+    const design = previewDesign ?? settings.design;
+    const background = design.editorBackgroundColor || design.panelBackgroundColor || design.pageBackgroundColor;
+    if (!background) return;
+
+    const root = document.getElementById('root');
+    const previousHtmlBackground = document.documentElement.style.background;
+    const previousBodyBackground = document.body.style.background;
+    const previousRootBackground = root?.style.background ?? '';
+
+    document.documentElement.style.background = background;
+    document.body.style.background = background;
+    if (root) root.style.background = background;
+
+    return () => {
+      document.documentElement.style.background = previousHtmlBackground;
+      document.body.style.background = previousBodyBackground;
+      if (root) root.style.background = previousRootBackground;
+    };
+  }, [settings, previewDesign, route.page]);
+
   const navigate = (page: Page, id?: number) => {
     if (page !== 'admin') setPreviewDesign(null);
     window.location.hash = page === 'list' ? '#/' : page === 'article' ? `#/article/${id}` : `#/${page}`;
@@ -73,7 +96,7 @@ function App() {
   const article = items.find((item) => item.id === route.id);
 
   return (
-    <div className="document-app" style={designVariables(visibleSettings)}>
+    <div className={`document-app ${route.page === 'article' ? 'document-app-reader' : ''}`} style={designVariables(visibleSettings)}>
       <Header settings={settings} page={route.page} navigate={navigate} user={user} />
       <main className={route.page === 'article' ? 'reader-shell' : 'page-shell'}>
         {notice && <p className="system-message success">{notice}</p>}
@@ -151,7 +174,7 @@ function DocumentList({ settings, items, navigate, user }: CommonProps) {
         <div className="article-link-list scroll-list">
           {latest.length === 0 && <p>投稿された記事はありません。</p>}
           {latest.map((item) => <button className="article-link-row" type="button" key={item.id} onClick={() => navigate('article', item.id)}>
-            <span className="article-link-title">{item.draft && <span className="draft-badge">書きかけ</span>}{item.name}</span>
+            <span className="article-link-title">{item.draft && <span className="draft-badge">＜書きかけ＞</span>}{item.name}</span>
             <span className="article-link-meta">{item.authorName} / {formatDate(item.updatedAt)} / 閲覧数: {item.viewCount}</span>
           </button>)}
         </div>
@@ -171,7 +194,11 @@ function DocumentList({ settings, items, navigate, user }: CommonProps) {
               <ul>
                 {inner.items.map((item) => <li key={item.id}>
                   <button type="button" onClick={() => navigate('article', item.id)}>
-                    <span>{item.draft && <span className="draft-badge">書きかけ</span>}{item.name}</span>
+                    <span>
+                      {groupParent === 'tag' && <strong className="toc-item-author">{item.authorName}</strong>}
+                      {item.draft && <span className="draft-badge">＜書きかけ＞</span>}
+                      {item.name}
+                    </span>
                     <small>{formatDate(item.updatedAt)}</small>
                   </button>
                 </li>)}
@@ -227,7 +254,7 @@ function ArticlePage({ item, navigate }: { item?: MaterialItem; navigate: (page:
   return (
     <>
       <article className="panel article-reader">
-        <h1>{item.draft && <span className="draft-badge large">書きかけ</span>}{item.name}</h1>
+        <h1>{item.draft && <span className="draft-badge large">＜書きかけ＞</span>}{item.name}</h1>
         <div className="panel-body">
           <p className="article-meta">投稿者: {item.authorName} / 投稿日: {formatDate(item.createdAt)} / 更新日: {formatDate(item.updatedAt)} / 閲覧数: {viewCount}</p>
           <div className="reader-content" dangerouslySetInnerHTML={{ __html: documentHtmlFromItem(item) }} />
@@ -261,6 +288,10 @@ function DocumentForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
   const childTags = tags.filter((tag) => tag.parentId === Number(tagId));
 
   useEffect(() => {
+    if (mode === 'edit') setPassword(props.initialPassword ?? '');
+  }, [mode, props.initialPassword, item?.id]);
+
+  useEffect(() => {
     if (!editorRef.current) return;
     editorRef.current.innerHTML = item ? documentHtmlFromItem(item) : '<p>本文を書いてください。</p>';
   }, [item?.id]);
@@ -274,7 +305,7 @@ function DocumentForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
     document.execCommand(command, false, value);
   };
   const saveDraft = (silent = false) => {
-    const draft = { name, author, tagId, subtagInput, draftFlag, password, draftMode, editorHtml: editorHtml(), textColor, tableBg, savedAt: new Date().toISOString() };
+    const draft = { name, author, tagId, subtagInput, draftFlag, ...(mode === 'create' ? { password } : {}), draftMode, editorHtml: editorHtml(), textColor, tableBg, savedAt: new Date().toISOString() };
     localStorage.setItem(draftKey, JSON.stringify(draft));
     if (!silent) setStatus(`下書きを保存しました。${formatDate(draft.savedAt)}`);
   };
@@ -290,7 +321,7 @@ function DocumentForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
     setTagId(draft.tagId ?? tagId);
     setSubtagInput(draft.subtagInput ?? draft.newSubtagName ?? '');
     setDraftFlag(Boolean(draft.draftFlag));
-    setPassword(draft.password ?? password);
+    setPassword(mode === 'edit' ? props.initialPassword ?? password : draft.password ?? password);
     setDraftMode(draft.draftMode ?? 'write');
     setTextColor(draft.textColor ?? textColor);
     setTableBg(draft.tableBg ?? tableBg);
@@ -387,15 +418,20 @@ function DocumentForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
             </select>
           </label>
           <label><span>第二階層タグ</span>
-            <input
-              list="document-subtag-options"
-              value={subtagInput}
-              onChange={(event) => setSubtagInput(event.target.value)}
-              placeholder="未指定"
-            />
-            <datalist id="document-subtag-options">
-              {childTags.map((tag) => <option value={tag.name} key={tag.id} />)}
-            </datalist>
+            <div className="subtag-combo">
+              <select
+                value={childTags.some((tag) => tag.name === subtagInput) ? subtagInput : ''}
+                onChange={(event) => setSubtagInput(event.target.value)}
+              >
+                <option value="">未指定</option>
+                {childTags.map((tag) => <option value={tag.name} key={tag.id}>{tag.name}</option>)}
+              </select>
+              <input
+                value={childTags.some((tag) => tag.name === subtagInput) ? '' : subtagInput}
+                onChange={(event) => setSubtagInput(event.target.value)}
+                placeholder="新しい第二階層タグ"
+              />
+            </div>
           </label>
         </div>
         <label className="inline-check"><input type="checkbox" checked={draftFlag} onChange={(event) => setDraftFlag(event.target.checked)} />書きかけとして表示する</label>
@@ -432,7 +468,7 @@ function DocumentForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
             />
           </>
         )}
-        <label><span>投稿パスワード<span className="required-marker" aria-hidden="true">*</span></span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+        <label><span>投稿パスワード<span className="required-marker" aria-hidden="true">*</span></span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required /></label>
         <p className="draft-status">{status}</p>
         <div className="draft-actions">
           <button type="button" className="secondary" onClick={() => saveDraft(false)}>一時保存</button>
@@ -452,6 +488,7 @@ function SelectDocument(props: CommonProps & { mode: 'delete' | 'edit' }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [password, setPassword] = useState(props.user?.post_password ?? '');
   const [editing, setEditing] = useState(false);
+  const [checkingPassword, setCheckingPassword] = useState(false);
   const selected = props.items.find((item) => item.id === selectedId);
   const groups = groupMaterials(props.items, props.settings.groupParent);
 
@@ -476,14 +513,22 @@ function SelectDocument(props: CommonProps & { mode: 'delete' | 'edit' }) {
     }
   };
 
-  const openEdit = () => {
+  const openEdit = async () => {
     if (!selectedId) return;
     if (!password.trim()) {
       props.setError('投稿パスワードを入力してください。');
       return;
     }
-    props.setError('');
-    setEditing(true);
+    setCheckingPassword(true);
+    try {
+      await api.verifyPassword(selectedId, password, props.token);
+      props.setError('');
+      setEditing(true);
+    } catch (reason) {
+      props.setError((reason as Error).message);
+    } finally {
+      setCheckingPassword(false);
+    }
   };
 
   return (
@@ -491,8 +536,8 @@ function SelectDocument(props: CommonProps & { mode: 'delete' | 'edit' }) {
       <p>対象を1件選び、投稿時に設定した投稿パスワードを入力してください。</p>
       <ArticleSelectList groups={groups} selectedId={selectedId} setSelectedId={(id) => { setSelectedId(id); setEditing(false); }} />
       {selected && <div className="selection-actions">
-        <label>投稿パスワード<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-        <button type="button" onClick={props.mode === 'delete' ? executeDelete : openEdit}>{props.mode === 'delete' ? '削除する' : '編集画面へ'}</button>
+        <label>投稿パスワード<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" required /></label>
+        <button type="button" disabled={checkingPassword} onClick={props.mode === 'delete' ? executeDelete : openEdit}>{props.mode === 'delete' ? '削除する' : checkingPassword ? '確認中...' : '編集画面へ'}</button>
       </div>}
     </Panel>
   );
@@ -617,6 +662,9 @@ function AdminPage(props: CommonProps) {
   const [savedSettings, setSavedSettings] = useState<{ config: Record<string, unknown>; skin: Record<string, unknown> } | null>(null);
   const [localTags, setLocalTags] = useState<MaterialTag[]>(props.tags);
   const [analytics, setAnalytics] = useState<Record<string, number> | null>(null);
+  const [tab, setTab] = useState<AdminTab>('posts');
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [deletedItems, setDeletedItems] = useState<MaterialItem[]>([]);
 
   useEffect(() => {
     api.adminStatus().then((response) => setConfigured(response.adminPasswordConfigured)).catch((reason) => props.setError((reason as Error).message));
@@ -624,7 +672,7 @@ function AdminPage(props: CommonProps) {
   useEffect(() => setLocalTags(props.tags), [props.tags]);
 
   const load = async (value = password) => {
-    const [settingsResponse, analyticsResponse] = await Promise.all([api.getAdmin(value), api.materialAnalytics(value)]);
+    const [settingsResponse, analyticsResponse, deletedResponse] = await Promise.all([api.getAdmin(value), api.materialAnalytics(value), api.deletedItems(value)]);
     const next = {
       ...settingsResponse.settings,
       config: {
@@ -643,6 +691,7 @@ function AdminPage(props: CommonProps) {
     setAdminSettings(next);
     setSavedSettings(structuredClone(next));
     setAnalytics(analyticsResponse.summary);
+    setDeletedItems(deletedResponse.items);
     setAuthenticated(true);
     props.setPreviewDesign(materialDesignFromSkin(next.skin));
     props.setError('');
@@ -704,6 +753,30 @@ function AdminPage(props: CommonProps) {
     updateDesign('headingBackgroundImageUrl', await readFileAsDataUrl(file));
   };
   const banners = normalizeBanners(config.materialsDescriptionBanners ?? props.settings.descriptionBanners);
+  const toggleSelected = (id: number) => setSelectedIds((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
+  const clearSelection = () => setSelectedIds([]);
+  const adminDeleteSelected = async () => {
+    const response = await api.adminDelete(password, selectedIds);
+    props.setNotice(response.message);
+    clearSelection();
+    await props.reload();
+  };
+  const restoreSelected = async () => {
+    const response = await api.restoreItems(password, selectedIds);
+    props.setNotice(response.message);
+    clearSelection();
+    const deletedResponse = await api.deletedItems(password);
+    setDeletedItems(deletedResponse.items);
+    await props.reload();
+  };
+  const purgeSelected = async () => {
+    const response = await api.purgeItems(password, selectedIds);
+    props.setNotice(response.message);
+    clearSelection();
+    const deletedResponse = await api.deletedItems(password);
+    setDeletedItems(deletedResponse.items);
+    await props.reload();
+  };
 
   return (
     <>
@@ -711,6 +784,26 @@ function AdminPage(props: CommonProps) {
         <p>管理者としてログインしています。ドキュメントホルダーの設定、タグ、デザインを管理できます。</p>
         {analytics && <p>投稿数: {analytics.total_items ?? 0} / 閲覧数合計: {analytics.total_views ?? 0} / 作者数: {analytics.authors ?? 0}</p>}
       </Panel>
+      <div className="admin-tabs" role="tablist" aria-label="管理メニュー">
+        <button type="button" className={tab === 'posts' ? '' : 'secondary'} onClick={() => { setTab('posts'); clearSelection(); }}>投稿管理</button>
+        <button type="button" className={tab === 'deleted' ? '' : 'secondary'} onClick={() => { setTab('deleted'); clearSelection(); }}>復元 / 消去</button>
+        <button type="button" className={tab === 'settings' ? '' : 'secondary'} onClick={() => { setTab('settings'); clearSelection(); }}>設定</button>
+        <button type="button" className={tab === 'design' ? '' : 'secondary'} onClick={() => { setTab('design'); clearSelection(); }}>デザイン</button>
+      </div>
+      {tab === 'posts' && <Panel title="投稿管理">
+        <p>チェックした投稿を、投稿パスワードなしで一括削除できます。</p>
+        <AdminItemTable items={props.items} selectedIds={selectedIds} toggleSelected={toggleSelected} />
+        <div className="actions"><button className="danger" type="button" disabled={selectedIds.length === 0} onClick={() => void adminDeleteSelected()}>チェックした項目を一括削除</button></div>
+      </Panel>}
+      {tab === 'deleted' && <Panel title="復元 / 消去">
+        <p>削除済み投稿を復元、または完全消去できます。</p>
+        <AdminItemTable items={deletedItems} selectedIds={selectedIds} toggleSelected={toggleSelected} />
+        <div className="actions">
+          <button type="button" disabled={selectedIds.length === 0} onClick={() => void restoreSelected()}>復元する</button>
+          <button className="danger" type="button" disabled={selectedIds.length === 0} onClick={() => void purgeSelected()}>完全消去する</button>
+        </div>
+      </Panel>}
+      {tab === 'settings' && <>
       <Panel title="掲示板設定">
         <div className="material-form admin-config-form">
           <label>タイトル<input value={String(config.materialsTitle ?? '')} onChange={(event) => updateConfig('materialsTitle', event.target.value)} /></label>
@@ -732,12 +825,26 @@ function AdminPage(props: CommonProps) {
               <option value="author">投稿者名を親にする</option>
             </select>
           </label>
+          <fieldset className="settings-group">
+            <legend>親サイトSSO</legend>
+            <label>SSO使用
+              <select value={Boolean(config.ssoEnabled) ? '1' : '0'} onChange={(event) => updateConfig('ssoEnabled', event.target.value === '1')}>
+                <option value="0">OFF</option>
+                <option value="1">ON</option>
+              </select>
+            </label>
+            <label>SSO共有秘密鍵<input type="password" value={String(config.ssoSharedSecret ?? '')} onChange={(event) => updateConfig('ssoSharedSecret', event.target.value)} /></label>
+            <p className="hint">ONにすると新規登録と管理者によるユーザー情報編集/消去を親サイト側に寄せます。</p>
+          </fieldset>
+          <div className="actions"><button type="button" onClick={() => void save()}>設定を保存</button></div>
         </div>
       </Panel>
       <Panel title="タグ">
         <TagEditor tags={localTags} setTags={setLocalTags} />
+        <div className="actions"><button type="button" onClick={() => void save()}>タグを保存</button></div>
       </Panel>
-      <Panel title="デザイン">
+      </>}
+      {tab === 'design' && <Panel title="デザイン">
         <div className="color-grid">
           {allDesignFields.map(([key, label]) => <label key={key}>{label}<span className="color-input">
             <input type="color" value={String(skin[`materials${key[0].toUpperCase()}${key.slice(1)}`] ?? defaultMaterialDesign[key])} onChange={(event) => updateDesign(key, event.target.value)} />
@@ -754,8 +861,24 @@ function AdminPage(props: CommonProps) {
           <button className="secondary" type="button" onClick={restoreSaved}>編集前に戻す</button>
           <button type="button" onClick={() => void save()}>設定を保存</button>
         </div>
-      </Panel>
+      </Panel>}
     </>
+  );
+}
+
+function AdminItemTable({ items, selectedIds, toggleSelected }: { items: MaterialItem[]; selectedIds: number[]; toggleSelected: (id: number) => void }) {
+  if (items.length === 0) return <p className="empty compact">対象はありません。</p>;
+  return (
+    <div className="admin-item-table">
+      {items.map((item) => <label className="admin-item-row" key={item.id}>
+        <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggleSelected(item.id)} />
+        <strong>No.{item.id}</strong>
+        <span>{item.name}</span>
+        <span>{item.authorName}</span>
+        <span>{item.primaryTagName}{item.subtagName ? ` / ${item.subtagName}` : ''}</span>
+        <small>{formatDate(item.updatedAt)}</small>
+      </label>)}
+    </div>
   );
 }
 
