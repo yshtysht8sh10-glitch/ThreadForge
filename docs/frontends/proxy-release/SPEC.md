@@ -17,6 +17,13 @@ uploaded archives and organize them by tag and author.
 - A manually selected explanation image overrides the generated GIF.
 - HOME, list, post, delete, edit, manual, login, and admin screens follow the
   materials-library workflow.
+- After a proxy-release create or archive-changing update is committed, the server calls
+  WebMUGEN's authenticated Catalog endpoint with the publication ID, actual stored ZIP
+  basename, and configured Stage ID. The publication ID controls stable Character identity;
+  the archive basename only selects a file below WebMUGEN's fixed proxy storage root.
+- A successful registration stores and renders the item-specific WebMUGEN play URL on the
+  release card. A failed registration preserves the published item and records a structured
+  error so publication success is not confused with trial-play readiness.
 - The navigation includes a `Trial Play` link to the right of the login item. The
   destination is configurable from the admin settings screen. If no URL is set, the
   item is displayed as disabled instead of linking to a fallback page.
@@ -34,3 +41,9 @@ uploaded archives and organize them by tag and author.
 - The automatic GIF generator currently targets SFF v1/PCX sprites, matching the
   WebMUGEN parser support used as the source implementation.
 - If AIR/SFF parsing fails, users can still upload a manual explanation image.
+- The administrator settings screen stores the WebMUGEN API Token in the server-side SQLite
+  `security` settings and never reads the saved plaintext back into the browser. It also stores
+  the API URL and Stage ID. The URL is restricted to the current host and a path ending in
+  `/api/catalog.php`; the action query is supplied by the server.
+- `THREADFORGE_WEBMUGEN_CATALOG_SECRET` and `THREADFORGE_WEBMUGEN_CATALOG_API_URL` remain
+  server-only fallbacks for existing deployments. Neither value is part of public settings.

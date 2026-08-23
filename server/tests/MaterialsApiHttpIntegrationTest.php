@@ -206,6 +206,14 @@ final class MaterialsApiHttpIntegrationTest extends TestCase
         $itemId = $this->uploadMaterial($tagId, $termId, 'Password Owner', $token);
 
         foreach (['', 'wrong-key'] as $password) {
+            $verified = $this->postForm([
+                'action' => 'verifyMaterialPassword',
+                'auth_token' => $token,
+                'id' => (string)$itemId,
+                'password' => $password,
+            ]);
+            $this->assertSame(403, $verified['status'], $verified['body']);
+
             $updated = $this->postForm([
                 'action' => 'updateMaterialItem',
                 'auth_token' => $token,
@@ -222,6 +230,14 @@ final class MaterialsApiHttpIntegrationTest extends TestCase
             ]);
             $this->assertSame(403, $deleted['status'], $deleted['body']);
         }
+
+        $verified = $this->postForm([
+            'action' => 'verifyMaterialPassword',
+            'auth_token' => $token,
+            'id' => (string)$itemId,
+            'password' => 'postkey',
+        ]);
+        $this->assertSame(200, $verified['status'], $verified['body']);
 
         $updated = $this->postForm([
             'action' => 'updateMaterialItem',

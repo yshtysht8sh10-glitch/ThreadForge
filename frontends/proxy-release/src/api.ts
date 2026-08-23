@@ -84,6 +84,9 @@ export type MaterialItem = {
   updatedAt: string;
   deletedAt: string | null;
   adminOnly: boolean;
+  webMugenCharacterId?: string | null;
+  playUrl?: string | null;
+  trialPlayError?: string | null;
   terms: TermAnswer[];
   media: MaterialMedia[];
 };
@@ -96,6 +99,15 @@ export type User = {
   icon_path: string | null;
   materials_author_name: string | null;
   materials_default_terms: Record<string, boolean>;
+};
+export type TrialPlayResult = {
+  success: boolean;
+  characterId?: string;
+  characterPath?: string;
+  playUrl?: string;
+  code?: string;
+  message?: string;
+  skipped?: boolean;
 };
 export type AdminUser = User & {
   created_at: string;
@@ -144,8 +156,8 @@ export const api = {
   settings: () => request<{ settings: MaterialSettings; tags: MaterialTag[]; terms: MaterialTerm[] }>('materialsSettings'),
   items: () => request<{ items: MaterialItem[] }>('listMaterialItems'),
   item: (id: number) => request<{ item: MaterialItem }>('getMaterialItem', { id: String(id) }),
-  create: (body: FormData, token: string) => request<{ message: string }>('createMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
-  update: (body: FormData, token: string) => request<{ message: string }>('updateMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
+  create: (body: FormData, token: string) => request<{ message: string; trialPlay: TrialPlayResult }>('createMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
+  update: (body: FormData, token: string) => request<{ message: string; trialPlay: TrialPlayResult }>('updateMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
   remove: (id: number, password: string, token: string) => request<{ message: string }>('deleteMaterialItem', {
     id: String(id), password, ...(token ? { auth_token: token } : {}),
   }, 'POST'),
@@ -156,9 +168,14 @@ export const api = {
   logout: (token: string) => request('logoutUser', { auth_token: token }, 'POST'),
   updateProfile: (body: FormData, token: string) => request<{ user: User }>('updateMaterialProfile', { auth_token: token }, 'POST', body),
   adminStatus: () => request<{ adminPasswordConfigured: boolean }>('adminStatus'),
-  getAdmin: (password: string) => request<{ settings: { config: Record<string, unknown>; skin: Record<string, unknown> } }>('getSettings', { admin_password: password }),
-  updateSettings: (password: string, settings: unknown) => request<{ message: string }>('updateSettings', {
-    admin_password: password, settings_b64: base64EncodeUtf8(JSON.stringify(settings)),
+  getAdmin: (password: string) => request<{
+    settings: { config: Record<string, unknown>; skin: Record<string, unknown> };
+    webMugen: { tokenConfigured: boolean };
+  }>('getSettings', { admin_password: password }),
+  updateSettings: (password: string, settings: unknown, webMugenApiToken = '') => request<{ message: string }>('updateSettings', {
+    admin_password: password,
+    settings_b64: base64EncodeUtf8(JSON.stringify(settings)),
+    ...(webMugenApiToken ? { webmugen_api_token: webMugenApiToken } : {}),
   }, 'POST'),
   saveCatalog: (password: string, tags: MaterialTag[], terms: MaterialTerm[]) => request<{ message: string }>('saveMaterialCatalog', {
     admin_password: password, tags: JSON.stringify(tags), terms: JSON.stringify(terms),

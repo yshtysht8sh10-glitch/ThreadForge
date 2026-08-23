@@ -301,6 +301,9 @@ function initializeDatabase(PDO $pdo): void
     ensureColumnExists($pdo, 'material_items', 'legacy_source', 'TEXT');
     ensureColumnExists($pdo, 'material_items', 'draft', 'INTEGER NOT NULL DEFAULT 0');
     ensureColumnExists($pdo, 'material_items', 'view_count', 'INTEGER NOT NULL DEFAULT 0');
+    ensureColumnExists($pdo, 'material_items', 'webmugen_character_id', 'TEXT');
+    ensureColumnExists($pdo, 'material_items', 'webmugen_play_url', 'TEXT');
+    ensureColumnExists($pdo, 'material_items', 'webmugen_error', 'TEXT');
 
     ensureDatabaseIndexes($pdo);
     ensureMaterialCatalogDefaults($pdo);

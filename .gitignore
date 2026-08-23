@@ -25,6 +25,7 @@ server/.phpunit.result.cache
 server/laravel/
 frontends/*/vite*.log
 /vite*.log
+/*.log
 server/php-server*.log
 server/*-php*.log
 server/*_debug.log

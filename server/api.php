@@ -94,6 +94,9 @@ function handleApiRequest(): void
         case 'updateMaterialItem':
             updateMaterialItem($pdo);
             break;
+        case 'verifyMaterialPassword':
+            verifyMaterialPassword($pdo);
+            break;
         case 'deleteMaterialItem':
             deleteMaterialItem($pdo);
             break;
@@ -3950,9 +3953,15 @@ function getSettings(PDO $pdo): void
 {
     requireAdmin();
     $cronApiKey = ensureCronApiKey($pdo);
+    $settings = loadSettings($pdo);
+    $webMugenToken = trim((string)($settings['security']['webMugenApiToken'] ?? ''));
+    unset($settings['security']['webMugenApiToken']);
     jsonResponse([
         'success' => true,
-        'settings' => loadSettings($pdo),
+        'settings' => $settings,
+        'webMugen' => [
+            'tokenConfigured' => $webMugenToken !== '' || trim((string)(getenv('THREADFORGE_WEBMUGEN_CATALOG_SECRET') ?: '')) !== '',
+        ],
         'system' => [
             'cronPath' => cronScriptPath(),
             'cronApiUrl' => cronApiUrl(),
@@ -4395,6 +4404,7 @@ function uploaderDefaultDesign(): array
 function updateSettings(PDO $pdo): void
 {
     requireAdmin();
+    $currentSettings = loadSettings($pdo);
     $settingsJson = (string)($_POST['settings'] ?? '');
     if (isset($_POST['settings_b64'])) {
         $decodedSettings = base64_decode((string)$_POST['settings_b64'], true);
@@ -4409,6 +4419,28 @@ function updateSettings(PDO $pdo): void
     }
     if (isset($settings['config']) && is_array($settings['config']) && array_key_exists('bbsTitle', $settings['config'])) {
         $settings['config']['manualTitle'] = (string)$settings['config']['bbsTitle'];
+    }
+    $settings['security'] = is_array($settings['security'] ?? null) ? $settings['security'] : [];
+    $settings['security']['webMugenApiToken'] = (string)($currentSettings['security']['webMugenApiToken'] ?? '');
+    if (FRONTEND_ID === 'proxy-release' && array_key_exists('webmugen_api_token', $_POST)) {
+        $token = trim((string)$_POST['webmugen_api_token']);
+        if ($token !== '' && (strlen($token) < 16 || strlen($token) > 512 || preg_match('/[\x00-\x20\x7f]/', $token))) {
+            jsonResponse(['success' => false, 'message' => 'WebMUGEN API Tokenは空白を含まない16〜512文字で指定してください。'], 400);
+        }
+        if ($token !== '') $settings['security']['webMugenApiToken'] = $token;
+    }
+    if (FRONTEND_ID === 'proxy-release') {
+        $config = is_array($settings['config'] ?? null) ? $settings['config'] : [];
+        $stageId = trim((string)($config['webMugenStageId'] ?? 'cyber'));
+        if (preg_match('/^[a-z0-9][a-z0-9_-]{0,63}$/i', $stageId) !== 1) {
+            jsonResponse(['success' => false, 'message' => 'WebMUGEN Stage IDが正しくありません。'], 400);
+        }
+        $settings['config']['webMugenStageId'] = $stageId;
+        try {
+            $settings['config']['webMugenApiUrl'] = webMugenCatalogEndpointFromValue((string)($config['webMugenApiUrl'] ?? ''), $_SERVER);
+        } catch (InvalidArgumentException $error) {
+            jsonResponse(['success' => false, 'message' => $error->getMessage()], 400);
+        }
     }
     saveSettings($pdo, $settings);
     jsonResponse(['success' => true, 'message' => '設定を保存しました。']);
@@ -4713,6 +4745,9 @@ function buildMaterialItem(PDO $pdo, array $row): array
         'draft' => toBoolFlag($row['draft'] ?? false),
         'deletedAt' => $row['deleted_at'] ?? null,
         'adminOnly' => materialItemIsAdminOnly($row),
+        'webMugenCharacterId' => $row['webmugen_character_id'] ?? null,
+        'playUrl' => $row['webmugen_play_url'] ?? null,
+        'trialPlayError' => $row['webmugen_error'] ?? null,
         'terms' => array_map(static fn(array $term): array => [
             'id' => (int)$term['id'], 'label' => (string)$term['label'],
             'description' => (string)$term['description'],
@@ -4807,6 +4842,16 @@ function createMaterialItem(PDO $pdo): void
         }
         throw $exception;
     }
+    if (FRONTEND_ID === 'proxy-release') {
+        $trialPlay = publishProxyReleaseToWebMugen($pdo, $id, FRONTEND_ID);
+        jsonResponse([
+            'success' => true,
+            'message' => $trialPlay['success']
+                ? '公開とWebMUGEN試遊登録が完了しました。'
+                : '公開は完了しましたが、WebMUGEN試遊登録に失敗しました。',
+            'trialPlay' => $trialPlay,
+        ]);
+    }
     jsonResponse(['success' => true, 'message' => '素材を登録しました。']);
 }
 
@@ -4861,7 +4906,91 @@ function updateMaterialItem(PDO $pdo): void
         replaceMaterialTerms($pdo, (int)$id, materialTermAnswersFromRequest());
     }
     saveMaterialAudioUploads($pdo, $audioFiles, (int)$id);
+    if (FRONTEND_ID === 'proxy-release') {
+        $trialPlay = publishProxyReleaseToWebMugen($pdo, (int)$id, FRONTEND_ID);
+        jsonResponse([
+            'success' => true,
+            'message' => $trialPlay['success']
+                ? '更新とWebMUGEN試遊登録が完了しました。'
+                : '更新は完了しましたが、WebMUGEN試遊登録に失敗しました。',
+            'trialPlay' => $trialPlay,
+        ]);
+    }
     jsonResponse(['success' => true, 'message' => '素材を更新しました。']);
+}
+
+function publishProxyReleaseToWebMugen(PDO $pdo, int $itemId, string $frontendId, ?callable $requester = null): array
+{
+    if ($frontendId !== 'proxy-release') return ['success' => false, 'skipped' => true, 'code' => 'frontend.not_proxy_release'];
+    $item = findMaterialItem($pdo, $itemId, false);
+    if (!$item) return ['success' => false, 'code' => 'publication.not_found', 'message' => 'Proxy publication was not found.'];
+    $archiveFile = basename(str_replace('\\', '/', (string)$item['archive_path']));
+    $settings = loadSettings($pdo);
+    $storedSecret = trim((string)($settings['security']['webMugenApiToken'] ?? ''));
+    $secret = $storedSecret !== '' ? $storedSecret : trim((string)(getenv('THREADFORGE_WEBMUGEN_CATALOG_SECRET') ?: ''));
+    if ($secret === '') return saveWebMugenTrialFailure($pdo, $itemId, 'config.secret_missing', 'WebMUGEN Catalog API secret is not configured.');
+    try {
+        $endpoint = webMugenCatalogEndpoint($settings, $_SERVER);
+    } catch (InvalidArgumentException $error) {
+        return saveWebMugenTrialFailure($pdo, $itemId, 'config.url_invalid', $error->getMessage());
+    }
+    $stageId = trim((string)($settings['config']['webMugenStageId'] ?? 'cyber'));
+    $payload = json_encode([
+        'publicationId' => (string)$itemId,
+        'archiveFile' => $archiveFile,
+        'stageId' => $stageId,
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $requester ??= static fn(string $url, array $headers, string $body): array => httpRawRequest('POST', $url, $headers, $body);
+    $result = $requester($endpoint, ['Content-Type: application/json', 'Authorization: Bearer ' . $secret], (string)$payload);
+    $body = is_array($result['body'] ?? null) ? $result['body'] : [];
+    if (!($result['success'] ?? false) || !($body['success'] ?? false) || !is_string($body['characterId'] ?? null) || !is_string($body['characterPath'] ?? null) || !is_string($body['playUrl'] ?? null)) {
+        $message = (string)($result['message'] ?? $body['error']['message'] ?? 'WebMUGEN Catalog API returned an invalid response.');
+        $code = (string)($body['error']['code'] ?? 'api.failed');
+        return saveWebMugenTrialFailure($pdo, $itemId, $code, $message);
+    }
+    $pdo->prepare('UPDATE material_items SET webmugen_character_id = :character_id, webmugen_play_url = :play_url, webmugen_error = null WHERE id = :id')
+        ->execute([':character_id' => $body['characterId'], ':play_url' => $body['playUrl'], ':id' => $itemId]);
+    return ['success' => true, 'characterId' => $body['characterId'], 'characterPath' => $body['characterPath'], 'playUrl' => $body['playUrl']];
+}
+
+function saveWebMugenTrialFailure(PDO $pdo, int $itemId, string $code, string $message): array
+{
+    $detail = json_encode(['code' => $code, 'message' => $message], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $pdo->prepare('UPDATE material_items SET webmugen_character_id = null, webmugen_play_url = null, webmugen_error = :error WHERE id = :id')
+        ->execute([':error' => $detail, ':id' => $itemId]);
+    return ['success' => false, 'code' => $code, 'message' => $message];
+}
+
+function webMugenCatalogEndpoint(array $settings, array $server): string
+{
+    $configured = trim((string)($settings['config']['webMugenApiUrl'] ?? ''));
+    if ($configured === '') $configured = trim((string)(getenv('THREADFORGE_WEBMUGEN_CATALOG_API_URL') ?: ''));
+    return webMugenCatalogEndpointFromValue($configured, $server);
+}
+
+function webMugenCatalogEndpointFromValue(string $configured, array $server): string
+{
+    $scheme = (($server['HTTPS'] ?? '') !== '' && ($server['HTTPS'] ?? '') !== 'off') ? 'https' : 'http';
+    $host = (string)($server['HTTP_HOST'] ?? 'localhost');
+    $url = trim($configured) !== '' ? trim($configured) : $scheme . '://' . $host . '/DotoEita/50_WEBMUGEN/api/catalog.php';
+    $parts = parse_url($url);
+    $serverHost = parse_url($scheme . '://' . $host, PHP_URL_HOST);
+    if (
+        !is_array($parts)
+        || !in_array(strtolower((string)($parts['scheme'] ?? '')), ['http', 'https'], true)
+        || strcasecmp((string)($parts['host'] ?? ''), (string)$serverHost) !== 0
+        || !str_ends_with((string)($parts['path'] ?? ''), '/api/catalog.php')
+        || isset($parts['user'])
+        || isset($parts['pass'])
+        || isset($parts['fragment'])
+    ) {
+        throw new InvalidArgumentException('WebMUGEN API URLは同一ホストの /api/catalog.php を指定してください。');
+    }
+    $query = [];
+    parse_str((string)($parts['query'] ?? ''), $query);
+    $query['action'] = 'publish-character';
+    $authority = (string)$parts['host'] . (isset($parts['port']) ? ':' . (int)$parts['port'] : '');
+    return (string)$parts['scheme'] . '://' . $authority . (string)$parts['path'] . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
 }
 
 function deleteMaterialItem(PDO $pdo): void
@@ -4877,12 +5006,23 @@ function deleteMaterialItem(PDO $pdo): void
     jsonResponse(['success' => true, 'message' => '素材を削除しました。']);
 }
 
+function verifyMaterialPassword(PDO $pdo): void
+{
+    $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+    $item = $id ? findMaterialItem($pdo, (int)$id, false) : null;
+    if (!$item) {
+        jsonResponse(['success' => false, 'message' => 'Material item was not found.'], 404);
+    }
+    requireMaterialPassword($item);
+    jsonResponse(['success' => true, 'message' => 'OK']);
+}
+
 function requireMaterialPassword(array $item): void
 {
     if (materialItemIsAdminOnly($item)) {
         jsonResponse(['success' => false, 'message' => 'この素材は投稿パスワードが設定されていないため、管理画面からのみ変更できます。'], 403);
     }
-    $password = (string)($_POST['password'] ?? '');
+    $password = trim((string)($_POST['password'] ?? ''));
     if ($password === '' || !password_verify($password, (string)$item['password_hash'])) {
         jsonResponse(['success' => false, 'message' => '投稿パスワードが違います。'], 403);
     }
@@ -5331,6 +5471,8 @@ function defaultSettings(): array
             'materialsDescriptionBanners' => materialDefaultDescriptionBanners(),
             'materialsHomePageUrl' => '../',
             'proxyTrialPlayUrl' => '',
+            'webMugenApiUrl' => '',
+            'webMugenStageId' => 'cyber',
             'materialsManualBody' => materialsDefaultManualBody(),
             'materialsGroupParent' => 'tag',
             'materialsMaxArchiveKb' => 102400,
@@ -5401,6 +5543,7 @@ function defaultSettings(): array
         'security' => [
             'adminPasswordHash' => '',
             'cronApiKey' => '',
+            'webMugenApiToken' => '',
         ],
     ];
 }

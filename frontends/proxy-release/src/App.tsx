@@ -188,6 +188,9 @@ function MaterialCard({ item, selectable, selected, onSelect }: { item: Material
       <div className="material-card-body">
         <h4 title={item.name}>{item.name}</h4>
         <a className="download-button" title={item.archiveOriginalName} href={mediaUrl(item.archiveUrl) ?? '#'} download>{item.archiveOriginalName}</a>
+        {item.playUrl
+          ? <a className="trial-play-button" href={item.playUrl} target="_blank" rel="noreferrer">試遊</a>
+          : item.trialPlayError ? <small className="trial-play-error" title={item.trialPlayError}>試遊登録失敗</small> : null}
         <small>{formatBytes(item.archiveSizeBytes)} / {item.tagName}</small>
         <dl className="terms-table">
           {item.terms.map((term) => <div key={term.id}><dt>{term.label}</dt><dd className={term.accepted === null ? 'unknown' : term.accepted ? 'yes' : 'no'}>{term.accepted === null ? '?' : term.accepted ? '○' : '×'}</dd></div>)}
@@ -494,6 +497,8 @@ function AdminPage(props: CommonProps) {
   const [userDeleteEnabled, setUserDeleteEnabled] = useState(false);
   const [analytics, setAnalytics] = useState<{ summary: Record<string, string>; months: Array<Record<string, string>> } | null>(null);
   const [nextAdminPassword, setNextAdminPassword] = useState('');
+  const [webMugenApiToken, setWebMugenApiToken] = useState('');
+  const [webMugenTokenConfigured, setWebMugenTokenConfigured] = useState(false);
   const [restoreInProgress, setRestoreInProgress] = useState(false);
   const [restoreStatus, setRestoreStatus] = useState('');
   const [restoreElapsed, setRestoreElapsed] = useState(0);
@@ -521,6 +526,7 @@ function AdminPage(props: CommonProps) {
       },
     };
     setAdminSettings(settingsWithDesignDefaults); setSavedAdminSettings(structuredClone(settingsWithDesignDefaults)); setDeleted(deletedResponse.items); setUsers(userResponse.users);
+    setWebMugenTokenConfigured(Boolean(settingsResponse.webMugen?.tokenConfigured));
     setAnalytics(analyticsResponse); setAuthenticated(true); localStorage.setItem(ADMIN_KEY, value); props.setError('');
   };
   const authenticate = async (event: FormEvent) => {
@@ -541,9 +547,18 @@ function AdminPage(props: CommonProps) {
     catch (reason) { props.setError((reason as Error).message); }
   };
   const saveSettings = async () => {
-    await runAdmin(() => api.updateSettings(password, adminSettings));
-    setSavedAdminSettings(structuredClone(adminSettings));
-    props.setPreviewDesign(null);
+    try {
+      const response = await api.updateSettings(password, adminSettings, webMugenApiToken);
+      setWebMugenApiToken('');
+      props.setNotice(response.message);
+      setSelected([]);
+      await props.reload();
+      await load();
+      setSavedAdminSettings(structuredClone(adminSettings));
+      props.setPreviewDesign(null);
+    } catch (reason) {
+      props.setError((reason as Error).message);
+    }
   };
   const ssoEnabled = toBoolean(adminSettings.config.ssoEnabled);
   const startEditUser = (user: AdminUser) => {
@@ -797,6 +812,13 @@ function AdminPage(props: CommonProps) {
             <label>画像上限 KB<input type="number" value={Number(config.materialsMaxImageKb ?? 10240)} onChange={(e) => setAdminSettings({ ...adminSettings, config: { ...config, materialsMaxImageKb: Number(e.target.value) } })} /></label></div>
           <label>許可する圧縮形式<input value={String(config.materialsAllowedArchiveExtensions ?? '')} onChange={(e) => setAdminSettings({ ...adminSettings, config: { ...config, materialsAllowedArchiveExtensions: e.target.value } })} /></label>
           <label>試遊リンク<input value={String(config.proxyTrialPlayUrl ?? '')} onChange={(e) => setAdminSettings({ ...adminSettings, config: { ...config, proxyTrialPlayUrl: e.target.value } })} /></label>
+          <fieldset className="settings-group">
+            <legend>WebMUGEN連携</legend>
+            <label>WebMUGEN API URL<input type="url" value={String(config.webMugenApiUrl ?? '')} placeholder="https://example.com/DotoEita/50_WEBMUGEN/api/catalog.php" onChange={(event) => setAdminSettings({ ...adminSettings, config: { ...config, webMugenApiUrl: event.target.value } })} /></label>
+            <label>試遊Stage ID<input value={String(config.webMugenStageId ?? 'cyber')} onChange={(event) => setAdminSettings({ ...adminSettings, config: { ...config, webMugenStageId: event.target.value } })} /></label>
+            <label>WebMUGEN API Token<input type="password" autoComplete="new-password" value={webMugenApiToken} placeholder={webMugenTokenConfigured ? '設定済み（変更時のみ入力）' : '未設定'} onChange={(event) => setWebMugenApiToken(event.target.value)} /></label>
+            <p className="help-text">Tokenはサーバー側DBへ保存され、保存後の平文は管理画面にも返しません。空欄で保存すると現在のTokenを維持します。API URLは同一ホストの /api/catalog.php のみ利用できます。</p>
+          </fieldset>
           <fieldset className="settings-group">
             <legend>親サイトSSO</legend>
             <label>SSO使用<select value={toBoolean(config.ssoEnabled) ? '1' : '0'} onChange={(event) => setAdminSettings({ ...adminSettings, config: { ...config, ssoEnabled: event.target.value === '1' } })}>
