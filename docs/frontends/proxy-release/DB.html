@@ -102,6 +102,17 @@ storage/data/</code></pre>
 <ul>
 <li>each top-level post represents a proxy release entry</li>
 <li>downloadable packages and images are stored under this frontend's storage</li>
+<li><code>webmugen_character_id</code> stores the stable Catalog ID returned after server-side ZIP validation</li>
+<li><code>webmugen_play_url</code> stores the returned item-specific trial-play URL</li>
+<li><code>webmugen_error</code> stores the latest structured registration failure and is cleared on success</li>
+<li>the shared Bearer Token is stored as <code>security.webMugenApiToken</code> in the existing <code>settings</code></li>
+</ul>
+<p>table; administrator reads expose only a <code>tokenConfigured</code> flag, never the plaintext</p>
+<ul>
+<li><code>config.webMugenApiUrl</code> and <code>config.webMugenStageId</code> store the same-host endpoint and Stage</li>
+</ul>
+<p>selection used for publication</p>
+<ul>
 <li>future schema may add release metadata if title/message/settings are not enough</li>
 </ul>
 <h2 id="isolation-rule">Isolation Rule</h2>

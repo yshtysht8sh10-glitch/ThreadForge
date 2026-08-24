@@ -65,6 +65,76 @@ final class ProxyReleaseAdminSettingsHttpTest extends TestCase
         self::assertSame($dummyToken, $stored['webMugenApiToken']);
     }
 
+    public function testAdminCanInspectAndEditMaterialWhilePublicApiHidesInternalFields(): void
+    {
+        $initialized = $this->postForm([
+            'action' => 'initializeAdminPassword',
+            'new_admin_password' => 'admin-secret',
+        ]);
+        self::assertSame(200, $initialized['status'], $initialized['body']);
+
+        $pdo = new PDO('sqlite:' . $this->runtimeDir . '/database.sqlite');
+        $tagId = (int)$pdo->query('SELECT id FROM material_tags ORDER BY id LIMIT 1')->fetchColumn();
+        $pdo->prepare(
+            'INSERT INTO material_items
+             (id, author_name, name, notes, tag_id, archive_path, archive_original_name, archive_size_bytes,
+              password_hash, webmugen_character_id, webmugen_error, created_at, updated_at)
+             VALUES (41, "Old Author", "Old Name", "Old notes", :tag_id, :path, "original.zip", 123,
+              "", "proxy-release-41", :error, "2026-08-20 00:00:00", "2026-08-20 00:00:00")'
+        )->execute([
+            ':tag_id' => $tagId,
+            ':path' => $this->runtimeDir . '/storage/data/material-41-archive.zip',
+            ':error' => json_encode(['code' => 'old.error', 'message' => 'previous failure']),
+        ]);
+
+        $unauthorized = $this->getJson(['action' => 'getAdminMaterialItem', 'id' => 41]);
+        self::assertSame(403, $unauthorized['status']);
+        $admin = $this->getJson(['action' => 'getAdminMaterialItem', 'id' => 41, 'admin_password' => 'admin-secret']);
+        self::assertSame(200, $admin['status'], $admin['body']);
+        self::assertSame('material-41-archive.zip', $admin['json']['item']['archiveFile']);
+        self::assertSame('proxy-release-41', $admin['json']['item']['webMugenCharacterId']);
+        self::assertStringContainsString('previous failure', $admin['json']['item']['trialPlayError']);
+
+        $publicBefore = $this->getJson(['action' => 'listMaterialItems']);
+        self::assertSame(200, $publicBefore['status']);
+        self::assertArrayNotHasKey('webMugenCharacterId', $publicBefore['json']['items'][0]);
+        self::assertArrayNotHasKey('trialPlayError', $publicBefore['json']['items'][0]);
+        self::assertStringNotContainsString((string)$this->runtimeDir, $publicBefore['body']);
+
+        $invalid = $this->postForm([
+            'action' => 'adminUpdateMaterialItem',
+            'admin_password' => 'admin-secret',
+            'id' => '41',
+            'name' => 'Edited Name',
+            'author_name' => 'Edited Author',
+            'tag_id' => (string)$tagId,
+            'play_url' => 'javascript:alert(1)',
+        ]);
+        self::assertSame(400, $invalid['status'], $invalid['body']);
+
+        $playUrl = 'https://example.test/webmugen/?character=proxy-release-41&stage=cyber';
+        $saved = $this->postForm([
+            'action' => 'adminUpdateMaterialItem',
+            'admin_password' => 'admin-secret',
+            'id' => '41',
+            'name' => 'Edited Name',
+            'author_name' => 'Edited Author',
+            'notes' => 'Edited notes',
+            'tag_id' => (string)$tagId,
+            'draft' => '0',
+            'play_url' => $playUrl,
+        ]);
+        self::assertSame(200, $saved['status'], $saved['body']);
+        self::assertSame('Edited Name', $saved['json']['item']['name']);
+        self::assertSame($playUrl, $saved['json']['item']['playUrl']);
+        self::assertNull($saved['json']['item']['trialPlayError']);
+
+        $publicAfter = $this->getJson(['action' => 'listMaterialItems']);
+        self::assertSame($playUrl, $publicAfter['json']['items'][0]['playUrl']);
+        self::assertArrayNotHasKey('webMugenCharacterId', $publicAfter['json']['items'][0]);
+        self::assertArrayNotHasKey('trialPlayError', $publicAfter['json']['items'][0]);
+    }
+
     private function startServer(): void
     {
         $port = $this->findFreePort();

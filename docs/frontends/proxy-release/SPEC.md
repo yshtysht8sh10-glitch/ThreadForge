@@ -50,3 +50,13 @@ uploaded archives and organize them by tag and author.
 - Server-to-server Catalog requests send the configured Token in both the standard
   `Authorization: Bearer ...` header and the rental-hosting-compatible
   `X-WebMUGEN-Token: ...` header. The Token is never added to the JSON request body.
+- The administrator `Data Editor` can search existing publications, edit the normal publication
+  fields, inspect actual stored archive metadata, manually save an HTTP(S) trial-play URL, and
+  explicitly upsert one publication into WebMUGEN.
+- The maintenance screen can upsert every published, non-deleted publication whose trial-play URL
+  is empty. One failed item does not stop later items, and the result reports target, success, and
+  failure counts with per-item errors.
+- Both individual and bulk registration send the stable publication ID on every attempt. A retry
+  intentionally calls the Catalog API again so an updated ZIP replaces `proxy-release-<id>`.
+- Public APIs and cards expose a trial-play link only when `webmugen_play_url` is present. Stored
+  paths, Character IDs, and structured registration errors remain administrator-only.

@@ -1,9 +1,9 @@
 import { CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { AdminUser, api, apiBase, defaultMaterialDesign, frontendId, groupMaterials, homeHref, MaterialDesign, MaterialItem, MaterialSettings, MaterialTag, MaterialTerm, mediaUrl, packAuthorGroups, User } from './api';
+import { AdminMaterialItem, AdminUser, api, apiBase, defaultMaterialDesign, frontendId, groupMaterials, homeHref, MaterialDesign, MaterialItem, MaterialSettings, MaterialTag, MaterialTerm, mediaUrl, packAuthorGroups, TrialPlayBulkSummary, User } from './api';
 import { createIdleGifFromMugenZip } from './mugen-preview/idleGif';
 
 type Page = 'list' | 'post' | 'delete' | 'edit' | 'manual' | 'login' | 'admin';
-type AdminTab = 'items' | 'deleted' | 'users' | 'maintenance' | 'analytics' | 'settings' | 'design';
+type AdminTab = 'items' | 'data' | 'deleted' | 'users' | 'maintenance' | 'analytics' | 'settings' | 'design';
 const TOKEN_KEY = 'threadforgeProxyReleaseUserToken';
 const ADMIN_KEY = 'threadforgeProxyReleaseAdminPassword';
 
@@ -188,9 +188,7 @@ function MaterialCard({ item, selectable, selected, onSelect }: { item: Material
       <div className="material-card-body">
         <h4 title={item.name}>{item.name}</h4>
         <a className="download-button" title={item.archiveOriginalName} href={mediaUrl(item.archiveUrl) ?? '#'} download>{item.archiveOriginalName}</a>
-        {item.playUrl
-          ? <a className="trial-play-button" href={item.playUrl} target="_blank" rel="noreferrer">試遊</a>
-          : item.trialPlayError ? <small className="trial-play-error" title={item.trialPlayError}>試遊登録失敗</small> : null}
+        {item.playUrl && <a className="trial-play-button" href={item.playUrl} target="_blank" rel="noreferrer">試遊</a>}
         <small>{formatBytes(item.archiveSizeBytes)} / {item.tagName}</small>
         <dl className="terms-table">
           {item.terms.map((term) => <div key={term.id}><dt>{term.label}</dt><dd className={term.accepted === null ? 'unknown' : term.accepted ? 'yes' : 'no'}>{term.accepted === null ? '?' : term.accepted ? '○' : '×'}</dd></div>)}
@@ -201,7 +199,12 @@ function MaterialCard({ item, selectable, selected, onSelect }: { item: Material
   );
 }
 
-function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: MaterialItem; initialPassword?: string }) {
+function MaterialForm(props: CommonProps & {
+  mode: 'create' | 'edit';
+  item?: MaterialItem;
+  initialPassword?: string;
+  admin?: { password: string; onSaved: (item: AdminMaterialItem) => void; onCancel: () => void };
+}) {
   const { mode, item, tags, terms, token, user, reload, navigate, setNotice, setError } = props;
   const [name, setName] = useState(item?.name ?? 'blank');
   const [author, setAuthor] = useState(item?.authorName ?? user?.materials_author_name ?? user?.display_name ?? '');
@@ -220,6 +223,9 @@ function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
     return defaultTermAnswers(terms, user?.materials_default_terms);
   });
   const [busy, setBusy] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [playUrl, setPlayUrl] = useState(item?.playUrl ?? '');
+  const [draft, setDraft] = useState(item?.draft ?? false);
   const activeImage = image ?? generatedImage;
   const preview = useMemo(() => activeImage ? URL.createObjectURL(activeImage) : null, [activeImage]);
   const selectedTag = tags.find((tag) => String(tag.id) === tagId);
@@ -238,9 +244,20 @@ function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
     if (imageFile) body.set('image', imageFile);
     audioFiles.forEach((file) => body.append('audio[]', file));
     if (item) body.set('id', String(item.id));
+    if (props.admin) {
+      body.set('play_url', playUrl);
+      body.set('draft', draft ? '1' : '0');
+    }
     try {
-      const response = mode === 'create' ? await api.create(body, token) : await api.update(body, token);
-      await reload(); setNotice(response.message); navigate('list');
+      if (props.admin) {
+        const response = await api.adminUpdateItem(props.admin.password, body);
+        await reload();
+        setNotice(response.message);
+        props.admin.onSaved(response.item);
+      } else {
+        const response = mode === 'create' ? await api.create(body, token) : await api.update(body, token);
+        await reload(); setNotice(response.message); navigate('list');
+      }
     } catch (reason) { setError((reason as Error).message); }
     finally { setBusy(false); }
   };
@@ -261,7 +278,7 @@ function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
   };
 
   return (
-    <Panel title={mode === 'create' ? '素材を投稿' : `素材を編集: ${item?.name ?? ''}`}>
+    <Panel title={props.admin ? `データ編集: No.${item?.id ?? ''} ${item?.name ?? ''}` : mode === 'create' ? '素材を投稿' : `素材を編集: ${item?.name ?? ''}`}>
       <form className="material-form" onSubmit={submit}>
         <div className="form-grid two-columns">
           <label>名称<input value={name} onChange={(event) => setName(event.target.value)} required /></label>
@@ -287,11 +304,97 @@ function MaterialForm(props: CommonProps & { mode: 'create' | 'edit'; item?: Mat
             <label><input type="radio" name={`term-${term.id}`} checked={answers[String(term.id)] === false} onChange={() => setAnswers({ ...answers, [String(term.id)]: false })} />×</label>
           </div>)}
         </fieldset>
-        <label><span>投稿パスワード<span className="required-marker" aria-hidden="true">*</span></span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
-        <div className="actions"><button className="secondary" type="button" onClick={() => navigate('list')}>戻る</button><button disabled={busy}>{busy ? '送信中...' : mode === 'create' ? '投稿する' : '更新する'}</button></div>
+        {props.admin && item && <AdminMaterialInternalFields
+          item={item as AdminMaterialItem}
+          playUrl={playUrl}
+          setPlayUrl={setPlayUrl}
+          draft={draft}
+          setDraft={setDraft}
+          publishing={publishing}
+          publish={async () => {
+            setPublishing(true); setError(''); setNotice('');
+            try {
+              const response = await api.adminPublishProxyRelease(props.admin!.password, item.id);
+              setPlayUrl(response.item.playUrl ?? '');
+              props.admin!.onSaved(response.item);
+              setNotice(response.message);
+              if (!response.trialPlay.success) setError(response.trialPlay.message ?? 'WebMUGENへの登録に失敗しました。');
+              await reload();
+            } catch (reason) { setError((reason as Error).message); }
+            finally { setPublishing(false); }
+          }}
+        />}
+        {!props.admin && <label><span>投稿パスワード<span className="required-marker" aria-hidden="true">*</span></span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>}
+        <div className="actions"><button className="secondary" type="button" onClick={() => props.admin ? props.admin.onCancel() : navigate('list')}>戻る</button><button disabled={busy}>{busy ? '送信中...' : props.admin ? '管理データを保存' : mode === 'create' ? '投稿する' : '更新する'}</button></div>
       </form>
     </Panel>
   );
+}
+
+function AdminMaterialInternalFields({
+  item,
+  playUrl,
+  setPlayUrl,
+  draft,
+  setDraft,
+  publishing,
+  publish,
+}: {
+  item: AdminMaterialItem;
+  playUrl: string;
+  setPlayUrl: (value: string) => void;
+  draft: boolean;
+  setDraft: (value: boolean) => void;
+  publishing: boolean;
+  publish: () => void | Promise<void>;
+}) {
+  const error = trialPlayErrorText(item.trialPlayError);
+  const state = error
+    ? '登録失敗'
+    : item.webMugenCharacterId && item.playUrl
+      ? '登録済み'
+      : item.webMugenCharacterId
+        ? 'Catalog登録済み・試遊URL未設定'
+        : item.playUrl
+          ? '手動試遊URL設定済み'
+          : '未登録';
+  return <>
+    <fieldset className="settings-group admin-internal-fields">
+      <legend>管理用内部情報</legend>
+      <dl className="admin-detail-grid">
+        <div><dt>投稿ID / publicationId</dt><dd>{item.id}</dd></div>
+        <div><dt>公開状態</dt><dd>{draft ? '非公開（下書き）' : '公開'}</dd></div>
+        <div><dt>ユーザーID</dt><dd>{item.userId ?? 'なし'}</dd></div>
+        <div><dt>閲覧数</dt><dd>{item.viewCount}</dd></div>
+        <div><dt>作成日時</dt><dd>{formatAdminDate(item.createdAt)}</dd></div>
+        <div><dt>更新日時</dt><dd>{formatAdminDate(item.updatedAt)}</dd></div>
+        <div><dt>実ZIPファイル名</dt><dd>{item.archiveFile}</dd></div>
+        <div><dt>ZIP保存先</dt><dd className="path-value">{item.archivePath}</dd></div>
+        <div><dt>画像保存先</dt><dd className="path-value">{item.imagePath || 'なし'}</dd></div>
+        <div><dt>元データ</dt><dd className="path-value">{item.legacySource || 'なし'}</dd></div>
+        <div><dt>投稿パスワード</dt><dd>{item.passwordConfigured ? '設定あり' : '未設定'}</dd></div>
+      </dl>
+      <label>公開状態<select value={draft ? 'draft' : 'public'} onChange={(event) => setDraft(event.target.value === 'draft')}>
+        <option value="public">公開</option><option value="draft">非公開（下書き）</option>
+      </select></label>
+    </fieldset>
+    <fieldset className="settings-group webmugen-editor">
+      <legend>WebMUGEN連携</legend>
+      <dl className="admin-detail-grid">
+        <div><dt>publicationId</dt><dd>{item.id}</dd></div>
+        <div><dt>archiveFile</dt><dd>{item.archiveFile}</dd></div>
+        <div><dt>状態</dt><dd className={error ? 'status-error' : item.playUrl ? 'status-success' : ''}>{state}</dd></div>
+        <div><dt>Character ID</dt><dd>{item.webMugenCharacterId || '未設定'}</dd></div>
+        <div><dt>最終連携結果</dt><dd>{error || (item.webMugenCharacterId ? '成功' : '未実行')}</dd></div>
+      </dl>
+      <label>試遊URL<input type="url" value={playUrl} placeholder="https://..." onChange={(event) => setPlayUrl(event.target.value)} /></label>
+      <p className="help-text">通常はWebMUGEN登録ボタンで取得してください。手動URLは特殊ケースや一時対応向けです。</p>
+      <div className="actions">
+        <button type="button" disabled={publishing} onClick={() => void publish()}>{publishing ? 'WebMUGEN登録中...' : item.webMugenCharacterId ? 'WebMUGENへ再登録して試遊URLを取得' : 'WebMUGENへ登録して試遊URLを取得'}</button>
+        {playUrl && <a className="button-link secondary" href={playUrl} target="_blank" rel="noreferrer">試遊URLを開く</a>}
+      </div>
+    </fieldset>
+  </>;
 }
 
 function SelectionPage(props: CommonProps & { mode: 'delete' | 'edit' }) {
@@ -482,6 +585,8 @@ function AdminPage(props: CommonProps) {
   const [configured, setConfigured] = useState(true);
   const [tab, setTab] = useState<AdminTab>('items');
   const [selected, setSelected] = useState<number[]>([]);
+  const [adminItems, setAdminItems] = useState<AdminMaterialItem[]>([]);
+  const [editingMaterial, setEditingMaterial] = useState<AdminMaterialItem | null>(null);
   const [deleted, setDeleted] = useState<MaterialItem[]>([]);
   const [adminSettings, setAdminSettings] = useState<{ config: Record<string, unknown>; skin: Record<string, unknown> } | null>(null);
   const [savedAdminSettings, setSavedAdminSettings] = useState<{ config: Record<string, unknown>; skin: Record<string, unknown> } | null>(null);
@@ -502,6 +607,8 @@ function AdminPage(props: CommonProps) {
   const [restoreInProgress, setRestoreInProgress] = useState(false);
   const [restoreStatus, setRestoreStatus] = useState('');
   const [restoreElapsed, setRestoreElapsed] = useState(0);
+  const [bulkPublishing, setBulkPublishing] = useState(false);
+  const [bulkPublishSummary, setBulkPublishSummary] = useState<TrialPlayBulkSummary | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const settingsImportRef = useRef<HTMLInputElement>(null);
   const designImportRef = useRef<HTMLInputElement>(null);
@@ -515,8 +622,8 @@ function AdminPage(props: CommonProps) {
     return () => window.clearInterval(timer);
   }, [restoreInProgress]);
   const load = async (value = password) => {
-    const [settingsResponse, deletedResponse, userResponse, analyticsResponse] = await Promise.all([
-      api.getAdmin(value), api.deleted(value), api.users(value), api.analytics(value),
+    const [settingsResponse, adminItemResponse, deletedResponse, userResponse, analyticsResponse] = await Promise.all([
+      api.getAdmin(value), api.adminItems(value), api.deleted(value), api.users(value), api.analytics(value),
     ]);
     const settingsWithDesignDefaults = {
       ...settingsResponse.settings,
@@ -525,7 +632,7 @@ function AdminPage(props: CommonProps) {
         ...materialDesignSkin(materialDesignFromSkin(settingsResponse.settings.skin)),
       },
     };
-    setAdminSettings(settingsWithDesignDefaults); setSavedAdminSettings(structuredClone(settingsWithDesignDefaults)); setDeleted(deletedResponse.items); setUsers(userResponse.users);
+    setAdminSettings(settingsWithDesignDefaults); setSavedAdminSettings(structuredClone(settingsWithDesignDefaults)); setAdminItems(adminItemResponse.items); setDeleted(deletedResponse.items); setUsers(userResponse.users);
     setWebMugenTokenConfigured(Boolean(settingsResponse.webMugen?.tokenConfigured));
     setAnalytics(analyticsResponse); setAuthenticated(true); localStorage.setItem(ADMIN_KEY, value); props.setError('');
   };
@@ -668,15 +775,26 @@ function AdminPage(props: CommonProps) {
     <>
       <Panel title="管理"><p>管理者としてログインしています。素材庫の投稿、保守、設定、デザインを管理できます。</p></Panel>
       <nav className="admin-tabs">{((tab === 'users'
-        ? ['items', 'deleted', 'users', 'maintenance', 'analytics', 'settings', 'design']
-        : ['items', 'deleted', 'maintenance', 'analytics', 'settings', 'design']) as AdminTab[]).map((value) =>
+        ? ['items', 'data', 'deleted', 'users', 'maintenance', 'analytics', 'settings', 'design']
+        : ['items', 'data', 'deleted', 'maintenance', 'analytics', 'settings', 'design']) as AdminTab[]).map((value) =>
         <button key={value} className={tab === value ? 'active' : ''} onClick={() => {
-          setTab(value); setSelected([]); setEditingUser(null); setUserDeleteEnabled(false);
+          setTab(value); setSelected([]); setEditingUser(null); setUserDeleteEnabled(false); if (value !== 'data') setEditingMaterial(null);
         }}>{adminTabLabel(value)}</button>)}</nav>
       {tab === 'items' && <Panel title="一括削除・作者ID割当">
         <AdminItemRows items={props.items} selected={selected} toggle={toggle} users={users} onAssign={(item, userId, authorName) => runAdmin(() => api.assignAuthor(password, item.id, userId, authorName))} />
         <div className="actions"><button className="danger" disabled={!selected.length} onClick={() => runAdmin(() => api.adminDelete(password, selected))}>チェックした素材を一括削除</button></div>
       </Panel>}
+      {tab === 'data' && <AdminDataEditor
+        {...props}
+        password={password}
+        items={adminItems}
+        selected={editingMaterial}
+        setSelected={setEditingMaterial}
+        itemChanged={(item) => {
+          setEditingMaterial(item);
+          setAdminItems((current) => current.map((value) => value.id === item.id ? item : value));
+        }}
+      />}
       {tab === 'deleted' && <Panel title="復元 / 完全消去">
         <AdminItemRows items={deleted} selected={selected} toggle={toggle} />
         <div className="actions"><button disabled={!selected.length} onClick={() => runAdmin(() => api.restore(password, selected))}>復元する</button>
@@ -740,6 +858,29 @@ function AdminPage(props: CommonProps) {
         </form>}
       </Panel>}
       {tab === 'maintenance' && <Panel title="保守・バックアップ">
+        <section className="maintenance-section">
+          <h3>WebMUGEN試遊URL</h3>
+          <p>公開済みで試遊URLが未設定の代理公開データだけを、publicationIdを安定キーとして順番に登録します。1件失敗しても残りを継続します。</p>
+          <div className="actions"><button type="button" disabled={bulkPublishing} onClick={async () => {
+            if (!confirm('公開済みで試遊URLが未設定の全データをWebMUGENへ登録しますか？')) return;
+            setBulkPublishing(true); setBulkPublishSummary(null); props.setError(''); props.setNotice('');
+            try {
+              const response = await api.adminBulkPublishProxyReleases(password);
+              setBulkPublishSummary(response.summary);
+              props.setNotice(response.message);
+              await props.reload();
+              await load();
+            } catch (reason) { props.setError((reason as Error).message); }
+            finally { setBulkPublishing(false); }
+          }}>{bulkPublishing ? '一括登録中...' : '未設定の試遊URLを一括登録'}</button></div>
+          {bulkPublishSummary && <div className="bulk-publish-result" role="status">
+            <h4>WebMUGEN試遊URL一括登録</h4>
+            <p>対象: {bulkPublishSummary.target} / 成功: {bulkPublishSummary.succeeded} / 失敗: {bulkPublishSummary.failed}</p>
+            {bulkPublishSummary.failures.length > 0 && <><strong>失敗一覧</strong><ul>{bulkPublishSummary.failures.map((failure) =>
+              <li key={failure.id}>ID {failure.id}（{failure.name}）: {failure.message} [{failure.code}]</li>)}</ul></>}
+          </div>}
+        </section>
+        <hr />
         <section className="maintenance-section">
           <h3>ユーザー情報</h3>
           <p>{ssoEnabled ? 'SSOがONのため、ユーザー情報は親サイト側で管理してください。' : '登録ユーザーの情報編集と消去は専用画面で行います。'}</p>
@@ -893,6 +1034,64 @@ function AdminPage(props: CommonProps) {
   );
 }
 
+function AdminDataEditor(props: CommonProps & {
+  password: string;
+  items: AdminMaterialItem[];
+  selected: AdminMaterialItem | null;
+  setSelected: (item: AdminMaterialItem | null) => void;
+  itemChanged: (item: AdminMaterialItem) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('all');
+  const [loadingId, setLoadingId] = useState<number | null>(null);
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const filtered = props.items.filter((item) => {
+    const matchesText = normalizedQuery === '' || [String(item.id), item.name, item.authorName, item.archiveOriginalName, item.archiveFile]
+      .some((value) => value.toLocaleLowerCase().includes(normalizedQuery));
+    const matchesStatus = status === 'all'
+      || (status === 'public' && !item.draft)
+      || (status === 'draft' && item.draft)
+      || (status === 'linked' && Boolean(item.playUrl))
+      || (status === 'unlinked' && !item.playUrl)
+      || (status === 'failed' && Boolean(item.trialPlayError));
+    return matchesText && matchesStatus;
+  });
+  const selectItem = async (id: number) => {
+    setLoadingId(id); props.setError('');
+    try {
+      const response = await api.adminItem(props.password, id);
+      props.setSelected(response.item);
+    } catch (reason) { props.setError((reason as Error).message); }
+    finally { setLoadingId(null); }
+  };
+  if (props.selected) {
+    return <MaterialForm
+      {...props}
+      mode="edit"
+      item={props.selected}
+      admin={{ password: props.password, onSaved: props.itemChanged, onCancel: () => props.setSelected(null) }}
+    />;
+  }
+  return <Panel title="データ編集">
+    <p>既存の代理公開データを検索し、1件選択して通常公開項目と管理用内部情報を編集できます。</p>
+    <div className="admin-data-filters">
+      <label>検索<input value={query} placeholder="ID・タイトル・作者名・ZIPファイル名" onChange={(event) => setQuery(event.target.value)} /></label>
+      <label>状態<select value={status} onChange={(event) => setStatus(event.target.value)}>
+        <option value="all">すべて</option><option value="public">公開</option><option value="draft">非公開</option>
+        <option value="linked">試遊URL設定済み</option><option value="unlinked">試遊URL未設定</option><option value="failed">WebMUGEN登録失敗</option>
+      </select></label>
+    </div>
+    <p className="help-text">{filtered.length}件表示 / 全{props.items.length}件</p>
+    <div className="admin-data-list">
+      {filtered.length === 0 && <Empty>条件に一致するデータはありません。</Empty>}
+      {filtered.map((item) => <button type="button" className="admin-data-row" key={item.id} disabled={loadingId !== null} onClick={() => void selectItem(item.id)}>
+        <span>No.{item.id}</span><strong>{item.name}</strong><span>{item.authorName}</span><span title={item.archiveOriginalName}>{item.archiveOriginalName}</span>
+        <span>{item.draft ? '非公開' : '公開'}</span><span>{adminTrialStatus(item)}</span>
+      </button>)}
+    </div>
+  </Panel>;
+}
+
 function AdminItemRows({ items, selected, toggle, users, onAssign }: { items: MaterialItem[]; selected: number[]; toggle: (id: number) => void; users?: AdminUser[]; onAssign?: (item: MaterialItem, userId: string, authorName: string) => void }) {
   return <div className="admin-item-list">{items.map((item) => <div className="admin-item-row" key={item.id}>
     <input type="checkbox" checked={selected.includes(item.id)} onChange={() => toggle(item.id)} />
@@ -953,7 +1152,20 @@ export function defaultTermAnswers(terms: MaterialTerm[], saved: Record<string, 
     Object.prototype.hasOwnProperty.call(saved, String(term.id)) ? Boolean(saved[String(term.id)]) : true,
   ]));
 }
-function adminTabLabel(tab: AdminTab) { return ({ items: '一括削除', deleted: '復元 / 消去', users: 'ユーザー', maintenance: '保守', analytics: 'アナリティクス', settings: '設定', design: 'デザイン' })[tab]; }
+function adminTabLabel(tab: AdminTab) { return ({ items: '一括削除', data: 'データ編集', deleted: '復元 / 消去', users: 'ユーザー', maintenance: '保守', analytics: 'アナリティクス', settings: '設定', design: 'デザイン' })[tab]; }
+function trialPlayErrorText(value: string | null | undefined) {
+  if (!value) return '';
+  try {
+    const decoded = JSON.parse(value) as { code?: string; message?: string };
+    return [decoded.message, decoded.code ? `[${decoded.code}]` : ''].filter(Boolean).join(' ');
+  } catch { return value; }
+}
+function adminTrialStatus(item: AdminMaterialItem) {
+  if (item.trialPlayError) return '登録失敗';
+  if (item.playUrl) return '試遊URL設定済み';
+  if (item.webMugenCharacterId) return 'Catalog登録済み';
+  return '未登録';
+}
 export function toBoolean(value: unknown) {
   return value === true || value === 1 || value === '1' || value === 'true';
 }

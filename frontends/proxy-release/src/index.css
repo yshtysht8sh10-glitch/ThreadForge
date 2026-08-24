@@ -111,6 +111,22 @@ textarea.large { min-height: 280px; }
 .admin-tabs button.active { background: var(--button-bg); }
 .admin-item-list { display: grid; gap: 7px; }
 .admin-item-row { display: grid; grid-template-columns: auto 65px minmax(180px, 1fr) minmax(120px, .7fr) minmax(120px, .7fr) auto; align-items: center; gap: 9px; padding: 8px; border: 1px solid #394452; background: #090e14; }
+.admin-data-filters { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(180px, 260px); gap: 12px; margin-bottom: 8px; }
+.admin-data-list { display: grid; gap: 7px; }
+.admin-data-row { display: grid; grid-template-columns: 70px minmax(180px, 1.4fr) minmax(120px, .8fr) minmax(160px, 1fr) 80px minmax(120px, .8fr); align-items: center; gap: 10px; width: 100%; padding: 10px; text-align: left; background: var(--secondary-button-bg); color: var(--secondary-button-text); border: 1px solid var(--panel-border); }
+.admin-data-row:hover { border-color: var(--accent); }
+.admin-data-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; border: 1px solid var(--panel-border); background: var(--panel-border); }
+.admin-detail-grid > div { display: grid; grid-template-columns: minmax(120px, .7fr) minmax(0, 1.3fr); gap: 8px; padding: 9px; background: var(--panel-bg); }
+.admin-detail-grid dt { color: var(--muted-text); }
+.admin-detail-grid dd { margin: 0; overflow-wrap: anywhere; }
+.admin-detail-grid .path-value { font-family: Consolas, monospace; font-size: .88rem; }
+.status-success { color: var(--positive); }
+.status-error { color: var(--negative); }
+.button-link { display: inline-flex; align-items: center; justify-content: center; padding: 8px 13px; border: 1px solid var(--panel-border); text-decoration: none; }
+.bulk-publish-result { margin-top: 14px; padding: 12px; border: 1px solid var(--panel-border); background: var(--panel-bg); }
+.bulk-publish-result h4 { margin: 0 0 8px; }
+.bulk-publish-result ul { margin-bottom: 0; }
 .author-assignment { display: grid; grid-template-columns: 110px 150px auto; gap: 5px; }
 .author-assignment button { padding: 5px 8px; }
 .settings-group { display: grid; gap: 12px; margin: 8px 0 0; padding: 14px; border: 1px solid var(--panel-border); }
@@ -181,6 +197,9 @@ hr { border: 0; border-top: 1px solid var(--panel-border); margin: 22px 0; }
   .two-columns, .color-grid, .stat-grid { grid-template-columns: 1fr; }
   .admin-item-row { grid-template-columns: auto 52px 1fr; }
   .admin-item-row > span:nth-of-type(n+3) { display: none; }
+  .admin-data-filters, .admin-detail-grid { grid-template-columns: 1fr; }
+  .admin-data-row { grid-template-columns: 62px 1fr 90px; }
+  .admin-data-row > span:nth-of-type(2), .admin-data-row > span:nth-of-type(3), .admin-data-row > span:nth-of-type(5) { display: none; }
   .author-assignment { grid-column: 1 / -1; grid-template-columns: 1fr; }
   .admin-user-intro, .admin-user-main { align-items: stretch; flex-direction: column; }
   .admin-user-main .actions { justify-content: stretch; }

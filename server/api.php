@@ -118,6 +118,21 @@ function handleApiRequest(): void
         case 'assignMaterialAuthor':
             assignMaterialAuthor($pdo);
             break;
+        case 'getAdminMaterialItem':
+            getAdminMaterialItem($pdo);
+            break;
+        case 'listAdminMaterialItems':
+            listAdminMaterialItems($pdo);
+            break;
+        case 'adminUpdateMaterialItem':
+            adminUpdateMaterialItem($pdo);
+            break;
+        case 'adminPublishProxyRelease':
+            adminPublishProxyRelease($pdo);
+            break;
+        case 'adminBulkPublishProxyReleases':
+            adminBulkPublishProxyReleases($pdo);
+            break;
         case 'materialAnalytics':
             materialAnalytics($pdo);
             break;
@@ -4686,7 +4701,7 @@ function listMaterialItems(PDO $pdo): void
          FROM material_items m JOIN material_tags t ON t.id = m.tag_id
          LEFT JOIN material_tags pt ON pt.id = t.parent_id
          LEFT JOIN users u ON u.id = m.user_id
-         WHERE m.deleted_at IS NULL
+         WHERE m.deleted_at IS NULL AND m.draft = 0
          ORDER BY t.sort_order, t.id, lower(m.author_name), m.name, m.id'
     );
     jsonResponse(['success' => true, 'items' => array_map(
@@ -4699,13 +4714,14 @@ function getMaterialItem(PDO $pdo): void
 {
     $id = filter_var($_GET['id'] ?? $_POST['id'] ?? null, FILTER_VALIDATE_INT);
     $item = $id ? findMaterialItem($pdo, (int)$id, false) : null;
+    if ($item && toBoolFlag($item['draft'] ?? false)) $item = null;
     if (!$item) {
         jsonResponse(['success' => false, 'message' => '素材が見つかりません。'], 404);
     }
     jsonResponse(['success' => true, 'item' => buildMaterialItem($pdo, $item)]);
 }
 
-function buildMaterialItem(PDO $pdo, array $row): array
+function buildMaterialItem(PDO $pdo, array $row, bool $includeAdminData = false): array
 {
     $termStmt = $pdo->prepare(
         'SELECT t.id, t.label, t.description, mit.accepted
@@ -4720,7 +4736,7 @@ function buildMaterialItem(PDO $pdo, array $row): array
     );
     $mediaStmt->execute([':item_id' => (int)$row['id']]);
     $userId = isset($row['user_id']) ? (int)$row['user_id'] : null;
-    return [
+    $item = [
         'id' => (int)$row['id'],
         'userId' => $userId,
         'authorKey' => $userId ? 'user:' . $userId : 'guest:' . (string)$row['author_name'],
@@ -4745,9 +4761,7 @@ function buildMaterialItem(PDO $pdo, array $row): array
         'draft' => toBoolFlag($row['draft'] ?? false),
         'deletedAt' => $row['deleted_at'] ?? null,
         'adminOnly' => materialItemIsAdminOnly($row),
-        'webMugenCharacterId' => $row['webmugen_character_id'] ?? null,
         'playUrl' => $row['webmugen_play_url'] ?? null,
-        'trialPlayError' => $row['webmugen_error'] ?? null,
         'terms' => array_map(static fn(array $term): array => [
             'id' => (int)$term['id'], 'label' => (string)$term['label'],
             'description' => (string)$term['description'],
@@ -4760,6 +4774,18 @@ function buildMaterialItem(PDO $pdo, array $row): array
             'sizeBytes' => (int)$media['size_bytes'],
         ], $mediaStmt->fetchAll(PDO::FETCH_ASSOC)),
     ];
+    if ($includeAdminData) {
+        $item += [
+            'archiveFile' => basename(str_replace('\\', '/', (string)$row['archive_path'])),
+            'archivePath' => (string)$row['archive_path'],
+            'imagePath' => $row['image_path'] ?? null,
+            'legacySource' => $row['legacy_source'] ?? null,
+            'passwordConfigured' => trim((string)($row['password_hash'] ?? '')) !== '',
+            'webMugenCharacterId' => $row['webmugen_character_id'] ?? null,
+            'trialPlayError' => $row['webmugen_error'] ?? null,
+        ];
+    }
+    return $item;
 }
 
 function findMaterialItem(PDO $pdo, int $id, bool $includeDeleted = true): ?array
@@ -4960,9 +4986,209 @@ function publishProxyReleaseToWebMugen(PDO $pdo, int $itemId, string $frontendId
 function saveWebMugenTrialFailure(PDO $pdo, int $itemId, string $code, string $message): array
 {
     $detail = json_encode(['code' => $code, 'message' => $message], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    $pdo->prepare('UPDATE material_items SET webmugen_character_id = null, webmugen_play_url = null, webmugen_error = :error WHERE id = :id')
+    $pdo->prepare('UPDATE material_items SET webmugen_error = :error WHERE id = :id')
         ->execute([':error' => $detail, ':id' => $itemId]);
     return ['success' => false, 'code' => $code, 'message' => $message];
+}
+
+function getAdminMaterialItem(PDO $pdo): void
+{
+    requireAdmin();
+    ensureMaterialsFrontend();
+    $id = filter_var($_GET['id'] ?? $_POST['id'] ?? null, FILTER_VALIDATE_INT);
+    $item = $id ? findMaterialItem($pdo, (int)$id, false) : null;
+    if (!$item) {
+        jsonResponse(['success' => false, 'message' => '素材が見つかりません。'], 404);
+    }
+    jsonResponse(['success' => true, 'item' => buildMaterialItem($pdo, $item, true)]);
+}
+
+function listAdminMaterialItems(PDO $pdo): void
+{
+    requireAdmin();
+    ensureMaterialsFrontend();
+    $stmt = $pdo->query(
+        'SELECT m.*, t.name AS tag_name, t.parent_id AS tag_parent_id, COALESCE(pt.id, t.id) AS primary_tag_id, COALESCE(pt.name, t.name) AS primary_tag_name, CASE WHEN t.parent_id IS NULL THEN NULL ELSE t.id END AS subtag_id, CASE WHEN t.parent_id IS NULL THEN NULL ELSE t.name END AS subtag_name, u.icon_path AS user_icon_path, u.login_id AS user_login_id
+         FROM material_items m JOIN material_tags t ON t.id = m.tag_id
+         LEFT JOIN material_tags pt ON pt.id = t.parent_id
+         LEFT JOIN users u ON u.id = m.user_id
+         WHERE m.deleted_at IS NULL
+         ORDER BY m.id DESC'
+    );
+    jsonResponse(['success' => true, 'items' => array_map(
+        fn(array $row): array => buildMaterialItem($pdo, $row, true),
+        $stmt->fetchAll(PDO::FETCH_ASSOC)
+    )]);
+}
+
+function adminUpdateMaterialItem(PDO $pdo): void
+{
+    requireAdmin();
+    ensureMaterialsFrontend();
+    $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+    $item = $id ? findMaterialItem($pdo, (int)$id, false) : null;
+    if (!$item) {
+        jsonResponse(['success' => false, 'message' => '素材が見つかりません。'], 404);
+    }
+
+    $name = normalizeString((string)($_POST['name'] ?? $item['name']));
+    $authorName = normalizeString((string)($_POST['author_name'] ?? $item['author_name']));
+    $notes = normalizeString((string)($_POST['notes'] ?? $item['notes']));
+    $tagId = filter_var($_POST['tag_id'] ?? $item['tag_id'], FILTER_VALIDATE_INT);
+    if ($name === '' || $authorName === '' || !$tagId) {
+        jsonResponse(['success' => false, 'message' => '名称、作者名、タグは必須です。'], 400);
+    }
+    $tagId = resolveMaterialTagFromRequest($pdo, (int)$tagId);
+
+    $archivePath = (string)$item['archive_path'];
+    $archiveName = (string)$item['archive_original_name'];
+    $archiveSize = (int)$item['archive_size_bytes'];
+    $imagePath = $item['image_path'] ?? null;
+    $imageName = $item['image_original_name'] ?? null;
+    if (isset($_FILES['archive']) && (int)($_FILES['archive']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        validateMaterialUpload($pdo, $_FILES['archive'], 'archive');
+        $archivePath = saveMaterialUpload($_FILES['archive'], (int)$id, 'archive');
+        $archiveName = basename((string)$_FILES['archive']['name']);
+        $archiveSize = (int)$_FILES['archive']['size'];
+    }
+    if (isset($_FILES['image']) && (int)($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        validateMaterialUpload($pdo, $_FILES['image'], 'image');
+        $imagePath = saveMaterialUpload($_FILES['image'], (int)$id, 'image');
+        $imageName = basename((string)$_FILES['image']['name']);
+    }
+    $audioFiles = materialUploadedFiles('audio');
+    foreach ($audioFiles as $audioFile) {
+        validateMaterialUpload($pdo, $audioFile, 'audio');
+    }
+
+    $playUrl = array_key_exists('play_url', $_POST)
+        ? validOptionalHttpUrl((string)$_POST['play_url'], '試遊URL')
+        : (string)($item['webmugen_play_url'] ?? '');
+    $clearTrialError = $playUrl !== '' && $playUrl !== (string)($item['webmugen_play_url'] ?? '');
+    $pdo->prepare(
+        'UPDATE material_items SET author_name = :author_name, name = :name, notes = :notes, tag_id = :tag_id,
+         archive_path = :archive_path, archive_original_name = :archive_name, archive_size_bytes = :archive_size,
+         image_path = :image_path, image_original_name = :image_name, draft = :draft,
+         webmugen_play_url = :play_url, webmugen_error = :webmugen_error, updated_at = :updated_at WHERE id = :id'
+    )->execute([
+        ':author_name' => $authorName,
+        ':name' => $name,
+        ':notes' => $notes,
+        ':tag_id' => (int)$tagId,
+        ':archive_path' => $archivePath,
+        ':archive_name' => $archiveName,
+        ':archive_size' => $archiveSize,
+        ':image_path' => $imagePath,
+        ':image_name' => $imageName,
+        ':draft' => toBoolFlag($_POST['draft'] ?? ($item['draft'] ?? false)) ? 1 : 0,
+        ':play_url' => $playUrl === '' ? null : $playUrl,
+        ':webmugen_error' => $clearTrialError ? null : ($item['webmugen_error'] ?? null),
+        ':updated_at' => currentTimestamp(),
+        ':id' => (int)$id,
+    ]);
+    if (isset($_POST['terms'])) {
+        replaceMaterialTerms($pdo, (int)$id, materialTermAnswersFromRequest());
+    }
+    saveMaterialAudioUploads($pdo, $audioFiles, (int)$id);
+    $updated = findMaterialItem($pdo, (int)$id, false);
+    jsonResponse([
+        'success' => true,
+        'message' => '管理者として素材データを更新しました。',
+        'item' => buildMaterialItem($pdo, (array)$updated, true),
+    ]);
+}
+
+function adminPublishProxyRelease(PDO $pdo): void
+{
+    requireAdmin();
+    if (FRONTEND_ID !== 'proxy-release') {
+        jsonResponse(['success' => false, 'message' => 'このAPIはproxy-release専用です。'], 403);
+    }
+    $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+    if (!$id || !findMaterialItem($pdo, (int)$id, false)) {
+        jsonResponse(['success' => false, 'message' => '素材が見つかりません。'], 404);
+    }
+    $trialPlay = publishProxyReleaseToWebMugen($pdo, (int)$id, FRONTEND_ID);
+    $updated = findMaterialItem($pdo, (int)$id, false);
+    jsonResponse([
+        'success' => true,
+        'message' => $trialPlay['success']
+            ? 'WebMUGENへ登録し、試遊URLを保存しました。'
+            : 'WebMUGENへの登録に失敗しました。公開データは変更していません。',
+        'trialPlay' => $trialPlay,
+        'item' => buildMaterialItem($pdo, (array)$updated, true),
+    ]);
+}
+
+function adminBulkPublishProxyReleases(PDO $pdo): void
+{
+    requireAdmin();
+    if (FRONTEND_ID !== 'proxy-release') {
+        jsonResponse(['success' => false, 'message' => 'このAPIはproxy-release専用です。'], 403);
+    }
+    $summary = publishMissingProxyReleasesToWebMugen($pdo, FRONTEND_ID);
+    jsonResponse([
+        'success' => true,
+        'message' => "WebMUGEN試遊URL一括登録が完了しました（対象: {$summary['target']} / 成功: {$summary['succeeded']} / 失敗: {$summary['failed']}）。",
+        'summary' => $summary,
+    ]);
+}
+
+function publishMissingProxyReleasesToWebMugen(PDO $pdo, string $frontendId, ?callable $requester = null): array
+{
+    if ($frontendId !== 'proxy-release') {
+        return ['target' => 0, 'succeeded' => 0, 'failed' => 0, 'failures' => []];
+    }
+    $rows = $pdo->query(
+        "SELECT id, name FROM material_items
+         WHERE deleted_at IS NULL AND draft = 0 AND (webmugen_play_url IS NULL OR trim(webmugen_play_url) = '')
+         ORDER BY id"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    $successCount = 0;
+    $failures = [];
+    foreach ($rows as $row) {
+        $id = (int)$row['id'];
+        try {
+            $result = publishProxyReleaseToWebMugen($pdo, $id, $frontendId, $requester);
+        } catch (Throwable $error) {
+            $result = saveWebMugenTrialFailure($pdo, $id, 'unexpected.error', $error->getMessage());
+        }
+        if ($result['success'] ?? false) {
+            $successCount++;
+            continue;
+        }
+        $failures[] = [
+            'id' => $id,
+            'name' => (string)$row['name'],
+            'code' => (string)($result['code'] ?? 'api.failed'),
+            'message' => (string)($result['message'] ?? 'WebMUGENへの登録に失敗しました。'),
+        ];
+    }
+    $targetCount = count($rows);
+    return [
+        'target' => $targetCount,
+        'succeeded' => $successCount,
+        'failed' => count($failures),
+        'failures' => $failures,
+    ];
+}
+
+function validOptionalHttpUrl(string $value, string $label): string
+{
+    $value = trim($value);
+    if ($value === '') return '';
+    $parts = parse_url($value);
+    if (
+        filter_var($value, FILTER_VALIDATE_URL) === false
+        || !is_array($parts)
+        || !in_array(strtolower((string)($parts['scheme'] ?? '')), ['http', 'https'], true)
+        || trim((string)($parts['host'] ?? '')) === ''
+        || isset($parts['user'])
+        || isset($parts['pass'])
+    ) {
+        jsonResponse(['success' => false, 'message' => $label . 'は有効なhttp/https URLで指定してください。'], 400);
+    }
+    return $value;
 }
 
 function webMugenCatalogEndpoint(array $settings, array $server): string
@@ -5048,7 +5274,7 @@ function listDeletedMaterialItems(PDO $pdo): void
          LEFT JOIN users u ON u.id = m.user_id WHERE m.deleted_at IS NOT NULL ORDER BY m.deleted_at DESC, m.id DESC'
     );
     jsonResponse(['success' => true, 'items' => array_map(
-        fn(array $row): array => buildMaterialItem($pdo, $row),
+        fn(array $row): array => buildMaterialItem($pdo, $row, true),
         $stmt->fetchAll(PDO::FETCH_ASSOC)
     )]);
 }

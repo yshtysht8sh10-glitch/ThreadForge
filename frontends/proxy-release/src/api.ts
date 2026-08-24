@@ -82,13 +82,22 @@ export type MaterialItem = {
   imageOriginalName: string | null;
   createdAt: string;
   updatedAt: string;
+  viewCount: number;
+  draft: boolean;
   deletedAt: string | null;
   adminOnly: boolean;
-  webMugenCharacterId?: string | null;
   playUrl?: string | null;
-  trialPlayError?: string | null;
   terms: TermAnswer[];
   media: MaterialMedia[];
+};
+export type AdminMaterialItem = MaterialItem & {
+  archiveFile: string;
+  archivePath: string;
+  imagePath: string | null;
+  legacySource: string | null;
+  passwordConfigured: boolean;
+  webMugenCharacterId: string | null;
+  trialPlayError: string | null;
 };
 export type User = {
   id: number;
@@ -108,6 +117,12 @@ export type TrialPlayResult = {
   code?: string;
   message?: string;
   skipped?: boolean;
+};
+export type TrialPlayBulkSummary = {
+  target: number;
+  succeeded: number;
+  failed: number;
+  failures: Array<{ id: number; name: string; code: string; message: string }>;
 };
 export type AdminUser = User & {
   created_at: string;
@@ -219,6 +234,20 @@ export const api = {
   }, 'POST'),
   assignAuthor: (password: string, id: number, userId: string, authorName: string) => request<{ message: string }>('assignMaterialAuthor', {
     admin_password: password, id: String(id), user_id: userId, author_name: authorName,
+  }, 'POST'),
+  adminItems: (password: string) => request<{ items: AdminMaterialItem[] }>('listAdminMaterialItems', { admin_password: password }),
+  adminItem: (password: string, id: number) => request<{ item: AdminMaterialItem }>('getAdminMaterialItem', {
+    admin_password: password, id: String(id),
+  }),
+  adminUpdateItem: (password: string, body: FormData) => {
+    body.set('admin_password', password);
+    return request<{ message: string; item: AdminMaterialItem }>('adminUpdateMaterialItem', {}, 'POST', body);
+  },
+  adminPublishProxyRelease: (password: string, id: number) => request<{ message: string; trialPlay: TrialPlayResult; item: AdminMaterialItem }>('adminPublishProxyRelease', {
+    admin_password: password, id: String(id),
+  }, 'POST'),
+  adminBulkPublishProxyReleases: (password: string) => request<{ message: string; summary: TrialPlayBulkSummary }>('adminBulkPublishProxyReleases', {
+    admin_password: password,
   }, 'POST'),
   analytics: (password: string) => request<{ summary: Record<string, string>; months: Array<Record<string, string>> }>('materialAnalytics', { admin_password: password }),
   changeAdminPassword: (password: string, next: string) => request<{ message: string }>('changeAdminPassword', {

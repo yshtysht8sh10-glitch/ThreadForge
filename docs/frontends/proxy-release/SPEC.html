@@ -96,6 +96,14 @@
 <li>自動GIF生成は、WebMUGEN由来の SFF v1 / PCX パーサで読めるデータを対象にします。</li>
 <li>AIR/SFF の解析に失敗しても、手動で説明用画像を添付できます。</li>
 <li>リリースZipには runtime DB とアップロード済みファイルは含めません。</li>
+</ul>
+<h2 id="管理画面とwebmugen連携">管理画面とWebMUGEN連携</h2>
+<ul>
+<li><code>データ編集</code> タブでは、既存公開データをID・名称・作者名・ZIPファイル名で検索し、通常の公開項目と保存先などの管理用情報を確認・編集できます。</li>
+<li>管理者はHTTP/HTTPSの試遊URLを手動保存できるほか、各データをWebMUGENへ個別登録・再登録できます。</li>
+<li>個別登録と再登録は毎回同じpublicationIdを送り、<code>proxy-release-&lt;ID&gt;</code> を安定キーとしてCatalogをupsertします。</li>
+<li><code>保守</code> タブでは、公開済みかつ試遊URL未設定のデータだけを一括登録できます。1件失敗しても残りの処理を継続し、対象・成功・失敗件数と失敗理由を表示します。</li>
+<li>公開APIと公開カードには、保存済みの試遊URLだけを出します。Character ID、実保存先、連携失敗理由は管理者専用です。</li>
 </ul></article>
       <article class="docs-article" data-language-panel="en"><h1 id="proxy-release-spec">proxy-release Spec</h1>
 <p><a href="../../SPEC.html">Back to specification index</a></p>
@@ -113,6 +121,14 @@
 <li>HOME, list, post, delete, edit, manual, login, and admin screens follow the</li>
 </ul>
 <p>materials-library workflow.</p>
+<ul>
+<li>After a proxy-release create or archive-changing update is committed, the server calls</li>
+</ul>
+<p>WebMUGEN's authenticated Catalog endpoint with the publication ID, actual stored ZIP<br>basename, and configured Stage ID. The publication ID controls stable Character identity;<br>the archive basename only selects a file below WebMUGEN's fixed proxy storage root.</p>
+<ul>
+<li>A successful registration stores and renders the item-specific WebMUGEN play URL on the</li>
+</ul>
+<p>release card. A failed registration preserves the published item and records a structured<br>error so publication success is not confused with trial-play readiness.</p>
 <ul>
 <li>The navigation includes a <code>Trial Play</code> link to the right of the login item. The</li>
 </ul>
@@ -134,7 +150,33 @@
 <p>WebMUGEN parser support used as the source implementation.</p>
 <ul>
 <li>If AIR/SFF parsing fails, users can still upload a manual explanation image.</li>
-</ul></article>
+<li>The administrator settings screen stores the WebMUGEN API Token in the server-side SQLite</li>
+</ul>
+<p><code>security</code> settings and never reads the saved plaintext back into the browser. It also stores<br>the API URL and Stage ID. The URL is restricted to the current host and a path ending in<br><code>/api/catalog.php</code>; the action query is supplied by the server.</p>
+<ul>
+<li><code>THREADFORGE_WEBMUGEN_CATALOG_SECRET</code> and <code>THREADFORGE_WEBMUGEN_CATALOG_API_URL</code> remain</li>
+</ul>
+<p>server-only fallbacks for existing deployments. Neither value is part of public settings.</p>
+<ul>
+<li>Server-to-server Catalog requests send the configured Token in both the standard</li>
+</ul>
+<p><code>Authorization: Bearer ...</code> header and the rental-hosting-compatible<br><code>X-WebMUGEN-Token: ...</code> header. The Token is never added to the JSON request body.</p>
+<ul>
+<li>The administrator <code>Data Editor</code> can search existing publications, edit the normal publication</li>
+</ul>
+<p>fields, inspect actual stored archive metadata, manually save an HTTP(S) trial-play URL, and<br>explicitly upsert one publication into WebMUGEN.</p>
+<ul>
+<li>The maintenance screen can upsert every published, non-deleted publication whose trial-play URL</li>
+</ul>
+<p>is empty. One failed item does not stop later items, and the result reports target, success, and<br>failure counts with per-item errors.</p>
+<ul>
+<li>Both individual and bulk registration send the stable publication ID on every attempt. A retry</li>
+</ul>
+<p>intentionally calls the Catalog API again so an updated ZIP replaces <code>proxy-release-&lt;id&gt;</code>.</p>
+<ul>
+<li>Public APIs and cards expose a trial-play link only when <code>webmugen_play_url</code> is present. Stored</li>
+</ul>
+<p>paths, Character IDs, and structured registration errors remain administrator-only.</p></article>
       <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
     </main>
   </div>
