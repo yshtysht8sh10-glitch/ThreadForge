@@ -1,8 +1,7 @@
 param(
     [switch]$SkipClientBuild,
     [ValidateSet('image-board', 'file-uploader', 'document-holder', 'proxy-release', 'materials-library')]
-    [string]$FrontendId = 'image-board',
-    [string]$Version = ''
+    [string]$FrontendId = 'image-board'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,14 +10,13 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
 Set-Location $repoRoot
 $frontendDir = Join-Path $repoRoot "frontends\$FrontendId"
 
-if ([string]::IsNullOrWhiteSpace($Version)) {
-    $packageFile = Join-Path $frontendDir 'package.json'
-    if (Test-Path $packageFile) {
-        $Version = (Get-Content $packageFile -Raw | ConvertFrom-Json).version
-    } else {
-        $versionFile = Join-Path $repoRoot 'VERSION'
-        $Version = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim() } else { 'dev' }
-    }
+$packageFile = Join-Path $frontendDir 'package.json'
+if (-not (Test-Path $packageFile)) {
+    throw "Version source is missing: frontends/$FrontendId/package.json"
+}
+$Version = (Get-Content $packageFile -Raw | ConvertFrom-Json).version
+if ($Version -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$') {
+    throw "Invalid SemVer in frontends/$FrontendId/package.json: $Version"
 }
 
 $packageName = "threadforge-$FrontendId-$Version"

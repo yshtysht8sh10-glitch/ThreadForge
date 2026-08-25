@@ -18,6 +18,7 @@ This directory is the English documentation index. Keep the root `README.md` as 
 - `API.md`: PHP API actions and request/response notes
 - `DB.md`: DB/runtime index and shared runtime rules
 - `MIGRATION.md`: local archive log import notes
+- `VERSIONING.md`: application version sources, tag naming, and release rules
 - `ARCHITECTURE.md`: frontend/backend structure
 - `FRONTEND_ARCHITECTURE.md`: multi-frontend layout and migration direction
 - `TESTING.md`: test commands and coverage notes
@@ -53,13 +54,14 @@ Create a release ZIP:
 ```powershell
 npm run release:image-board
 npm run release:file-uploader
+npm run release:document-holder
 npm run release:proxy-release
 npm run release:materials-library
 ```
 
-Release ZIPs are written to `release/threadforge-<frontend-id>-<version>.zip`. Image Board uses `11_image_board/`, File Uploader uses `12_file_uploader/`, Materials Library uses `15_materials_library/`, and Proxy Release uses `16_proxy_release/`.
+Release ZIPs are written to `release/threadforge-<frontend-id>-<version>.zip`. Image Board uses `11_image_board/`, File Uploader uses `12_file_uploader/`, Document Holder uses `14_document_holder/`, Materials Library uses `15_materials_library/`, and Proxy Release uses `16_proxy_release/`.
 
-For a GitHub release, update `VERSION` and the changelog, generate and verify the ZIP, then create the matching `v<version>` tag and attach the ZIP to the GitHub Release.
+For a GitHub release, update only the selected application's `frontends/<frontend-id>/package.json` and changelog, generate and verify its ZIP, then create an `<frontend-id>-v<version>` tag. Name the GitHub Release with the application name and version. Do not change versions of unrelated applications or alter historical tags.
 
 Import local archive logs:
 

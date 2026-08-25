@@ -2,37 +2,43 @@
 
 [English changelog](CHANGELOG.md)
 
-## proxy-release 0.9.8 - 2026-08-25
+ThreadForgeのVersion履歴はアプリ単位です。過去のtagやReleaseは変更していません。
+
+## Proxy Release 0.9.8 - 2026-08-25
 
 - カテゴリに応じてWebMUGENのキャラクター／ステージ登録APIを呼び分け、ステージ試遊用の既定Character IDを設定できるようにしました。
 - WebMUGEN API公開パスの大文字・小文字を修正し、上流HTMLエラーを管理画面で短く表示するようにしました。
 
-## proxy-release 0.9.7 - 2026-06-21
+## Document Holder 0.9.7 - 2026-06-28
+
+- 記事、HTMLフォルダー、ガイド文書向けのDocument Holder frontendを追加しました。
+
+## Proxy Release 0.9.7 - 2026-06-21
 
 - `npm run release:proxy-release` で proxy-release のリリースZipを作れるようにしました。
 - 上部メニューの `試遊` をログイン表示の右側へ移動しました。
 - 試遊URLが未設定の場合は、リンクではなく無効表示にするようにしました。
 - proxy-release の仕様、runtime、リリースZip、legacy風タグ/利用規約/試遊リンク設定をドキュメント化しました。
 
-## file-uploader 1.0.2 - 2026-06-17
+## File Uploader 1.0.2 - 2026-06-17
 
 - デザイン設定で変更できる色項目を拡張しました。
 - デフォルトカラーを ThreadForge 系のグレー基調へ変更しました。
 - 実カウンターに連動していない `count:80747` 表示を削除しました。
 
-## materials-library 0.9.2 - 2026-06-16
+## Materials Library 0.9.2 - 2026-06-16
 
 - 素材の編集/削除で投稿パスワード確認を必須にしました。
 
-## materials-library 0.9.1 - 2026-06-15
+## Materials Library 0.9.1 - 2026-06-15
 
 - 素材庫のSSO設定、ユーザー情報管理、フルバックアップ復元、管理画面の復元ステータス表示を強化しました。
 
-## materials-library 0.9.0 - 2026-06-14
+## Materials Library 0.9.0 - 2026-06-14
 
 - 圧縮ファイルを主役にした素材庫を追加しました。
 - タグ、作者、利用規約、管理画面、legacy素材取り込み、MP3プレビューを追加しました。
 
-## image-board 0.9.7 - 2026-06-07
+## Image Board 0.9.7 - 2026-06-07
 
 - 画像掲示板の運用版として、SNS設定、管理画面、バックアップ、編集/削除、デザイン設定を整備しました。

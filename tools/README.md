@@ -12,12 +12,14 @@ Create a distribution archive:
 powershell -ExecutionPolicy Bypass -File .\tools\build_release.ps1
 ```
 
+Select an app with `-FrontendId` or the corresponding root npm script. The script always reads the version from `frontends/<frontend-id>/package.json`; a release version cannot be overridden independently.
+
 The archive is written to `release/threadforge-<frontend-id>-<version>.zip`.
 
 The release ZIP is arranged for simple rental-server deployment. Upload the extracted directory to `/DotoEita/`.
 
 ```text
-11_image_board/ or 12_file_uploader/
+11_image_board/, 12_file_uploader/, 14_document_holder/, 15_materials_library/, or 16_proxy_release/
   index.html
   assets/
   api.php

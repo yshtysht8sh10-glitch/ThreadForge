@@ -1,7 +1,6 @@
 {
   "name": "threadforge",
   "private": true,
-  "version": "0.9.8",
   "type": "module",
   "workspaces": [
     "frontends/image-board",
@@ -26,6 +25,9 @@
     "test:image-board": "npm --prefix frontends/image-board test -- --run",
     "test:file-uploader": "npm --prefix frontends/file-uploader test -- --run",
     "test:materials-library": "npm --prefix frontends/materials-library test -- --run",
+    "versions": "node tools/app_versions.mjs",
+    "versions:check": "node tools/app_versions.mjs --check",
+    "versions:update-docs": "node tools/app_versions.mjs --write",
     "release:image-board": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId image-board",
     "release:file-uploader": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId file-uploader",
     "release:document-holder": "powershell -ExecutionPolicy Bypass -File ./tools/build_release.ps1 -FrontendId document-holder",

@@ -21,6 +21,7 @@ const pages = [
   page('DB.html', 'DB.md', 'ja/DB.md', 'Database', 'データベース'),
   page('ARCHITECTURE.html', 'ARCHITECTURE.md', 'ja/ARCHITECTURE.md', 'Architecture', '構成'),
   page('FRONTEND_ARCHITECTURE.html', 'FRONTEND_ARCHITECTURE.md', 'ja/FRONTEND_ARCHITECTURE.md', 'Frontend Architecture', 'フロントエンド構成'),
+  page('VERSIONING.html', 'VERSIONING.md', 'ja/VERSIONING.md', 'Application Versioning', 'アプリ単位のVersion管理'),
   page('MIGRATION.html', 'MIGRATION.md', 'ja/MIGRATION.md', 'Migration', '移行'),
   page('TESTING.html', 'TESTING.md', 'ja/TESTING.md', 'Testing', 'テスト'),
   {
@@ -224,10 +225,10 @@ function navigation(current, language) {
       <div class="docs-nav__brand"><span>ThreadForge</span><small>Documentation</small></div>
       <h2>${language === 'ja' ? '共通資料' : 'Core'}</h2>
       <ul>${core.map(link).join('')}</ul>
-      ${groups.map((group) => `
+${groups.map((group) => `
         <h2>${escapeHtml(group.label)}</h2>
         <ul>${group.pages.map(link).join('')}</ul>
-      `).join('')}
+`).join('')}
     </nav>`;
 }
 

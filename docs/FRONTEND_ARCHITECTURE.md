@@ -80,10 +80,13 @@ npm run release:file-uploader
 
 ## Versioning
 
-- Each frontend has its own semantic version. `image-board` and `file-uploader` do not need matching versions.
-- Treat each `frontends/<frontend-id>/package.json` as the application version source and include that version in its release ZIP name.
-- Prefix Git tags with the frontend id, for example `image-board-v0.9.7` and `file-uploader-v0.1.0`.
-- Keep the root version for workspace-level development only, not as the release number for every standalone app.
+- ThreadForge is a monorepo, but versions are managed independently per application using SemVer.
+- Treat each `frontends/<frontend-id>/package.json` as that application's single source of truth and include its version in the release ZIP name.
+- A change or release for one application must not bump unrelated application versions.
+- Prefix new Git tags with the frontend id, for example `image-board-v0.9.7`, `file-uploader-v1.0.2`, `materials-library-v0.9.2`, and `proxy-release-v0.9.8`.
+- Include the application name in the GitHub Release name, for example `Proxy Release 0.9.8`.
+- Do not modify historical tags or GitHub Releases. The old unscoped `vX.Y.Z` tags remain as Image Board history, but must not be used for new releases.
+- The repository root intentionally has no application version.
 - Bundle the common backend with each application release. Track a separate API compatibility version only when a breaking backend contract change is introduced.
 
 This keeps the current board recoverable while allowing each new board type to grow its own personality.

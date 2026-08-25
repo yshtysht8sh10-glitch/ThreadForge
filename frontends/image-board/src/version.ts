@@ -1,2 +1,4 @@
+import appPackage from '../package.json';
+
 export const APP_NAME = 'ThreadForge';
-export const APP_VERSION = '0.9.7';
+export const APP_VERSION = appPackage.version;

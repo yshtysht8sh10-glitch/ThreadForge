@@ -4,7 +4,21 @@
 
 ThreadForge is a lightweight, customizable thread board engine for posts, media, and community archives. It is designed as a fresh self-hosted board for posts, media, and community archives.
 
-The current image-board release is `0.9.7`. The standalone file-uploader release is `1.0.0`, and the materials-library preview release is `0.9.2`.
+## Application Versions
+
+ThreadForge is a monorepo, but every application has an independent semantic version.
+
+<!-- app-versions:start -->
+| App | Current Version | Source of Truth |
+| --- | --- | --- |
+| Image Board | 0.9.7 | `frontends/image-board/package.json` |
+| File Uploader | 1.0.2 | `frontends/file-uploader/package.json` |
+| Document Holder | 0.9.7 | `frontends/document-holder/package.json` |
+| Materials Library | 0.9.2 | `frontends/materials-library/package.json` |
+| Proxy Release | 0.9.8 | `frontends/proxy-release/package.json` |
+<!-- app-versions:end -->
+
+Run `npm run versions` to read the authoritative values mechanically.
 
 ## Repository Contents
 
@@ -85,14 +99,9 @@ vendor/bin/phpunit
 
 ## Versioning
 
-The project version is tracked in:
+Each `frontends/<frontend-id>/package.json` is the single source of truth for that application. There is intentionally no repository-wide release version. Change only the version of an application being released, update its changelog entry, and leave unrelated application versions unchanged. `npm run versions:check` validates the version structure and SemVer values.
 
-- `VERSION`
-- `CHANGELOG.md`
-- `frontends/image-board/package.json`
-- `frontends/image-board/src/version.ts`
-
-Use semantic versioning. Update all version references and the changelog in the same commit.
+New tags use `<app-name>-vX.Y.Z`, such as `proxy-release-v0.9.8`. GitHub Release names include the application name, such as `Proxy Release 0.9.8`. Historical tags, including the old unscoped `vX.Y.Z` Image Board tags, remain unchanged.
 
 ## Runtime Data
 
@@ -138,7 +147,7 @@ Fresh installations start with the standard dark board design, gdgd/special post
 
 Release packaging and maintenance scripts live in `tools/`. They are not included in the public release ZIP.
 
-- `build_release.ps1`: builds `release/threadforge-<frontend-id>-<version>.zip` with the frontend-specific deployment directory
+- `build_release.ps1`: reads the selected application's `package.json` and builds `release/threadforge-<frontend-id>-<version>.zip`
 - `import_threadforge_archives.*`: imports BBSNote/local archive folders
 - `repair_imported_images.*`: reattaches correct images from legacy logs without re-importing posts
 - `update_imported_recent.*`: updates the newest imported archive entries and can insert unmatched latest posts with `--add` / `add=1`
@@ -165,4 +174,5 @@ Post edits update the board only and do not edit or repost to SNS. Cached reacti
 - `docs/MIGRATION.html`: local archive log import notes
 - `docs/ARCHITECTURE.html`: architecture notes
 - `docs/TESTING.html`: test strategy
+- `docs/VERSIONING.html`: independent application versioning and release rules
 - `README.ja.md`: Japanese README

@@ -2,30 +2,34 @@
 
 [Japanese changelog](CHANGELOG.ja.md)
 
-ThreadForge follows semantic versioning while it is being prepared for public use.
+Each ThreadForge application follows semantic versioning independently. Entries without an application name below are historical Image Board entries and are now labeled accordingly; no historical release or tag was changed.
 
-## proxy-release 0.9.8 - 2026-08-25
+## Proxy Release 0.9.8 - 2026-08-25
 
 - Added category-aware WebMUGEN Character/Stage publication and configurable default Character selection for Stage trial URLs.
 - Corrected the deployed WebMUGEN API path casing and shortened upstream HTML errors in the administrator UI.
 
-## proxy-release 0.9.7 - 2026-06-21
+## Document Holder 0.9.7 - 2026-06-28
+
+- Added the standalone Document Holder frontend for articles, HTML folders, and guide documents.
+
+## Proxy Release 0.9.7 - 2026-06-21
 
 - Added proxy-release release packaging through `npm run release:proxy-release`
 - Moved the Trial Play navigation item to the right of login and disabled it visually when no URL is configured
 - Documented proxy-release runtime behavior, release packaging, legacy-style tags, usage terms, and trial-play settings
 
-## file-uploader 1.0.2 - 2026-06-17
+## File Uploader 1.0.2 - 2026-06-17
 
 - Expanded file-uploader design settings to cover title and table text, cells, labels, inputs, placeholders, button variants, tabs, status messages, admin messages, links, and the admin overlay while retaining old JSON compatibility
 - Replaced the old pale file-uploader default colors with a darker gray ThreadForge theme and remapped the legacy light default palette to the new default
 - Removed the fixed legacy `count:80747` display because it was not connected to any live counter
 
-## materials-library 0.9.2 - 2026-06-16
+## Materials Library 0.9.2 - 2026-06-16
 
 - Required post-password entry and verification for all material edits and deletes, including the logged-in owner
 
-## materials-library 0.9.1 - 2026-06-15
+## Materials Library 0.9.1 - 2026-06-15
 
 - Added Materials Library admin controls for parent-site SSO enablement, shared-secret editing, generation, and copy
 - Disabled local registration and ThreadForge-side user edits or erasure while SSO is enabled
@@ -36,7 +40,7 @@ ThreadForge follows semantic versioning while it is being prepared for public us
 - Moved user administration under Maintenance and added a confirmation before opening it
 - Added restore-stage status, elapsed time, progress animation, and duplicate-submit prevention during full-backup restore
 
-## materials-library 0.9.0 - 2026-06-14
+## Materials Library 0.9.0 - 2026-06-14
 
 - Rebuilt Materials Library as an archive-first catalog grouped by tag and author
 - Added archive and preview-image posting with administrator-managed yes/no usage terms
@@ -57,7 +61,7 @@ ThreadForge follows semantic versioning while it is being prepared for public us
 - Simplified registration to login ID, password, and confirmation, with a password visibility toggle
 - Fixed large full-backup export with save-file picker streaming, stored compression for existing archives/media, and packaged PHP upload limits for restore
 
-## file-uploader 1.0.0 - 2026-06-12
+## File Uploader 1.0.0 - 2026-06-12
 
 - Completed the standalone file upload, list, URL copy, delete-key deletion, and responsive mobile flows
 - Added administrator bulk delete, restore/purge, settings, analytics, design customization, and password management
@@ -69,29 +73,29 @@ ThreadForge follows semantic versioning while it is being prepared for public us
 - Fixed uploaded file URLs when file-uploader is deployed in a subdirectory
 - Added a gray dark layout aligned with the other frontends and unsaved design reset/undo previews
 
-## 0.9.7 - 2026-06-07
+## Image Board 0.9.7 - 2026-06-07
 
 - Displayed replies below the post edit form for editing the body in conversation context
 - Reused the standard list reply and analytics layout without duplicating the parent post
 - Displayed every reply on the edit screen without the normal ten-reply preview limit
 
-## 0.9.6 - 2026-06-07
+## Image Board 0.9.6 - 2026-06-07
 
 - Made the thread list the universal entry route with or without login
 - Added SSO token processing directly to the thread list route
 
-## 0.9.5 - 2026-06-07
+## Image Board 0.9.5 - 2026-06-07
 
 - Processed parent-site SSO tokens even when a previous ThreadForge session already exists
 - Ensured re-entry from the parent site always replaces the user settings route with the thread list
 - Added regression coverage for SSO re-entry with an existing session
 
-## 0.9.4 - 2026-06-07
+## Image Board 0.9.4 - 2026-06-07
 
 - Fixed the HashRouter transition after SSO login so the thread list is shown first
 - Removed direct browser history manipulation that could leave the user settings route active
 
-## 0.9.3 - 2026-06-07
+## Image Board 0.9.3 - 2026-06-07
 
 Account experience maintenance release.
 
@@ -100,7 +104,7 @@ Account experience maintenance release.
 - Updated the current icon immediately when selecting a replacement in user settings
 - Added regression coverage for SSO navigation and icon previews
 
-## 0.9.2 - 2026-06-07
+## Image Board 0.9.2 - 2026-06-07
 
 Administration and SSO maintenance release.
 
@@ -110,7 +114,7 @@ Administration and SSO maintenance release.
 - Improved registered-user administration, including icon upload handling and related validation
 - Expanded automated coverage for SSO restrictions and administration controls
 
-## 0.9.1 - 2026-06-04
+## Image Board 0.9.1 - 2026-06-04
 
 Maintenance release for the production board.
 
@@ -122,7 +126,7 @@ Maintenance release for the production board.
 - Allowed keyed web execution of `cron.php` for rental-server cron jobs while keeping keyless browser access blocked
 - Improved SNS reaction logs so successful entries containing empty `error` fields are not highlighted as errors
 
-## 0.9.0 - 2026-05-31
+## Image Board 0.9.0 - 2026-05-31
 
 First production operation release.
 
@@ -142,7 +146,7 @@ First production operation release.
 - Strengthened validation, authentication, admin password setup/change, and user password reset flows
 - Updated Japanese documentation, API references, operation notes, and release instructions
 
-## 0.1.0 - 2026-05-05
+## Image Board 0.1.0 - 2026-05-05
 
 Initial public repository baseline.
 

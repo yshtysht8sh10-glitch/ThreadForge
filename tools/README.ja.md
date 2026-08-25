@@ -32,6 +32,8 @@ server/runtime/file-uploader/storage/data/
 
 ## 配布 Zip
 
+Versionの正本は、選択したアプリの `frontends/<frontend-id>/package.json` です。`build_release.ps1` はこの値を必ず使用し、引数で別のVersionへ上書きすることはできません。
+
 配布用 Zip を作成します。
 
 ```powershell

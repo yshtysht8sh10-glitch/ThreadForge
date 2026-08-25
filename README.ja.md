@@ -2,6 +2,22 @@
 
 [English README](README.md)
 
+## アプリVersion
+
+ThreadForgeはmonorepoですが、Versionはアプリ単位で独立管理します。
+
+<!-- app-versions:start -->
+| App | Current Version | 正本 |
+| --- | --- | --- |
+| Image Board | 0.9.7 | `frontends/image-board/package.json` |
+| File Uploader | 1.0.2 | `frontends/file-uploader/package.json` |
+| Document Holder | 0.9.7 | `frontends/document-holder/package.json` |
+| Materials Library | 0.9.2 | `frontends/materials-library/package.json` |
+| Proxy Release | 0.9.8 | `frontends/proxy-release/package.json` |
+<!-- app-versions:end -->
+
+正本の一覧は `npm run versions` で機械的に取得できます。他アプリの変更ではVersionを上げません。新しいtagは `<app-name>-vX.Y.Z`、GitHub Release名はアプリ名を含む形式にします。過去のtagは変更しません。
+
 ThreadForge は、複数の掲示板/投稿系Webアプリを同じバックエンドで動かすための軽量エンジンです。画像掲示板、ファイルアップローダー、素材庫、代理公開所、ドキュメントホルダーなどをフロントエンド単位で分けて運用できます。
 
 ## フロントエンド

@@ -13,8 +13,7 @@
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.14.0",
-    "threadforge": "file:../.."
+    "react-router-dom": "^6.14.0"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

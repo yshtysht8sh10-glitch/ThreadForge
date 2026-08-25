@@ -686,9 +686,18 @@ function versionInfo(): void
 
 function appVersion(): string
 {
-    $versionFile = dirname(__DIR__) . '/VERSION';
+    $versionFile = __DIR__ . '/VERSION';
     if (is_file($versionFile)) {
         return trim((string)file_get_contents($versionFile));
+    }
+
+    $packageFile = dirname(__DIR__) . '/frontends/' . FRONTEND_ID . '/package.json';
+    if (is_file($packageFile)) {
+        $package = json_decode((string)file_get_contents($packageFile), true);
+        $version = is_array($package) ? trim((string)($package['version'] ?? '')) : '';
+        if ($version !== '') {
+            return $version;
+        }
     }
     return '0.0.0-dev';
 }

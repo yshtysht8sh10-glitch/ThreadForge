@@ -26,6 +26,18 @@ final class ApiHttpIntegrationTest extends TestCase
         $this->resetRuntime();
     }
 
+    public function testVersionEndpointUsesImageBoardPackageVersion(): void
+    {
+        $package = json_decode(
+            (string)file_get_contents(__DIR__ . '/../../frontends/image-board/package.json'),
+            true
+        );
+        $response = $this->getJson(['action' => 'version']);
+
+        $this->assertSame(200, $response['status']);
+        $this->assertSame($package['version'], $response['json']['version']);
+    }
+
     public function testCreateUpdateAndDeletePostThroughHttpSoftDeletesRow(): void
     {
         $created = $this->postForm([

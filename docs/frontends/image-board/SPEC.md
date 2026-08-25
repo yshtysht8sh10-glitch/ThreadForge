@@ -221,16 +221,11 @@ Public UI, package metadata, repository metadata, and public documentation shoul
 
 ## Version Management
 
-The project version is managed with semantic versioning.
+The Image Board version is managed independently with semantic versioning.
 
 Current version: `0.9.7`
 
-Version references must be updated together:
-
-- `VERSION`
-- `CHANGELOG.md`
-- `frontends/image-board/package.json`
-- `frontends/image-board/src/version.ts`
+`frontends/image-board/package.json` is the single source of truth. The frontend display imports this value, the development API resolves it for `image-board`, and the release builder writes it into the packaged app's `VERSION` file.
 
 The PHP API exposes the current version through `?action=version`.
 
