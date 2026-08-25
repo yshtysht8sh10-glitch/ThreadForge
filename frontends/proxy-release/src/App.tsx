@@ -384,7 +384,7 @@ function AdminMaterialInternalFields({
         <div><dt>publicationId</dt><dd>{item.id}</dd></div>
         <div><dt>archiveFile</dt><dd>{item.archiveFile}</dd></div>
         <div><dt>状態</dt><dd className={error ? 'status-error' : item.playUrl ? 'status-success' : ''}>{state}</dd></div>
-        <div><dt>Character ID</dt><dd>{item.webMugenCharacterId || '未設定'}</dd></div>
+        <div><dt>WebMUGEN ID</dt><dd>{item.webMugenCharacterId || '未設定'}</dd></div>
         <div><dt>最終連携結果</dt><dd>{error || (item.webMugenCharacterId ? '成功' : '未実行')}</dd></div>
       </dl>
       <label>試遊URL<input type="url" value={playUrl} placeholder="https://..." onChange={(event) => setPlayUrl(event.target.value)} /></label>
@@ -955,8 +955,9 @@ function AdminPage(props: CommonProps) {
           <label>試遊リンク<input value={String(config.proxyTrialPlayUrl ?? '')} onChange={(e) => setAdminSettings({ ...adminSettings, config: { ...config, proxyTrialPlayUrl: e.target.value } })} /></label>
           <fieldset className="settings-group">
             <legend>WebMUGEN連携</legend>
-            <label>WebMUGEN API URL<input type="url" value={String(config.webMugenApiUrl ?? '')} placeholder="https://example.com/DotoEita/50_WEBMUGEN/api/catalog.php" onChange={(event) => setAdminSettings({ ...adminSettings, config: { ...config, webMugenApiUrl: event.target.value } })} /></label>
+            <label>WebMUGEN API URL<input type="url" value={String(config.webMugenApiUrl ?? '')} placeholder="https://example.com/DotoEita/50_WebMUGEN/api/catalog.php" onChange={(event) => setAdminSettings({ ...adminSettings, config: { ...config, webMugenApiUrl: event.target.value } })} /></label>
             <label>試遊Stage ID<input value={String(config.webMugenStageId ?? 'cyber')} onChange={(event) => setAdminSettings({ ...adminSettings, config: { ...config, webMugenStageId: event.target.value } })} /></label>
+            <label>ステージ試遊Character ID<input value={String(config.webMugenCharacterId ?? 't-h-m-a')} onChange={(event) => setAdminSettings({ ...adminSettings, config: { ...config, webMugenCharacterId: event.target.value } })} /></label>
             <label>WebMUGEN API Token<input type="password" autoComplete="new-password" value={webMugenApiToken} placeholder={webMugenTokenConfigured ? '設定済み（変更時のみ入力）' : '未設定'} onChange={(event) => setWebMugenApiToken(event.target.value)} /></label>
             <p className="help-text">Tokenはサーバー側DBへ保存され、保存後の平文は管理画面にも返しません。空欄で保存すると現在のTokenを維持します。API URLは同一ホストの /api/catalog.php のみ利用できます。</p>
           </fieldset>

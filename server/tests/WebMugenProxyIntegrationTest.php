@@ -27,6 +27,7 @@ final class WebMugenProxyIntegrationTest extends TestCase
         $settings['security']['webMugenApiToken'] = 'database-token-value';
         $settings['config']['webMugenApiUrl'] = 'https://example.test/webmugen/api/catalog.php';
         $settings['config']['webMugenStageId'] = 'fresh-clasic';
+        $settings['config']['webMugenCharacterId'] = 't-h-m-a';
         saveSettings($this->pdo, $settings);
         putenv('THREADFORGE_WEBMUGEN_CATALOG_SECRET=fallback-token-value');
         $_SERVER['HTTPS'] = 'on';
@@ -67,6 +68,42 @@ final class WebMugenProxyIntegrationTest extends TestCase
         self::assertNull($row['webmugen_error']);
     }
 
+    public function testStagePublicationUsesPublishStageAndConfiguredCharacter(): void
+    {
+        $this->pdo->prepare('INSERT INTO material_tags (name, sort_order, created_at) VALUES ("MUGENステージ", 99, "2026-08-25 00:00:00")')->execute();
+        $stageTagId = (int)$this->pdo->lastInsertId();
+        $this->pdo->prepare(
+            'INSERT INTO material_items
+             (id, author_name, name, notes, tag_id, archive_path, archive_original_name, archive_size_bytes,
+              password_hash, created_at, updated_at)
+             VALUES (22, "Author", "Arena", "", :tag_id, "C:/proxy/storage/material-22-archive.zip", "arena.zip", 10,
+              "hash", "2026-08-25 00:00:00", "2026-08-25 00:00:00")'
+        )->execute([':tag_id' => $stageTagId]);
+
+        $requester = function (string $url, array $headers, string $body): array {
+            self::assertSame('https://example.test/webmugen/api/catalog.php?action=publish-stage', $url);
+            self::assertSame([
+                'publicationId' => '22',
+                'archiveFile' => 'material-22-archive.zip',
+                'characterId' => 't-h-m-a',
+            ], json_decode($body, true));
+            return ['success' => true, 'body' => [
+                'success' => true,
+                'stageId' => 'proxy-release-22',
+                'stagePath' => '/DotoEita/16_proxy_release/storage/data/material-22-archive.zip',
+                'playUrl' => 'https://example.test/webmugen/index.html?character=t-h-m-a&stage=proxy-release-22',
+            ]];
+        };
+
+        $result = publishProxyReleaseToWebMugen($this->pdo, 22, 'proxy-release', $requester);
+        self::assertTrue($result['success']);
+        self::assertSame('stage', $result['kind']);
+        self::assertSame('proxy-release-22', $result['stageId']);
+        $row = $this->pdo->query('SELECT webmugen_character_id, webmugen_play_url FROM material_items WHERE id = 22')->fetch(PDO::FETCH_ASSOC);
+        self::assertSame('proxy-release-22', $row['webmugen_character_id']);
+        self::assertStringContainsString('stage=proxy-release-22', $row['webmugen_play_url']);
+    }
+
     public function testCatalogEndpointRejectsAnExternalHost(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -88,6 +125,23 @@ final class WebMugenProxyIntegrationTest extends TestCase
         self::assertSame(17, (int)$row['id']);
         self::assertNull($row['webmugen_play_url']);
         self::assertSame(['code' => 'api.failed', 'message' => 'connection failed'], json_decode($row['webmugen_error'], true));
+    }
+
+    public function testProxyPublishSummarizesAnHtml404WithoutStoringTheResponsePage(): void
+    {
+        $html = '<!DOCTYPE html><html><head><title>404 Error - Not Found</title></head><body>' . str_repeat('missing ', 200) . '</body></html>';
+        $result = publishProxyReleaseToWebMugen($this->pdo, 17, 'proxy-release', static fn(): array => [
+            'success' => false,
+            'message' => 'API returned an error. HTTP 404 ' . $html,
+        ]);
+
+        self::assertFalse($result['success']);
+        self::assertSame('api.failed', $result['code']);
+        self::assertStringContainsString('HTTP 404', $result['message']);
+        self::assertStringNotContainsString('<html', strtolower($result['message']));
+        self::assertLessThan(200, mb_strlen($result['message'], 'UTF-8'));
+        $stored = (string)$this->pdo->query('SELECT webmugen_error FROM material_items WHERE id = 17')->fetchColumn();
+        self::assertStringNotContainsString('<html', strtolower($stored));
     }
 
     public function testRepeatedPublishUsesStablePublicationIdAndUpsertsOneCatalogEntry(): void

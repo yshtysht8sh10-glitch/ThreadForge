@@ -45,6 +45,7 @@ final class ProxyReleaseAdminSettingsHttpTest extends TestCase
         $settings = $admin['json']['settings'];
         $settings['config']['webMugenApiUrl'] = $this->baseUrlForWebMugen();
         $settings['config']['webMugenStageId'] = 'fresh-clasic';
+        $settings['config']['webMugenCharacterId'] = 't-h-m-a';
         $dummyToken = 'dummy-webmugen-token-32-characters';
         $saved = $this->postForm([
             'action' => 'updateSettings',
@@ -160,7 +161,7 @@ final class ProxyReleaseAdminSettingsHttpTest extends TestCase
     private function baseUrlForWebMugen(): string
     {
         $parts = parse_url($this->baseUrl);
-        return 'http://' . $parts['host'] . ':' . $parts['port'] . '/DotoEita/50_WEBMUGEN/api/catalog.php';
+        return 'http://' . $parts['host'] . ':' . $parts['port'] . '/DotoEita/50_WebMUGEN/api/catalog.php';
     }
 
     private function getJson(array $query): array { return $this->curl($this->baseUrl . '?' . http_build_query($query)); }

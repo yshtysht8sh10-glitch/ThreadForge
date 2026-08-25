@@ -111,8 +111,12 @@ export type User = {
 };
 export type TrialPlayResult = {
   success: boolean;
+  kind?: 'character' | 'stage';
+  contentId?: string;
   characterId?: string;
   characterPath?: string;
+  stageId?: string;
+  stagePath?: string;
   playUrl?: string;
   code?: string;
   message?: string;

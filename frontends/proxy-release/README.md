@@ -49,14 +49,15 @@ storage/data/
 Open the proxy-release administrator screen and configure:
 
 ```text
-WebMUGEN API URL=https://host/DotoEita/50_WEBMUGEN/api/catalog.php
+WebMUGEN API URL=https://host/DotoEita/50_WebMUGEN/api/catalog.php
 WebMUGEN Stage ID=cyber
+WebMUGEN Character ID=t-h-m-a
 WebMUGEN API Token=<same server-only Bearer token as WebMUGEN>
 ```
 
 The Token is stored under the SQLite server-side `security` settings. Its plaintext is not returned by either the administrator settings API or the public settings API; the form only reports whether a Token is configured. The environment variables `THREADFORGE_WEBMUGEN_CATALOG_SECRET` and `THREADFORGE_WEBMUGEN_CATALOG_API_URL` remain server-side fallbacks for existing deployments.
 
-After the proxy-release database transaction commits, the API sends the publication ID, the basename of the actual stored ZIP, and the configured Stage ID to WebMUGEN. The same server-only Token is sent in both `Authorization: Bearer ...` and `X-WebMUGEN-Token: ...`; WebMUGEN prefers Bearer when the hosting environment preserves it and otherwise uses the X header. The Token is never placed in the JSON body. A successful response stores the returned Character ID and `?character=...&stage=...` URL on the item. Registration failure does not roll back or hide the proxy publication; its structured error remains available to administrators for retry and diagnosis.
+After the proxy-release database transaction commits, the API identifies Stage publications from their category and calls `publish-stage`; all other publications use `publish-character`. Character publication sends the configured Stage ID, while Stage publication sends the configured Character ID. The same server-only Token is sent in both `Authorization: Bearer ...` and `X-WebMUGEN-Token: ...`; WebMUGEN prefers Bearer when the hosting environment preserves it and otherwise uses the X header. The Token is never placed in the JSON body. A successful response stores the returned WebMUGEN content ID and `?character=...&stage=...` URL on the item. Registration failure does not roll back or hide the proxy publication; its structured error remains available to administrators for retry and diagnosis.
 
 The administrator screen provides a **Data Editor** tab for inspecting and updating existing publications, including stored archive metadata and WebMUGEN state. An administrator can manually set an HTTP(S) trial-play URL or call the WebMUGEN upsert operation again for any publication. The maintenance tab can register every published item whose trial-play URL is still empty; failures are recorded per item and do not stop the remaining registrations.
 

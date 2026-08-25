@@ -2,6 +2,11 @@
 
 [English changelog](CHANGELOG.md)
 
+## proxy-release 0.9.8 - 2026-08-25
+
+- カテゴリに応じてWebMUGENのキャラクター／ステージ登録APIを呼び分け、ステージ試遊用の既定Character IDを設定できるようにしました。
+- WebMUGEN API公開パスの大文字・小文字を修正し、上流HTMLエラーを管理画面で短く表示するようにしました。
+
 ## proxy-release 0.9.7 - 2026-06-21
 
 - `npm run release:proxy-release` で proxy-release のリリースZipを作れるようにしました。

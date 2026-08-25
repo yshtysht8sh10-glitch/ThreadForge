@@ -4,6 +4,11 @@
 
 ThreadForge follows semantic versioning while it is being prepared for public use.
 
+## proxy-release 0.9.8 - 2026-08-25
+
+- Added category-aware WebMUGEN Character/Stage publication and configurable default Character selection for Stage trial URLs.
+- Corrected the deployed WebMUGEN API path casing and shortened upstream HTML errors in the administrator UI.
+
 ## proxy-release 0.9.7 - 2026-06-21
 
 - Added proxy-release release packaging through `npm run release:proxy-release`

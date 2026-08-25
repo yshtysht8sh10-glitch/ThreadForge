@@ -4451,6 +4451,11 @@ function updateSettings(PDO $pdo): void
             jsonResponse(['success' => false, 'message' => 'WebMUGEN Stage IDが正しくありません。'], 400);
         }
         $settings['config']['webMugenStageId'] = $stageId;
+        $characterId = trim((string)($config['webMugenCharacterId'] ?? 't-h-m-a'));
+        if (preg_match('/^[a-z0-9][a-z0-9_-]{0,63}$/i', $characterId) !== 1) {
+            jsonResponse(['success' => false, 'message' => 'WebMUGEN Character IDが正しくありません。'], 400);
+        }
+        $settings['config']['webMugenCharacterId'] = $characterId;
         try {
             $settings['config']['webMugenApiUrl'] = webMugenCatalogEndpointFromValue((string)($config['webMugenApiUrl'] ?? ''), $_SERVER);
         } catch (InvalidArgumentException $error) {
@@ -4955,17 +4960,24 @@ function publishProxyReleaseToWebMugen(PDO $pdo, int $itemId, string $frontendId
     $storedSecret = trim((string)($settings['security']['webMugenApiToken'] ?? ''));
     $secret = $storedSecret !== '' ? $storedSecret : trim((string)(getenv('THREADFORGE_WEBMUGEN_CATALOG_SECRET') ?: ''));
     if ($secret === '') return saveWebMugenTrialFailure($pdo, $itemId, 'config.secret_missing', 'WebMUGEN Catalog API secret is not configured.');
+    $kind = webMugenPublicationKind($item);
+    $action = $kind === 'stage' ? 'publish-stage' : 'publish-character';
     try {
-        $endpoint = webMugenCatalogEndpoint($settings, $_SERVER);
+        $endpoint = webMugenCatalogEndpoint($settings, $_SERVER, $action);
     } catch (InvalidArgumentException $error) {
         return saveWebMugenTrialFailure($pdo, $itemId, 'config.url_invalid', $error->getMessage());
     }
     $stageId = trim((string)($settings['config']['webMugenStageId'] ?? 'cyber'));
-    $payload = json_encode([
+    $payloadData = [
         'publicationId' => (string)$itemId,
         'archiveFile' => $archiveFile,
-        'stageId' => $stageId,
-    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    ];
+    if ($kind === 'stage') {
+        $payloadData['characterId'] = trim((string)($settings['config']['webMugenCharacterId'] ?? 't-h-m-a'));
+    } else {
+        $payloadData['stageId'] = $stageId;
+    }
+    $payload = json_encode($payloadData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $requester ??= static fn(string $url, array $headers, string $body): array => httpRawRequest('POST', $url, $headers, $body);
     $result = $requester($endpoint, [
         'Content-Type: application/json',
@@ -4973,14 +4985,48 @@ function publishProxyReleaseToWebMugen(PDO $pdo, int $itemId, string $frontendId
         'X-WebMUGEN-Token: ' . $secret,
     ], (string)$payload);
     $body = is_array($result['body'] ?? null) ? $result['body'] : [];
-    if (!($result['success'] ?? false) || !($body['success'] ?? false) || !is_string($body['characterId'] ?? null) || !is_string($body['characterPath'] ?? null) || !is_string($body['playUrl'] ?? null)) {
-        $message = (string)($result['message'] ?? $body['error']['message'] ?? 'WebMUGEN Catalog API returned an invalid response.');
+    $idKey = $kind === 'stage' ? 'stageId' : 'characterId';
+    $pathKey = $kind === 'stage' ? 'stagePath' : 'characterPath';
+    if (!($result['success'] ?? false) || !($body['success'] ?? false) || !is_string($body[$idKey] ?? null) || !is_string($body[$pathKey] ?? null) || !is_string($body['playUrl'] ?? null)) {
+        $message = webMugenFailureMessage((string)($result['message'] ?? $body['error']['message'] ?? 'WebMUGEN Catalog API returned an invalid response.'));
         $code = (string)($body['error']['code'] ?? 'api.failed');
         return saveWebMugenTrialFailure($pdo, $itemId, $code, $message);
     }
-    $pdo->prepare('UPDATE material_items SET webmugen_character_id = :character_id, webmugen_play_url = :play_url, webmugen_error = null WHERE id = :id')
-        ->execute([':character_id' => $body['characterId'], ':play_url' => $body['playUrl'], ':id' => $itemId]);
-    return ['success' => true, 'characterId' => $body['characterId'], 'characterPath' => $body['characterPath'], 'playUrl' => $body['playUrl']];
+    $pdo->prepare('UPDATE material_items SET webmugen_character_id = :content_id, webmugen_play_url = :play_url, webmugen_error = null WHERE id = :id')
+        ->execute([':content_id' => $body[$idKey], ':play_url' => $body['playUrl'], ':id' => $itemId]);
+    return [
+        'success' => true,
+        'kind' => $kind,
+        'contentId' => $body[$idKey],
+        $idKey => $body[$idKey],
+        $pathKey => $body[$pathKey],
+        'playUrl' => $body['playUrl'],
+    ];
+}
+
+function webMugenPublicationKind(array $item): string
+{
+    $category = (string)($item['primary_tag_name'] ?? $item['tag_name'] ?? '');
+    return preg_match('/ステージ|stage/i', $category) === 1 ? 'stage' : 'character';
+}
+
+function webMugenFailureMessage(string $message): string
+{
+    $message = trim($message);
+    if (stripos($message, '<!doctype html') !== false || stripos($message, '<html') !== false) {
+        preg_match('/HTTP\s+(\d{3})/i', $message, $match);
+        $status = $match[1] ?? 'error';
+        if ($status === '404') {
+            return 'WebMUGEN APIが見つかりません（HTTP 404）。WebMUGENの公開先とAPI URL（api/catalog.php）を確認してください。';
+        }
+        return "WebMUGEN APIがHTMLエラーを返しました（HTTP {$status}）。公開先のPHPエラーログを確認してください。";
+    }
+
+    $message = preg_replace('/\s+/u', ' ', $message) ?? $message;
+    if (mb_strlen($message, 'UTF-8') > 500) {
+        return mb_substr($message, 0, 497, 'UTF-8') . '...';
+    }
+    return $message;
 }
 
 function saveWebMugenTrialFailure(PDO $pdo, int $itemId, string $code, string $message): array
@@ -5191,18 +5237,18 @@ function validOptionalHttpUrl(string $value, string $label): string
     return $value;
 }
 
-function webMugenCatalogEndpoint(array $settings, array $server): string
+function webMugenCatalogEndpoint(array $settings, array $server, string $action = 'publish-character'): string
 {
     $configured = trim((string)($settings['config']['webMugenApiUrl'] ?? ''));
     if ($configured === '') $configured = trim((string)(getenv('THREADFORGE_WEBMUGEN_CATALOG_API_URL') ?: ''));
-    return webMugenCatalogEndpointFromValue($configured, $server);
+    return webMugenCatalogEndpointFromValue($configured, $server, $action);
 }
 
-function webMugenCatalogEndpointFromValue(string $configured, array $server): string
+function webMugenCatalogEndpointFromValue(string $configured, array $server, string $action = 'publish-character'): string
 {
     $scheme = (($server['HTTPS'] ?? '') !== '' && ($server['HTTPS'] ?? '') !== 'off') ? 'https' : 'http';
     $host = (string)($server['HTTP_HOST'] ?? 'localhost');
-    $url = trim($configured) !== '' ? trim($configured) : $scheme . '://' . $host . '/DotoEita/50_WEBMUGEN/api/catalog.php';
+    $url = trim($configured) !== '' ? trim($configured) : $scheme . '://' . $host . '/DotoEita/50_WebMUGEN/api/catalog.php';
     $parts = parse_url($url);
     $serverHost = parse_url($scheme . '://' . $host, PHP_URL_HOST);
     if (
@@ -5218,7 +5264,10 @@ function webMugenCatalogEndpointFromValue(string $configured, array $server): st
     }
     $query = [];
     parse_str((string)($parts['query'] ?? ''), $query);
-    $query['action'] = 'publish-character';
+    if (!in_array($action, ['publish-character', 'publish-stage'], true)) {
+        throw new InvalidArgumentException('WebMUGEN API actionが正しくありません。');
+    }
+    $query['action'] = $action;
     $authority = (string)$parts['host'] . (isset($parts['port']) ? ':' . (int)$parts['port'] : '');
     return (string)$parts['scheme'] . '://' . $authority . (string)$parts['path'] . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
 }
@@ -5703,6 +5752,7 @@ function defaultSettings(): array
             'proxyTrialPlayUrl' => '',
             'webMugenApiUrl' => '',
             'webMugenStageId' => 'cyber',
+            'webMugenCharacterId' => 't-h-m-a',
             'materialsManualBody' => materialsDefaultManualBody(),
             'materialsGroupParent' => 'tag',
             'materialsMaxArchiveKb' => 102400,
