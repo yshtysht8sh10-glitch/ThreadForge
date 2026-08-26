@@ -4,6 +4,11 @@
 
 Each ThreadForge application follows semantic versioning independently. Entries without an application name below are historical Image Board entries and are now labeled accordingly; no historical release or tag was changed.
 
+## Proxy Release 0.9.10 - 2026-08-26
+
+- Automatically selects dark or light Download text for sufficient contrast against the configured accent color.
+- Increased the minimum card metadata and usage-term text sizes on narrow layouts.
+
 ## Proxy Release 0.9.9 - 2026-08-26
 
 - Emphasized the primary card action as a filled, bold white `Download` button.

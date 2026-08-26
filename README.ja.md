@@ -13,7 +13,7 @@ ThreadForgeはmonorepoですが、Versionはアプリ単位で独立管理しま
 | File Uploader | 1.0.2 | `frontends/file-uploader/package.json` |
 | Document Holder | 0.9.7 | `frontends/document-holder/package.json` |
 | Materials Library | 0.9.2 | `frontends/materials-library/package.json` |
-| Proxy Release | 0.9.9 | `frontends/proxy-release/package.json` |
+| Proxy Release | 0.9.10 | `frontends/proxy-release/package.json` |
 <!-- app-versions:end -->
 
 正本の一覧は `npm run versions` で機械的に取得できます。他アプリの変更ではVersionを上げません。新しいtagは `<app-name>-vX.Y.Z`、GitHub Release名はアプリ名を含む形式にします。過去のtagは変更しません。

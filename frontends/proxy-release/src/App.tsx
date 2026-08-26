@@ -1139,6 +1139,7 @@ function designVariables(settings: MaterialSettings): CSSProperties {
     '--panel-bg': settings.design.panelBackgroundColor, '--panel-border': settings.design.panelBorderColor,
     '--heading-bg': settings.design.headingBackgroundColor, '--heading-text': settings.design.headingTextColor,
     '--accent': settings.design.accentColor,
+    '--accent-contrast': readableTextColor(settings.design.accentColor, settings.design.buttonTextColor),
     '--button-bg': settings.design.buttonBackgroundColor, '--button-text': settings.design.buttonTextColor,
     '--secondary-button-bg': settings.design.secondaryButtonBackgroundColor,
     '--secondary-button-text': settings.design.secondaryButtonTextColor,
@@ -1149,6 +1150,17 @@ function designVariables(settings: MaterialSettings): CSSProperties {
     '--positive': settings.design.positiveColor, '--negative': settings.design.negativeColor,
     '--unknown': settings.design.unknownColor,
   } as CSSProperties;
+}
+export function readableTextColor(background: string, fallback = '#ffffff') {
+  const match = background.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!match) return fallback;
+  const hex = match[1].length === 3
+    ? match[1].split('').map((value) => value + value).join('')
+    : match[1];
+  const channels = [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255)
+    .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+  const luminance = channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  return luminance > 0.179 ? '#061006' : '#ffffff';
 }
 function slug(value: string) { return encodeURIComponent(value).replace(/%/g, ''); }
 function formatBytes(value: number) { if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)}MB`; if (value >= 1024) return `${Math.ceil(value / 1024)}KB`; return `${value}bytes`; }

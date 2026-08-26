@@ -8,7 +8,7 @@ button:disabled { opacity: .45; cursor: default; }
 button.secondary { background: var(--secondary-button-bg); color: var(--secondary-button-text); border-color: color-mix(in srgb, var(--secondary-button-bg) 55%, white); }
 button.danger { background: var(--danger-button-bg); color: var(--danger-button-text); border-color: color-mix(in srgb, var(--danger-button-bg) 55%, white); }
 a { color: var(--accent); }
-.materials-app { --page-bg: #050505; --page-text: #f2f2f2; --header-bg: #000; --header-text: #fff; --header-border: #222; --panel-bg: #111820; --panel-border: #6c7787; --heading-bg: #59636f; --heading-text: #fff; --accent: #8fb0ff; --button-bg: #3974ee; --button-text: #fff; --secondary-button-bg: #303640; --secondary-button-text: #fff; --danger-button-bg: #c44141; --danger-button-text: #fff; --input-bg: #282f38; --input-text: #fff; --image-bg: #020202; --muted-text: #aab4c0; --positive: #72e9a2; --negative: #ff9292; --unknown: #f0cf78; min-height: 100vh; background: var(--page-bg); color: var(--page-text); }
+.materials-app { --page-bg: #050505; --page-text: #f2f2f2; --header-bg: #000; --header-text: #fff; --header-border: #222; --panel-bg: #111820; --panel-border: #6c7787; --heading-bg: #59636f; --heading-text: #fff; --accent: #8fb0ff; --accent-contrast: #061006; --button-bg: #3974ee; --button-text: #fff; --secondary-button-bg: #303640; --secondary-button-text: #fff; --danger-button-bg: #c44141; --danger-button-text: #fff; --input-bg: #282f38; --input-text: #fff; --image-bg: #020202; --muted-text: #aab4c0; --positive: #72e9a2; --negative: #ff9292; --unknown: #f0cf78; min-height: 100vh; background: var(--page-bg); color: var(--page-text); }
 .loading { min-height: 100vh; display: grid; place-items: center; background: #050505; color: #fff; }
 .site-header { padding: 20px 16px 14px; background: var(--header-bg); position: sticky; top: 0; z-index: 20; border-bottom: 1px solid var(--header-border); }
 .site-header nav { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 0; }
@@ -57,18 +57,18 @@ a { color: var(--accent); }
 .id-badge, .guest-badge { margin-left: auto; padding: 1px 5px; border: 1px solid #57759a; color: #9fc8ff; font-size: 10px; }
 .guest-badge { border-color: #7c7c7c; color: #aaa; }
 .notes { min-height: 2.8em; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
-.terms-table { margin: 0; border-top: 1px solid var(--panel-border); font-size: clamp(10px, 1.7vw, 13px); }
+.terms-table { margin: 0; border-top: 1px solid var(--panel-border); font-size: clamp(12px, 1.7vw, 13px); line-height: 1.25; }
 .terms-table div { display: grid; grid-template-columns: 1fr 34px; border-bottom: 1px solid var(--panel-border); }
 .terms-table dt, .terms-table dd { margin: 0; padding: 4px; }
 .terms-table dd { display: grid; place-items: center; text-align: center; border-left: 1px solid var(--panel-border); font-weight: bold; }
 .terms-table .yes { color: var(--positive); }
 .terms-table .no { color: var(--negative); }
 .terms-table .unknown { color: var(--unknown); }
-.download-button { display: block; min-width: 0; margin: 0; padding: 8px 10px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font-weight: 700; text-align: center; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.download-button:hover { color: #fff; filter: brightness(1.16); }
+.download-button { display: block; min-width: 0; margin: 0; padding: 9px 10px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-contrast); font-size: 16px; font-weight: 700; line-height: 1.2; text-align: center; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.download-button:hover { color: var(--accent-contrast); filter: brightness(.9); }
 .trial-play-button { display: block; padding: 7px 10px; border: 1px solid var(--positive); color: var(--positive); text-align: center; text-decoration: none; }
 .trial-play-error { color: var(--negative) !important; }
-.material-card small { color: var(--muted-text); font-size: clamp(9px, 1.6vw, 12px); overflow-wrap: anywhere; }
+.material-card small { color: var(--muted-text); font-size: clamp(11px, 1.6vw, 12px); line-height: 1.3; overflow-wrap: anywhere; }
 .audio-preview { width: 100%; display: grid; gap: 5px; padding: 8px; }
 .audio-preview label { min-width: 0; display: grid; gap: 3px; color: var(--page-text); }
 .audio-preview span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
