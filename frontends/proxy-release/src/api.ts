@@ -32,6 +32,7 @@ export type MaterialSettings = {
   description: string;
   homePageUrl: string;
   trialPlayUrl: string;
+  trialPlayButtonsEnabled: boolean;
   manualBody: string;
   groupParent: 'tag' | 'author';
   maxArchiveKb: number;

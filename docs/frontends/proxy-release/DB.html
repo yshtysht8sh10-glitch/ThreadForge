@@ -82,6 +82,7 @@ storage/data/</code></pre>
 <ul>
 <li>親投稿を代理公開のリリース項目として扱う</li>
 <li>パッケージや画像はこのフロント専用のストレージに保存する</li>
+<li><code>config.proxyTrialPlayButtonsEnabled</code> は個別試遊ボタンの公開表示を制御し、保存済みの試遊URL自体は変更しない</li>
 <li>必要になればリリース用メタデータの追加を検討する</li>
 </ul>
 <h2 id="分離ルール">分離ルール</h2>
@@ -112,6 +113,10 @@ storage/data/</code></pre>
 <li><code>config.webMugenApiUrl</code> and <code>config.webMugenStageId</code> store the same-host endpoint and Stage</li>
 </ul>
 <p>selection used for publication</p>
+<ul>
+<li><code>config.proxyTrialPlayButtonsEnabled</code> controls whether item-specific trial-play buttons are</li>
+</ul>
+<p>shown publicly; it does not alter <code>webmugen_play_url</code></p>
 <ul>
 <li>future schema may add release metadata if title/message/settings are not enough</li>
 </ul>

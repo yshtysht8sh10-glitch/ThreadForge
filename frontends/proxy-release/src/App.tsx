@@ -146,16 +146,16 @@ function LibraryPage({ settings, items }: CommonProps) {
           ...group,
           items: group.groups.flatMap((inner) => inner.items),
         }))).map((row, rowIndex) => <div className="author-row author-parent-row" key={rowIndex}>
-          {row.map((group) => renderCatalogGroup(group))}
+          {row.map((group) => renderCatalogGroup(group, settings.trialPlayButtonsEnabled))}
         </div>)
         : groups.map((group) => (
-          renderCatalogGroup(group)
+          renderCatalogGroup(group, settings.trialPlayButtonsEnabled)
         ))}
     </>
   );
 }
 
-function renderCatalogGroup(group: ReturnType<typeof groupMaterials>[number]) {
+function renderCatalogGroup(group: ReturnType<typeof groupMaterials>[number], trialPlayButtonsEnabled: boolean) {
   return (
         <section className="catalog-section" id={`group-${slug(group.key)}`} key={group.key}>
           <h2>{group.label}</h2>
@@ -168,7 +168,7 @@ function renderCatalogGroup(group: ReturnType<typeof groupMaterials>[number]) {
                 style={{ '--author-card-count': Math.min(inner.items.length, 4) } as CSSProperties}
               >
                 <h3>{inner.label}</h3>
-                <div className="material-grid">{inner.items.map((item) => <MaterialCard item={item} key={item.id} />)}</div>
+                <div className="material-grid">{inner.items.map((item) => <MaterialCard item={item} key={item.id} trialPlayButtonEnabled={trialPlayButtonsEnabled} />)}</div>
               </div>
             ))}
           </div>
@@ -176,7 +176,7 @@ function renderCatalogGroup(group: ReturnType<typeof groupMaterials>[number]) {
   );
 }
 
-function MaterialCard({ item, selectable, selected, onSelect }: { item: MaterialItem; selectable?: boolean; selected?: boolean; onSelect?: () => void }) {
+function MaterialCard({ item, selectable, selected, onSelect, trialPlayButtonEnabled = true }: { item: MaterialItem; selectable?: boolean; selected?: boolean; onSelect?: () => void; trialPlayButtonEnabled?: boolean }) {
   return (
     <article className={`material-card ${selected ? 'selected' : ''} ${item.adminOnly ? 'admin-only' : ''}`}>
       {selectable && <input className="card-select" type="radio" checked={selected} disabled={item.adminOnly} onChange={onSelect} aria-label={`${item.name}を選択`} />}
@@ -187,8 +187,8 @@ function MaterialCard({ item, selectable, selected, onSelect }: { item: Material
       </div>
       <div className="material-card-body">
         <h4 title={item.name}>{item.name}</h4>
-        <a className="download-button" title={item.archiveOriginalName} href={mediaUrl(item.archiveUrl) ?? '#'} download>{item.archiveOriginalName}</a>
-        {item.playUrl && <a className="trial-play-button" href={item.playUrl} target="_blank" rel="noreferrer">試遊</a>}
+        <a className="download-button" title={item.archiveOriginalName} href={mediaUrl(item.archiveUrl) ?? '#'} download>Download</a>
+        {trialPlayButtonEnabled && item.playUrl && <a className="trial-play-button" href={item.playUrl} target="_blank" rel="noreferrer">試遊</a>}
         <small>{formatBytes(item.archiveSizeBytes)} / {item.tagName}</small>
         <dl className="terms-table">
           {item.terms.map((term) => <div key={term.id}><dt>{term.label}</dt><dd className={term.accepted === null ? 'unknown' : term.accepted ? 'yes' : 'no'}>{term.accepted === null ? '?' : term.accepted ? '○' : '×'}</dd></div>)}
@@ -432,7 +432,7 @@ function SelectionPage(props: CommonProps & { mode: 'delete' | 'edit' }) {
   return (
     <Panel title={props.mode === 'delete' ? '素材を削除' : '素材を編集'}>
       <p>対象を1件選択し、投稿時に設定した投稿パスワードを入力してください。パスワード未設定の投稿は管理画面からのみ変更できます。</p>
-      <SelectionCatalog groups={groups} selectedId={selectedId} setSelectedId={(id) => { setSelectedId(id); setEditing(false); }} />
+      <SelectionCatalog groups={groups} selectedId={selectedId} trialPlayButtonsEnabled={props.settings.trialPlayButtonsEnabled} setSelectedId={(id) => { setSelectedId(id); setEditing(false); }} />
       {selected && <div className="selection-actions">
         <label>投稿パスワード<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
         <button onClick={props.mode === 'delete' ? executeDelete : openEdit}>{props.mode === 'delete' ? '削除する' : '編集画面へ'}</button>
@@ -444,10 +444,12 @@ function SelectionPage(props: CommonProps & { mode: 'delete' | 'edit' }) {
 function SelectionCatalog({
   groups,
   selectedId,
+  trialPlayButtonsEnabled,
   setSelectedId,
 }: {
   groups: ReturnType<typeof groupMaterials>;
   selectedId: number | null;
+  trialPlayButtonsEnabled: boolean;
   setSelectedId: (id: number) => void;
 }) {
   const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -477,6 +479,7 @@ function SelectionCatalog({
             key={item.id}
             item={item}
             selectable
+            trialPlayButtonEnabled={trialPlayButtonsEnabled}
             selected={selectedId === item.id}
             onSelect={() => { if (!item.adminOnly) setSelectedId(item.id); }}
           />)}</div>
@@ -953,6 +956,9 @@ function AdminPage(props: CommonProps) {
             <label>画像上限 KB<input type="number" value={Number(config.materialsMaxImageKb ?? 10240)} onChange={(e) => setAdminSettings({ ...adminSettings, config: { ...config, materialsMaxImageKb: Number(e.target.value) } })} /></label></div>
           <label>許可する圧縮形式<input value={String(config.materialsAllowedArchiveExtensions ?? '')} onChange={(e) => setAdminSettings({ ...adminSettings, config: { ...config, materialsAllowedArchiveExtensions: e.target.value } })} /></label>
           <label>試遊リンク<input value={String(config.proxyTrialPlayUrl ?? '')} onChange={(e) => setAdminSettings({ ...adminSettings, config: { ...config, proxyTrialPlayUrl: e.target.value } })} /></label>
+          <label>個別試遊ボタン<select value={toBoolean(config.proxyTrialPlayButtonsEnabled ?? true) ? '1' : '0'} onChange={(event) => setAdminSettings({ ...adminSettings, config: { ...config, proxyTrialPlayButtonsEnabled: event.target.value === '1' } })}>
+            <option value="1">表示する</option><option value="0">一括非表示</option>
+          </select></label>
           <fieldset className="settings-group">
             <legend>WebMUGEN連携</legend>
             <label>WebMUGEN API URL<input type="url" value={String(config.webMugenApiUrl ?? '')} placeholder="https://example.com/DotoEita/50_WebMUGEN/api/catalog.php" onChange={(event) => setAdminSettings({ ...adminSettings, config: { ...config, webMugenApiUrl: event.target.value } })} /></label>

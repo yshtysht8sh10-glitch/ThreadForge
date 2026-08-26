@@ -10,6 +10,7 @@ MUGEN character proxy release frontend.
 - Allow a manual explanation image to override the generated preview.
 - Register a successfully published character ZIP with WebMUGEN and display the returned per-release trial-play link.
 - Provide an admin-configurable general trial-play link in the top navigation.
+- Let administrators hide all item-specific trial-play buttons without clearing their saved URLs.
 
 ## Commands
 
@@ -62,6 +63,8 @@ After the proxy-release database transaction commits, the API identifies Stage p
 The administrator screen provides a **Data Editor** tab for inspecting and updating existing publications, including stored archive metadata and WebMUGEN state. An administrator can manually set an HTTP(S) trial-play URL or call the WebMUGEN upsert operation again for any publication. The maintenance tab can register every published item whose trial-play URL is still empty; failures are recorded per item and do not stop the remaining registrations.
 
 The WebMUGEN request always uses the publication ID as its stable key. Re-registering publication `123` therefore updates `proxy-release-123` instead of creating a second Catalog entry. Public material responses expose only the saved trial-play URL; Character IDs, stored paths, and registration errors are available only through administrator-authenticated APIs.
+
+The public release card labels its primary archive action `Download` and renders it as a filled accent-color button. `config.proxyTrialPlayButtonsEnabled` controls all item-specific trial-play buttons and defaults to enabled for backward compatibility.
 
 ## Docs
 

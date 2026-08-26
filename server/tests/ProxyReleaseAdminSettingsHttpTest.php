@@ -46,6 +46,7 @@ final class ProxyReleaseAdminSettingsHttpTest extends TestCase
         $settings['config']['webMugenApiUrl'] = $this->baseUrlForWebMugen();
         $settings['config']['webMugenStageId'] = 'fresh-clasic';
         $settings['config']['webMugenCharacterId'] = 't-h-m-a';
+        $settings['config']['proxyTrialPlayButtonsEnabled'] = false;
         $dummyToken = 'dummy-webmugen-token-32-characters';
         $saved = $this->postForm([
             'action' => 'updateSettings',
@@ -60,6 +61,7 @@ final class ProxyReleaseAdminSettingsHttpTest extends TestCase
         self::assertStringNotContainsString($dummyToken, $after['body']);
         $public = $this->getJson(['action' => 'materialsSettings']);
         self::assertStringNotContainsString($dummyToken, $public['body']);
+        self::assertFalse($public['json']['settings']['trialPlayButtonsEnabled']);
 
         $pdo = new PDO('sqlite:' . $this->runtimeDir . '/database.sqlite');
         $stored = json_decode((string)$pdo->query("SELECT value FROM settings WHERE key = 'security'")->fetchColumn(), true);

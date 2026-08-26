@@ -24,6 +24,9 @@ uploaded archives and organize them by tag and author.
 - A successful registration stores and renders the item-specific WebMUGEN play URL on the
   release card. A failed registration preserves the published item and records a structured
   error so publication success is not confused with trial-play readiness.
+- The archive action is labeled `Download` and uses a filled accent-color style as the card's
+  primary action. Administrators can hide every item-specific trial-play button without
+  deleting the stored URLs; the display setting defaults to enabled.
 - The navigation includes a `Trial Play` link to the right of the login item. The
   destination is configurable from the admin settings screen. If no URL is set, the
   item is displayed as disabled instead of linking to a fallback page.

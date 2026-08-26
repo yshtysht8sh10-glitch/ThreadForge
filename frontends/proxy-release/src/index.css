@@ -64,7 +64,8 @@ a { color: var(--accent); }
 .terms-table .yes { color: var(--positive); }
 .terms-table .no { color: var(--negative); }
 .terms-table .unknown { color: var(--unknown); }
-.download-button { display: block; min-width: 0; margin: 0; padding: 7px 10px; border: 1px solid var(--accent); text-align: center; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.download-button { display: block; min-width: 0; margin: 0; padding: 8px 10px; border: 1px solid var(--accent); background: var(--accent); color: #fff; font-weight: 700; text-align: center; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.download-button:hover { color: #fff; filter: brightness(1.16); }
 .trial-play-button { display: block; padding: 7px 10px; border: 1px solid var(--positive); color: var(--positive); text-align: center; text-decoration: none; }
 .trial-play-error { color: var(--negative) !important; }
 .material-card small { color: var(--muted-text); font-size: clamp(9px, 1.6vw, 12px); overflow-wrap: anywhere; }

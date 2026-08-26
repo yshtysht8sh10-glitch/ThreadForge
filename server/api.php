@@ -4465,6 +4465,7 @@ function updateSettings(PDO $pdo): void
             jsonResponse(['success' => false, 'message' => 'WebMUGEN Character IDが正しくありません。'], 400);
         }
         $settings['config']['webMugenCharacterId'] = $characterId;
+        $settings['config']['proxyTrialPlayButtonsEnabled'] = toBoolFlag($config['proxyTrialPlayButtonsEnabled'] ?? true);
         try {
             $settings['config']['webMugenApiUrl'] = webMugenCatalogEndpointFromValue((string)($config['webMugenApiUrl'] ?? ''), $_SERVER);
         } catch (InvalidArgumentException $error) {
@@ -4638,6 +4639,7 @@ function materialsSettings(PDO $pdo): void
             'descriptionBanners' => materialDescriptionBanners($config),
             'homePageUrl' => (string)($config['materialsHomePageUrl'] ?? '../'),
             'trialPlayUrl' => (string)($config['proxyTrialPlayUrl'] ?? ''),
+            'trialPlayButtonsEnabled' => toBoolFlag($config['proxyTrialPlayButtonsEnabled'] ?? true),
             'manualBody' => (string)($config['materialsManualBody'] ?? materialsDefaultManualBody()),
             'groupParent' => in_array(($config['materialsGroupParent'] ?? 'tag'), ['tag', 'author'], true) ? (string)$config['materialsGroupParent'] : 'tag',
             'maxArchiveKb' => max(1, (int)($config['materialsMaxArchiveKb'] ?? 102400)),
@@ -5759,6 +5761,7 @@ function defaultSettings(): array
             'materialsDescriptionBanners' => materialDefaultDescriptionBanners(),
             'materialsHomePageUrl' => '../',
             'proxyTrialPlayUrl' => '',
+            'proxyTrialPlayButtonsEnabled' => true,
             'webMugenApiUrl' => '',
             'webMugenStageId' => 'cyber',
             'webMugenCharacterId' => 't-h-m-a',

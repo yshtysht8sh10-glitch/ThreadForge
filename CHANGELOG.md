@@ -4,6 +4,11 @@
 
 Each ThreadForge application follows semantic versioning independently. Entries without an application name below are historical Image Board entries and are now labeled accordingly; no historical release or tag was changed.
 
+## Proxy Release 0.9.9 - 2026-08-26
+
+- Emphasized the primary card action as a filled, bold white `Download` button.
+- Added an administrator setting that hides all item trial-play buttons without deleting saved trial-play URLs.
+
 ## Proxy Release 0.9.8 - 2026-08-25
 
 - Added category-aware WebMUGEN Character/Stage publication and configurable default Character selection for Stage trial URLs.
