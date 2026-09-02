@@ -76,6 +76,8 @@ export type MaterialItem = {
   notes: string;
   tagId: number;
   tagName: string;
+  primaryTagId: number;
+  primaryTagName: string;
   archiveUrl: string;
   archiveOriginalName: string;
   archiveSizeBytes: number;
@@ -87,6 +89,9 @@ export type MaterialItem = {
   draft: boolean;
   deletedAt: string | null;
   adminOnly: boolean;
+  publicationType: 'normal' | 'test';
+  expiresAt: string | null;
+  testMemo: string;
   playUrl?: string | null;
   terms: TermAnswer[];
   media: MaterialMedia[];
@@ -176,8 +181,12 @@ export const api = {
   settings: () => request<{ settings: MaterialSettings; tags: MaterialTag[]; terms: MaterialTerm[] }>('materialsSettings'),
   items: () => request<{ items: MaterialItem[] }>('listMaterialItems'),
   item: (id: number) => request<{ item: MaterialItem }>('getMaterialItem', { id: String(id) }),
-  create: (body: FormData, token: string) => request<{ message: string; trialPlay: TrialPlayResult }>('createMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
-  update: (body: FormData, token: string) => request<{ message: string; trialPlay: TrialPlayResult }>('updateMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
+  create: (body: FormData, token: string) => request<{ message: string; trialPlay: TrialPlayResult; item: MaterialItem }>('createMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
+  update: (body: FormData, token: string) => request<{ message: string; trialPlay: TrialPlayResult; item: MaterialItem }>('updateMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
+  verify: (id: number, password: string, token: string) => request<{ item: MaterialItem }>('verifyMaterialPassword', {
+    id: String(id), password, ...(token ? { auth_token: token } : {}),
+  }, 'POST'),
+  promote: (body: FormData, token: string) => request<{ message: string; trialPlay: TrialPlayResult; item: MaterialItem }>('promoteTestMaterialItem', token ? { auth_token: token } : {}, 'POST', body),
   remove: (id: number, password: string, token: string) => request<{ message: string }>('deleteMaterialItem', {
     id: String(id), password, ...(token ? { auth_token: token } : {}),
   }, 'POST'),

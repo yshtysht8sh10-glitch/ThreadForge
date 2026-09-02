@@ -42,3 +42,6 @@ The expected data shape is release-oriented:
 ## Isolation Rule
 
 `proxy-release` must not read or write another frontend's DB or storage directory.
+## Test publication lifecycle
+
+`material_items.publication_type` is `normal` or `test`. Test rows retain the shared publication ID and store an exact `expires_at` timestamp plus a short `test_memo`. Promotion updates the same row to `normal`, clears the expiry and memo, and retains its files and WebMUGEN stable ID. Expired test rows are hidden immediately; cleanup removes the WebMUGEN Catalog entry first and then deletes the row, ZIP, generated image, and media. A remote deletion failure retains the hidden local row for retry.

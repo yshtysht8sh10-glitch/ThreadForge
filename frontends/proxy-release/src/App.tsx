@@ -127,7 +127,9 @@ type CommonProps = {
 };
 
 function LibraryPage({ settings, items }: CommonProps) {
-  const groups = groupMaterials(items, settings.groupParent);
+  const normalItems = items.filter((item) => item.publicationType !== 'test');
+  const testItems = items.filter((item) => item.publicationType === 'test');
+  const groups = groupMaterials(normalItems, settings.groupParent);
   return (
     <>
       <section className="library-heading">
@@ -135,12 +137,14 @@ function LibraryPage({ settings, items }: CommonProps) {
         <p>{settings.description}</p>
       </section>
       <nav className="catalog-index" aria-label="素材目次">
+        <span className="catalog-index-group"><a href="#test-publications">テスト中</a></span>
         {groups.map((group) => <span className="catalog-index-group" key={group.key}>
           <a href={`#group-${slug(group.key)}`}>{group.label}</a>
           {group.groups.map((inner) => <a className="author-index-link" key={inner.key} href={`#author-${slug(group.key)}-${slug(inner.key)}`}>{inner.label}</a>)}
         </span>)}
       </nav>
       {groups.length === 0 && <Empty>登録された素材はありません。</Empty>}
+      <TestPublicationList items={testItems} />
       {settings.groupParent === 'author'
         ? packAuthorGroups(groups.map((group) => ({
           ...group,
@@ -153,6 +157,21 @@ function LibraryPage({ settings, items }: CommonProps) {
         ))}
     </>
   );
+}
+
+function TestPublicationList({ items, selectable, selectedId, onSelect }: { items: MaterialItem[]; selectable?: boolean; selectedId?: number | null; onSelect?: (id: number) => void }) {
+  return <section className="test-publication-section" id="test-publications" aria-label="テスト公開一覧">
+    <h2>テスト中</h2>
+    <p className="help-text">テスト公開は登録から7日で自動削除されます。試遊URLは投稿パスワードで認証した編集画面だけに表示されます。</p>
+    {items.length === 0 ? <Empty>現在テスト中のデータはありません。</Empty> : <div className="test-publication-list">{items.map((item) => <label className={`test-publication-row ${selectedId === item.id ? 'selected' : ''}`} key={item.id}>
+      {selectable && <input type="radio" checked={selectedId === item.id} disabled={item.adminOnly} onChange={() => onSelect?.(item.id)} />}
+      <span className="test-publication-author">{item.authorName}</span>
+      <span className="test-publication-image">{item.imageUrl ? <img src={mediaUrl(item.imageUrl) ?? ''} alt="" loading="lazy" /> : 'NO IMAGE'}</span>
+      <strong title={item.archiveOriginalName}>{item.archiveOriginalName}</strong>
+      <span>{remainingDays(item.expiresAt)}</span>
+      <span className="test-publication-memo">{item.testMemo || 'メモなし'}</span>
+    </label>)}</div>}
+  </section>;
 }
 
 function renderCatalogGroup(group: ReturnType<typeof groupMaterials>[number], trialPlayButtonsEnabled: boolean) {
@@ -209,6 +228,9 @@ function MaterialForm(props: CommonProps & {
   const [name, setName] = useState(item?.name ?? 'blank');
   const [author, setAuthor] = useState(item?.authorName ?? user?.materials_author_name ?? user?.display_name ?? '');
   const [notes, setNotes] = useState(item?.notes ?? '');
+  const [publicationType, setPublicationType] = useState<'normal' | 'test'>(item?.publicationType ?? 'normal');
+  const [testMemo, setTestMemo] = useState(item?.testMemo ?? '');
+  const [testResult, setTestResult] = useState<MaterialItem | null>(null);
   const [tagId, setTagId] = useState(String(item?.tagId ?? tags[0]?.id ?? ''));
   const [password, setPassword] = useState(mode === 'edit' ? props.initialPassword ?? '' : user?.post_password ?? '');
   const [archive, setArchive] = useState<File | null>(null);
@@ -240,6 +262,7 @@ function MaterialForm(props: CommonProps & {
     const body = new FormData();
     body.set('name', name); body.set('author_name', author); body.set('notes', notes); body.set('tag_id', tagId);
     body.set('password', password); body.set('terms', JSON.stringify(answers));
+    body.set('publication_type', publicationType); body.set('test_memo', testMemo);
     if (archiveFile) body.set('archive', archiveFile);
     if (imageFile) body.set('image', imageFile);
     audioFiles.forEach((file) => body.append('audio[]', file));
@@ -256,8 +279,25 @@ function MaterialForm(props: CommonProps & {
         props.admin.onSaved(response.item);
       } else {
         const response = mode === 'create' ? await api.create(body, token) : await api.update(body, token);
-        await reload(); setNotice(response.message); navigate('list');
+        await reload(); setNotice(response.message);
+        if (response.item.publicationType === 'test') setTestResult(response.item);
+        else navigate('list');
       }
+    } catch (reason) { setError((reason as Error).message); }
+    finally { setBusy(false); }
+  };
+
+  const promote = async () => {
+    if (!item || item.publicationType !== 'test') return;
+    if (!name.trim() || !author.trim() || !tagId) { setError('名称、作者名、タグを入力してください。'); return; }
+    if (!confirm('このテスト公開を正式公開へ切り替えます。期限は解除され、通常一覧に表示されます。よろしいですか？')) return;
+    const body = new FormData();
+    body.set('id', String(item.id)); body.set('password', password); body.set('name', name);
+    body.set('author_name', author); body.set('notes', notes); body.set('tag_id', tagId); body.set('terms', JSON.stringify(answers));
+    setBusy(true); setError('');
+    try {
+      const response = await api.promote(body, token);
+      await reload(); setNotice(response.message); navigate('list');
     } catch (reason) { setError((reason as Error).message); }
     finally { setBusy(false); }
   };
@@ -277,9 +317,24 @@ function MaterialForm(props: CommonProps & {
     }
   };
 
+  if (testResult && mode === 'create') {
+    return <Panel title="テスト代理公開が完了しました">
+      <p>このデータは7日後に自動削除されます。URLは一覧には表示されません。</p>
+      <TestPublicationResult item={testResult} setNotice={setNotice} setError={setError} />
+      <div className="actions"><button type="button" onClick={() => navigate('list')}>テスト中一覧へ</button></div>
+    </Panel>;
+  }
+
   return (
     <Panel title={props.admin ? `データ編集: No.${item?.id ?? ''} ${item?.name ?? ''}` : mode === 'create' ? '素材を投稿' : `素材を編集: ${item?.name ?? ''}`}>
       <form className="material-form" onSubmit={submit}>
+        {mode === 'create' && <fieldset className="publication-type"><legend>公開方法</legend>
+          <label><input type="radio" checked={publicationType === 'normal'} onChange={() => setPublicationType('normal')} />通常の代理公開</label>
+          <label><input type="radio" checked={publicationType === 'test'} onChange={() => setPublicationType('test')} />テスト代理公開（7日間）</label>
+          {publicationType === 'test' && <p className="help-text">正式公開前の確認用です。7日後にファイルとWebMUGEN登録を自動削除します。試遊URLはパスワード認証後だけ確認できます。</p>}
+        </fieldset>}
+        {publicationType === 'test' && <label>ひとことメモ<textarea maxLength={200} value={testMemo} onChange={(event) => setTestMemo(event.target.value)} placeholder="確認してほしい点など（200文字以内）" /></label>}
+        {(testResult ?? (item?.publicationType === 'test' ? item : null)) && <TestPublicationResult item={(testResult ?? item)!} setNotice={setNotice} setError={setError} />}
         <div className="form-grid two-columns">
           <label>名称<input value={name} onChange={(event) => setName(event.target.value)} required /></label>
           <label><span>作者名<span className="required-marker" aria-hidden="true">*</span></span><input value={author} onChange={(event) => setAuthor(event.target.value)} required /></label>
@@ -325,10 +380,25 @@ function MaterialForm(props: CommonProps & {
           }}
         />}
         {!props.admin && <label><span>投稿パスワード<span className="required-marker" aria-hidden="true">*</span></span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>}
-        <div className="actions"><button className="secondary" type="button" onClick={() => props.admin ? props.admin.onCancel() : navigate('list')}>戻る</button><button disabled={busy}>{busy ? '送信中...' : props.admin ? '管理データを保存' : mode === 'create' ? '投稿する' : '更新する'}</button></div>
+        <div className="actions"><button className="secondary" type="button" onClick={() => props.admin ? props.admin.onCancel() : navigate('list')}>戻る</button><button disabled={busy}>{busy ? '送信中...' : props.admin ? '管理データを保存' : mode === 'create' ? (publicationType === 'test' ? '7日間テスト公開する' : '投稿する') : '更新する'}</button></div>
+        {!props.admin && mode === 'edit' && item?.publicationType === 'test' && <div className="promotion-actions">
+          <p>正式公開にすると7日間の期限が解除され、この同じ公開データが通常一覧へ移動します。</p>
+          <button className="promote-button" type="button" disabled={busy} onClick={() => void promote()}>入力内容を確認して正式公開する</button>
+        </div>}
       </form>
     </Panel>
   );
+}
+
+function TestPublicationResult({ item, setNotice, setError }: { item: MaterialItem; setNotice: (value: string) => void; setError: (value: string) => void }) {
+  return <section className="test-publication-result">
+    <h2>テスト公開情報</h2>
+    <p><strong>残り期間:</strong> {remainingDays(item.expiresAt)}</p>
+    {item.playUrl ? <><label>試遊URL<input readOnly value={item.playUrl} /></label><div className="actions">
+      <a className="button-link" href={item.playUrl} target="_blank" rel="noreferrer">試遊を開く</a>
+      <button type="button" className="secondary" onClick={() => void copyText(item.playUrl!, () => setNotice('試遊URLをコピーしました。'), setError)}>URLをコピー</button>
+    </div></> : <p className="system-message error">WebMUGENへの登録に失敗したため、試遊URLはまだありません。編集画面から再保存してください。</p>}
+  </section>;
 }
 
 function AdminMaterialInternalFields({
@@ -363,6 +433,7 @@ function AdminMaterialInternalFields({
       <legend>管理用内部情報</legend>
       <dl className="admin-detail-grid">
         <div><dt>投稿ID / publicationId</dt><dd>{item.id}</dd></div>
+        <div><dt>公開種別</dt><dd>{item.publicationType === 'test' ? `テスト公開（${remainingDays(item.expiresAt)}）` : '通常公開'}</dd></div>
         <div><dt>公開状態</dt><dd>{draft ? '非公開（下書き）' : '公開'}</dd></div>
         <div><dt>ユーザーID</dt><dd>{item.userId ?? 'なし'}</dd></div>
         <div><dt>閲覧数</dt><dd>{item.viewCount}</dd></div>
@@ -401,10 +472,13 @@ function SelectionPage(props: CommonProps & { mode: 'delete' | 'edit' }) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [password, setPassword] = useState(props.user?.post_password ?? '');
   const [editing, setEditing] = useState(false);
+  const [securedItem, setSecuredItem] = useState<MaterialItem | null>(null);
   const selected = props.items.find((item) => item.id === selectedId);
-  const groups = groupMaterials(props.items, props.settings.groupParent);
-  if (props.mode === 'edit' && selected && editing) {
-    return <MaterialForm {...props} mode="edit" item={selected} initialPassword={password} />;
+  const normalItems = props.items.filter((item) => item.publicationType !== 'test');
+  const testItems = props.items.filter((item) => item.publicationType === 'test');
+  const groups = groupMaterials(normalItems, props.settings.groupParent);
+  if (props.mode === 'edit' && securedItem && editing) {
+    return <MaterialForm {...props} mode="edit" item={securedItem} initialPassword={password} />;
   }
   const executeDelete = async () => {
     if (!selectedId) return;
@@ -419,7 +493,7 @@ function SelectionPage(props: CommonProps & { mode: 'delete' | 'edit' }) {
       await props.reload(); props.setNotice(response.message); setSelectedId(null);
     } catch (reason) { props.setError((reason as Error).message); }
   };
-  const openEdit = () => {
+  const openEdit = async () => {
     if (!selectedId) return;
     const passwordError = materialManagementPasswordError(password);
     if (passwordError) {
@@ -427,12 +501,17 @@ function SelectionPage(props: CommonProps & { mode: 'delete' | 'edit' }) {
       return;
     }
     props.setError('');
-    setEditing(true);
+    try {
+      const response = await api.verify(selectedId, password, props.token);
+      setSecuredItem(response.item);
+      setEditing(true);
+    } catch (reason) { props.setError((reason as Error).message); }
   };
   return (
     <Panel title={props.mode === 'delete' ? '素材を削除' : '素材を編集'}>
       <p>対象を1件選択し、投稿時に設定した投稿パスワードを入力してください。パスワード未設定の投稿は管理画面からのみ変更できます。</p>
       <SelectionCatalog groups={groups} selectedId={selectedId} trialPlayButtonsEnabled={props.settings.trialPlayButtonsEnabled} setSelectedId={(id) => { setSelectedId(id); setEditing(false); }} />
+      <TestPublicationList items={testItems} selectable selectedId={selectedId} onSelect={(id) => { setSelectedId(id); setEditing(false); setSecuredItem(null); }} />
       {selected && <div className="selection-actions">
         <label>投稿パスワード<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
         <button onClick={props.mode === 'delete' ? executeDelete : openEdit}>{props.mode === 'delete' ? '削除する' : '編集画面へ'}</button>
@@ -1164,6 +1243,14 @@ export function readableTextColor(background: string, fallback = '#ffffff') {
 }
 function slug(value: string) { return encodeURIComponent(value).replace(/%/g, ''); }
 function formatBytes(value: number) { if (value >= 1024 * 1024) return `${(value / 1024 / 1024).toFixed(1)}MB`; if (value >= 1024) return `${Math.ceil(value / 1024)}KB`; return `${value}bytes`; }
+export function remainingDays(expiresAt: string | null) {
+  if (!expiresAt) return '期限なし';
+  const normalized = expiresAt.includes('T') ? expiresAt : expiresAt.replace(' ', 'T') + '+09:00';
+  const milliseconds = new Date(normalized).getTime() - Date.now();
+  if (!Number.isFinite(milliseconds) || milliseconds <= 0) return '期限切れ';
+  const days = Math.ceil(milliseconds / 86_400_000);
+  return `残り${days}日`;
+}
 function acceptExtensions(value: string) { return value.split(/[\s,;]+/).filter(Boolean).map((extension) => `.${extension.replace(/^\./, '')}`).join(','); }
 export function defaultTermAnswers(terms: MaterialTerm[], saved: Record<string, boolean> = {}) {
   return Object.fromEntries(terms.map((term) => [

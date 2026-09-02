@@ -234,6 +234,9 @@ function initializeDatabase(PDO $pdo): void
             image_original_name TEXT,
             password_hash TEXT NOT NULL,
             legacy_source TEXT,
+            publication_type TEXT NOT NULL DEFAULT "normal",
+            expires_at TEXT,
+            test_memo TEXT NOT NULL DEFAULT "",
             draft INTEGER NOT NULL DEFAULT 0,
             view_count INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
@@ -299,6 +302,9 @@ function initializeDatabase(PDO $pdo): void
     ensureColumnExists($pdo, 'users', 'materials_default_group_parent', 'TEXT NOT NULL DEFAULT ""');
     ensureColumnExists($pdo, 'material_tags', 'parent_id', 'INTEGER');
     ensureColumnExists($pdo, 'material_items', 'legacy_source', 'TEXT');
+    ensureColumnExists($pdo, 'material_items', 'publication_type', 'TEXT NOT NULL DEFAULT "normal"');
+    ensureColumnExists($pdo, 'material_items', 'expires_at', 'TEXT');
+    ensureColumnExists($pdo, 'material_items', 'test_memo', 'TEXT NOT NULL DEFAULT ""');
     ensureColumnExists($pdo, 'material_items', 'draft', 'INTEGER NOT NULL DEFAULT 0');
     ensureColumnExists($pdo, 'material_items', 'view_count', 'INTEGER NOT NULL DEFAULT 0');
     ensureColumnExists($pdo, 'material_items', 'webmugen_character_id', 'TEXT');
@@ -328,6 +334,7 @@ function ensureDatabaseIndexes(PDO $pdo): void
         'CREATE INDEX IF NOT EXISTS idx_material_items_tag_deleted_author ON material_items(tag_id, deleted_at, author_name, id)',
         'CREATE INDEX IF NOT EXISTS idx_material_items_user_deleted ON material_items(user_id, deleted_at, id)',
         'CREATE INDEX IF NOT EXISTS idx_material_items_deleted_created ON material_items(deleted_at, created_at, id)',
+        'CREATE INDEX IF NOT EXISTS idx_material_items_test_expiry ON material_items(publication_type, expires_at, deleted_at)',
         'CREATE UNIQUE INDEX IF NOT EXISTS idx_material_items_legacy_source ON material_items(legacy_source)',
         'CREATE INDEX IF NOT EXISTS idx_material_item_terms_item ON material_item_terms(item_id, term_id)',
         'CREATE INDEX IF NOT EXISTS idx_material_media_item_sort ON material_media(item_id, sort_order, id)',

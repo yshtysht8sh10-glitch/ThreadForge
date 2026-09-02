@@ -241,4 +241,63 @@ final class WebMugenProxyIntegrationTest extends TestCase
         self::assertSame('uploaded_938472.zip', $admin['archiveFile']);
         self::assertArrayHasKey('trialPlayError', $admin);
     }
+
+    public function testTestPublicationFieldsAndProtectedPlayUrl(): void
+    {
+        $expiresAt = testPublicationExpiresAt(new DateTimeImmutable('2026-09-02 12:00:00', new DateTimeZone('Asia/Tokyo')));
+        self::assertSame('2026-09-09 12:00:00', $expiresAt);
+        $this->pdo->prepare('UPDATE material_items SET publication_type = "test", expires_at = :expires_at, test_memo = "動作確認中", webmugen_play_url = "https://example.test/secret-play" WHERE id = 17')
+            ->execute([':expires_at' => $expiresAt]);
+        $row = findMaterialItem($this->pdo, 17, false);
+        $public = buildMaterialItem($this->pdo, (array)$row);
+        self::assertSame('test', $public['publicationType']);
+        self::assertSame($expiresAt, $public['expiresAt']);
+        self::assertSame('動作確認中', $public['testMemo']);
+        self::assertNull($public['playUrl'], 'public list/detail must not expose a test play URL');
+        $authenticated = buildMaterialItem($this->pdo, (array)$row, false, true);
+        self::assertSame('https://example.test/secret-play', $authenticated['playUrl']);
+    }
+
+    public function testExpiredTestCleanupDeletesRemoteThenLocalFiles(): void
+    {
+        $archive = tempnam(sys_get_temp_dir(), 'proxy-test-archive-');
+        $image = tempnam(sys_get_temp_dir(), 'proxy-test-image-');
+        self::assertNotFalse($archive);
+        self::assertNotFalse($image);
+        $this->pdo->prepare('UPDATE material_items SET publication_type = "test", expires_at = "2026-01-01 00:00:00", archive_path = :archive, image_path = :image, webmugen_character_id = "proxy-release-17", webmugen_play_url = "https://example.test/play" WHERE id = 17')
+            ->execute([':archive' => $archive, ':image' => $image]);
+        $calls = [];
+        $result = cleanupExpiredTestPublications($this->pdo, 'proxy-release', static function (string $url, array $headers, string $body) use (&$calls): array {
+            $calls[] = [$url, json_decode($body, true)];
+            return ['success' => true, 'body' => ['success' => true, 'deleted' => true, 'contentId' => 'proxy-release-17']];
+        });
+        self::assertSame(1, $result['deleted']);
+        self::assertSame('https://example.test/webmugen/api/catalog.php?action=delete-content', $calls[0][0]);
+        self::assertSame(['publicationId' => '17'], $calls[0][1]);
+        self::assertFalse(is_file($archive));
+        self::assertFalse(is_file($image));
+        self::assertFalse((bool)findMaterialItem($this->pdo, 17, true));
+    }
+
+    public function testExpiredTestCleanupRetainsLocalDataWhenRemoteDeletionFails(): void
+    {
+        $this->pdo->exec('UPDATE material_items SET publication_type = "test", expires_at = "2026-01-01 00:00:00", webmugen_character_id = "proxy-release-17" WHERE id = 17');
+        $result = cleanupExpiredTestPublications($this->pdo, 'proxy-release', static fn(): array => ['success' => false, 'message' => 'offline']);
+        self::assertSame(1, $result['failed']);
+        self::assertNotNull(findMaterialItem($this->pdo, 17, true), 'local data is retained so cleanup can retry without leaving an orphan');
+    }
+
+    public function testPromotionUpdatesTheExistingRecordAndClearsExpiry(): void
+    {
+        $tagId = (int)$this->pdo->query('SELECT tag_id FROM material_items WHERE id = 17')->fetchColumn();
+        $this->pdo->exec('UPDATE material_items SET publication_type = "test", expires_at = "2026-09-09 12:00:00", test_memo = "確認中" WHERE id = 17');
+        promoteTestMaterialRecord($this->pdo, 17, 'Updated Author', 'Formal Name', 'Formal notes', $tagId);
+        $row = $this->pdo->query('SELECT id, publication_type, expires_at, test_memo, author_name, name FROM material_items WHERE id = 17')->fetch(PDO::FETCH_ASSOC);
+        self::assertSame(17, (int)$row['id'], 'promotion keeps the stable publication record');
+        self::assertSame('normal', $row['publication_type']);
+        self::assertNull($row['expires_at']);
+        self::assertSame('', $row['test_memo']);
+        self::assertSame('Updated Author', $row['author_name']);
+        self::assertSame('Formal Name', $row['name']);
+    }
 }

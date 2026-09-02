@@ -4,6 +4,12 @@
 
 Each ThreadForge application follows semantic versioning independently. Entries without an application name below are historical Image Board entries and are now labeled accordingly; no historical release or tag was changed.
 
+## Proxy Release 0.10.0 - 2026-09-02
+
+- Added password-managed seven-day test publications with compact listings and protected WebMUGEN trial URLs.
+- Added in-place promotion to formal publication plus manual, access-time, and cron expiry cleanup.
+- Added authenticated WebMUGEN Catalog deletion so expired tests do not leave orphan entries.
+
 ## Proxy Release 0.9.10 - 2026-08-26
 
 - Automatically selects dark or light Download text for sufficient contrast against the configured accent color.

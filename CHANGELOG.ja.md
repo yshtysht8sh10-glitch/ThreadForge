@@ -2,6 +2,12 @@
 
 [English changelog](CHANGELOG.md)
 
+## Proxy Release 0.10.0 - 2026-09-02
+
+- パスワードで管理できる7日間のテスト代理公開、簡易一覧、認証後だけ表示するWebMUGEN試遊URLを追加しました。
+- 同じデータを正式公開へ昇格する機能と、手動・アクセス時・cronによる期限切れ削除を追加しました。
+- 期限切れテストが孤児を残さないよう、WebMUGEN Catalogの認証付き削除連携を追加しました。
+
 ThreadForgeのVersion履歴はアプリ単位です。過去のtagやReleaseは変更していません。
 
 ## Proxy Release 0.9.10 - 2026-08-26

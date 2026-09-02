@@ -9,6 +9,7 @@ if (PHP_SAPI !== 'cli') {
     requireCronApiKey($pdo);
     socialDebugLog('cron web social reaction refresh start');
     $result = runSocialReactionRefresh($pdo);
+    $testCleanup = FRONTEND_ID === 'proxy-release' ? cleanupExpiredTestPublications($pdo, FRONTEND_ID) : null;
     socialDebugLog('cron web social reaction refresh complete', [
         'updated' => $result['updated'],
         'checked_posts' => $result['checked_posts'],
@@ -16,17 +17,20 @@ if (PHP_SAPI !== 'cli') {
     ]);
 
     jsonResponse([
-        'success' => true,
+        'success' => count($result['errors']) === 0 && (int)($testCleanup['failed'] ?? 0) === 0,
         'message' => 'SNS reactions refreshed.',
         'updated' => $result['updated'],
         'checked_posts' => $result['checked_posts'],
         'recent_days' => $result['recent_days'],
         'errors' => $result['errors'],
+        'test_publication_cleanup' => $testCleanup,
     ]);
 }
 
 socialDebugLog('cron social reaction refresh start');
-$result = runSocialReactionRefresh(getConnection());
+$pdo = getConnection();
+$result = runSocialReactionRefresh($pdo);
+$testCleanup = FRONTEND_ID === 'proxy-release' ? cleanupExpiredTestPublications($pdo, FRONTEND_ID) : null;
 socialDebugLog('cron social reaction refresh complete', [
     'updated' => $result['updated'],
     'checked_posts' => $result['checked_posts'],
@@ -34,12 +38,13 @@ socialDebugLog('cron social reaction refresh complete', [
 ]);
 
 echo json_encode([
-    'success' => true,
+    'success' => count($result['errors']) === 0 && (int)($testCleanup['failed'] ?? 0) === 0,
     'message' => 'SNS reactions refreshed.',
     'updated' => $result['updated'],
     'checked_posts' => $result['checked_posts'],
     'recent_days' => $result['recent_days'],
     'errors' => $result['errors'],
+    'test_publication_cleanup' => $testCleanup,
 ], JSON_UNESCAPED_UNICODE) . PHP_EOL;
 
-exit(count($result['errors']) === 0 ? 0 : 1);
+exit(count($result['errors']) === 0 && (int)($testCleanup['failed'] ?? 0) === 0 ? 0 : 1);

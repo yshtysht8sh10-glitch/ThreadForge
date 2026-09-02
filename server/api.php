@@ -94,6 +94,9 @@ function handleApiRequest(): void
         case 'updateMaterialItem':
             updateMaterialItem($pdo);
             break;
+        case 'promoteTestMaterialItem':
+            promoteTestMaterialItem($pdo);
+            break;
         case 'verifyMaterialPassword':
             verifyMaterialPassword($pdo);
             break;
@@ -4712,12 +4715,14 @@ function materialsDefaultManualBody(): string
 
 function listMaterialItems(PDO $pdo): void
 {
+    if (FRONTEND_ID === 'proxy-release') cleanupExpiredTestPublications($pdo, FRONTEND_ID);
     $stmt = $pdo->query(
         'SELECT m.*, t.name AS tag_name, t.parent_id AS tag_parent_id, COALESCE(pt.id, t.id) AS primary_tag_id, COALESCE(pt.name, t.name) AS primary_tag_name, CASE WHEN t.parent_id IS NULL THEN NULL ELSE t.id END AS subtag_id, CASE WHEN t.parent_id IS NULL THEN NULL ELSE t.name END AS subtag_name, u.icon_path AS user_icon_path, u.login_id AS user_login_id
          FROM material_items m JOIN material_tags t ON t.id = m.tag_id
          LEFT JOIN material_tags pt ON pt.id = t.parent_id
          LEFT JOIN users u ON u.id = m.user_id
          WHERE m.deleted_at IS NULL AND m.draft = 0
+           AND (m.publication_type <> "test" OR m.expires_at > datetime("now", "+9 hours"))
          ORDER BY t.sort_order, t.id, lower(m.author_name), m.name, m.id'
     );
     jsonResponse(['success' => true, 'items' => array_map(
@@ -4731,13 +4736,14 @@ function getMaterialItem(PDO $pdo): void
     $id = filter_var($_GET['id'] ?? $_POST['id'] ?? null, FILTER_VALIDATE_INT);
     $item = $id ? findMaterialItem($pdo, (int)$id, false) : null;
     if ($item && toBoolFlag($item['draft'] ?? false)) $item = null;
+    if ($item && ($item['publication_type'] ?? 'normal') === 'test' && (string)($item['expires_at'] ?? '') <= currentTimestamp()) $item = null;
     if (!$item) {
         jsonResponse(['success' => false, 'message' => '素材が見つかりません。'], 404);
     }
     jsonResponse(['success' => true, 'item' => buildMaterialItem($pdo, $item)]);
 }
 
-function buildMaterialItem(PDO $pdo, array $row, bool $includeAdminData = false): array
+function buildMaterialItem(PDO $pdo, array $row, bool $includeAdminData = false, bool $includeProtectedData = false): array
 {
     $termStmt = $pdo->prepare(
         'SELECT t.id, t.label, t.description, mit.accepted
@@ -4752,6 +4758,7 @@ function buildMaterialItem(PDO $pdo, array $row, bool $includeAdminData = false)
     );
     $mediaStmt->execute([':item_id' => (int)$row['id']]);
     $userId = isset($row['user_id']) ? (int)$row['user_id'] : null;
+    $publicationType = ($row['publication_type'] ?? 'normal') === 'test' ? 'test' : 'normal';
     $item = [
         'id' => (int)$row['id'],
         'userId' => $userId,
@@ -4777,7 +4784,10 @@ function buildMaterialItem(PDO $pdo, array $row, bool $includeAdminData = false)
         'draft' => toBoolFlag($row['draft'] ?? false),
         'deletedAt' => $row['deleted_at'] ?? null,
         'adminOnly' => materialItemIsAdminOnly($row),
-        'playUrl' => $row['webmugen_play_url'] ?? null,
+        'publicationType' => $publicationType,
+        'expiresAt' => $row['expires_at'] ?? null,
+        'testMemo' => $publicationType === 'test' ? (string)($row['test_memo'] ?? '') : '',
+        'playUrl' => $publicationType === 'test' && !$includeProtectedData && !$includeAdminData ? null : ($row['webmugen_play_url'] ?? null),
         'terms' => array_map(static fn(array $term): array => [
             'id' => (int)$term['id'], 'label' => (string)$term['label'],
             'description' => (string)$term['description'],
@@ -4832,6 +4842,10 @@ function createMaterialItem(PDO $pdo): void
     $image = $_FILES['image'] ?? null;
     $audioFiles = materialUploadedFiles('audio');
     $draft = toBoolFlag($_POST['draft'] ?? false);
+    $publicationType = FRONTEND_ID === 'proxy-release' && (string)($_POST['publication_type'] ?? 'normal') === 'test' ? 'test' : 'normal';
+    $testMemo = $publicationType === 'test' ? normalizeString((string)($_POST['test_memo'] ?? '')) : '';
+    if (mb_strlen($testMemo, 'UTF-8') > 200) jsonResponse(['success' => false, 'message' => 'ひとことメモは200文字以内で入力してください。'], 400);
+    $expiresAt = $publicationType === 'test' ? testPublicationExpiresAt() : null;
     if ($authorName === '' && $user) {
         $authorName = normalizeString((string)($user['materials_author_name'] ?? $user['display_name'] ?? ''));
     }
@@ -4852,9 +4866,9 @@ function createMaterialItem(PDO $pdo): void
         $stmt = $pdo->prepare(
             'INSERT INTO material_items
              (user_id, author_name, name, notes, tag_id, archive_path, archive_original_name, archive_size_bytes,
-              image_path, image_original_name, password_hash, draft, created_at, updated_at)
+              image_path, image_original_name, password_hash, publication_type, expires_at, test_memo, draft, created_at, updated_at)
              VALUES (:user_id, :author_name, :name, :notes, :tag_id, "", :archive_original_name, :archive_size_bytes,
-              null, null, :password_hash, :draft, :created_at, :updated_at)'
+              null, null, :password_hash, :publication_type, :expires_at, :test_memo, :draft, :created_at, :updated_at)'
         );
         $stmt->execute([
             ':user_id' => $user ? (int)$user['id'] : null,
@@ -4862,6 +4876,9 @@ function createMaterialItem(PDO $pdo): void
             ':archive_original_name' => basename((string)$archive['name']),
             ':archive_size_bytes' => (int)$archive['size'],
             ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            ':publication_type' => $publicationType,
+            ':expires_at' => $expiresAt,
+            ':test_memo' => $testMemo,
             ':draft' => $draft ? 1 : 0,
             ':created_at' => $now, ':updated_at' => $now,
         ]);
@@ -4892,6 +4909,7 @@ function createMaterialItem(PDO $pdo): void
                 ? '公開とWebMUGEN試遊登録が完了しました。'
                 : '公開は完了しましたが、WebMUGEN試遊登録に失敗しました。',
             'trialPlay' => $trialPlay,
+            'item' => buildMaterialItem($pdo, (array)findMaterialItem($pdo, $id, false), false, true),
         ]);
     }
     jsonResponse(['success' => true, 'message' => '素材を登録しました。']);
@@ -4932,17 +4950,22 @@ function updateMaterialItem(PDO $pdo): void
     }
     $audioFiles = materialUploadedFiles('audio');
     $draft = toBoolFlag($_POST['draft'] ?? false);
+    $testMemo = ($item['publication_type'] ?? 'normal') === 'test'
+        ? normalizeString((string)($_POST['test_memo'] ?? $item['test_memo'] ?? ''))
+        : '';
+    if (mb_strlen($testMemo, 'UTF-8') > 200) jsonResponse(['success' => false, 'message' => 'ひとことメモは200文字以内で入力してください。'], 400);
     foreach ($audioFiles as $audioFile) {
         validateMaterialUpload($pdo, $audioFile, 'audio');
     }
     $pdo->prepare(
         'UPDATE material_items SET author_name = :author_name, name = :name, notes = :notes, tag_id = :tag_id,
          archive_path = :archive_path, archive_original_name = :archive_name, archive_size_bytes = :archive_size,
-         image_path = :image_path, image_original_name = :image_name, draft = :draft, updated_at = :updated_at WHERE id = :id'
+         image_path = :image_path, image_original_name = :image_name, test_memo = :test_memo, draft = :draft, updated_at = :updated_at WHERE id = :id'
     )->execute([
         ':author_name' => $authorName, ':name' => $name, ':notes' => $notes, ':tag_id' => (int)$tagId,
         ':archive_path' => $archivePath, ':archive_name' => $archiveName, ':archive_size' => $archiveSize,
         ':image_path' => $imagePath, ':image_name' => $imageName, ':draft' => toBoolFlag($_POST['draft'] ?? ($item['draft'] ?? false)) ? 1 : 0, ':updated_at' => currentTimestamp(), ':id' => (int)$id,
+        ':test_memo' => $testMemo,
     ]);
     if (isset($_POST['terms'])) {
         replaceMaterialTerms($pdo, (int)$id, materialTermAnswersFromRequest());
@@ -4956,6 +4979,7 @@ function updateMaterialItem(PDO $pdo): void
                 ? '更新とWebMUGEN試遊登録が完了しました。'
                 : '更新は完了しましたが、WebMUGEN試遊登録に失敗しました。',
             'trialPlay' => $trialPlay,
+            'item' => buildMaterialItem($pdo, (array)findMaterialItem($pdo, (int)$id, false), false, true),
         ]);
     }
     jsonResponse(['success' => true, 'message' => '素材を更新しました。']);
@@ -5046,6 +5070,116 @@ function saveWebMugenTrialFailure(PDO $pdo, int $itemId, string $code, string $m
     $pdo->prepare('UPDATE material_items SET webmugen_error = :error WHERE id = :id')
         ->execute([':error' => $detail, ':id' => $itemId]);
     return ['success' => false, 'code' => $code, 'message' => $message];
+}
+
+function deleteProxyReleaseFromWebMugen(PDO $pdo, int $itemId, string $frontendId, ?callable $requester = null): array
+{
+    if ($frontendId !== 'proxy-release') return ['success' => false, 'skipped' => true, 'code' => 'frontend.not_proxy_release'];
+    $item = findMaterialItem($pdo, $itemId, true);
+    if (!$item) return ['success' => true, 'deleted' => false, 'skipped' => true];
+    if (trim((string)($item['webmugen_character_id'] ?? '')) === '' && trim((string)($item['webmugen_play_url'] ?? '')) === '') {
+        return ['success' => true, 'deleted' => false, 'skipped' => true];
+    }
+    $settings = loadSettings($pdo);
+    $storedSecret = trim((string)($settings['security']['webMugenApiToken'] ?? ''));
+    $secret = $storedSecret !== '' ? $storedSecret : trim((string)(getenv('THREADFORGE_WEBMUGEN_CATALOG_SECRET') ?: ''));
+    if ($secret === '') return ['success' => false, 'code' => 'config.secret_missing', 'message' => 'WebMUGEN Catalog API secret is not configured.'];
+    try {
+        $endpoint = webMugenCatalogEndpoint($settings, $_SERVER, 'delete-content');
+    } catch (InvalidArgumentException $error) {
+        return ['success' => false, 'code' => 'config.url_invalid', 'message' => $error->getMessage()];
+    }
+    $payload = json_encode(['publicationId' => (string)$itemId], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $requester ??= static fn(string $url, array $headers, string $body): array => httpRawRequest('POST', $url, $headers, $body);
+    $result = $requester($endpoint, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $secret,
+        'X-WebMUGEN-Token: ' . $secret,
+    ], (string)$payload);
+    $body = is_array($result['body'] ?? null) ? $result['body'] : [];
+    if (!($result['success'] ?? false) || !($body['success'] ?? false)) {
+        return [
+            'success' => false,
+            'code' => (string)($body['error']['code'] ?? 'api.failed'),
+            'message' => webMugenFailureMessage((string)($result['message'] ?? $body['error']['message'] ?? 'WebMUGEN Catalog API deletion failed.')),
+        ];
+    }
+    return ['success' => true, 'deleted' => (bool)($body['deleted'] ?? false), 'contentId' => (string)($body['contentId'] ?? '')];
+}
+
+function testPublicationExpiresAt(?DateTimeImmutable $now = null): string
+{
+    $now ??= new DateTimeImmutable('now', new DateTimeZone('Asia/Tokyo'));
+    return $now->modify('+7 days')->format('Y-m-d H:i:s');
+}
+
+function hardDeleteMaterialItem(PDO $pdo, array $item): void
+{
+    $id = (int)$item['id'];
+    foreach (['archive_path', 'image_path'] as $column) {
+        $path = (string)($item[$column] ?? '');
+        if ($path !== '' && is_file($path)) @unlink($path);
+    }
+    $mediaStmt = $pdo->prepare('SELECT path FROM material_media WHERE item_id = :id');
+    $mediaStmt->execute([':id' => $id]);
+    foreach ($mediaStmt->fetchAll(PDO::FETCH_COLUMN) as $path) {
+        if (is_string($path) && is_file($path)) @unlink($path);
+    }
+    $pdo->prepare('DELETE FROM material_media WHERE item_id = :id')->execute([':id' => $id]);
+    $pdo->prepare('DELETE FROM material_item_terms WHERE item_id = :id')->execute([':id' => $id]);
+    $pdo->prepare('DELETE FROM material_items WHERE id = :id')->execute([':id' => $id]);
+}
+
+function cleanupExpiredTestPublications(PDO $pdo, string $frontendId, ?callable $requester = null): array
+{
+    if ($frontendId !== 'proxy-release') return ['target' => 0, 'deleted' => 0, 'failed' => 0, 'failures' => []];
+    $stmt = $pdo->prepare('SELECT id FROM material_items WHERE publication_type = "test" AND expires_at IS NOT NULL AND expires_at <= :now ORDER BY id');
+    $stmt->execute([':now' => currentTimestamp()]);
+    $ids = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+    $deleted = 0;
+    $failures = [];
+    foreach ($ids as $id) {
+        $item = findMaterialItem($pdo, $id, true);
+        if (!$item) continue;
+        $remote = deleteProxyReleaseFromWebMugen($pdo, $id, $frontendId, $requester);
+        if (!($remote['success'] ?? false)) {
+            $failures[] = ['id' => $id, 'code' => (string)($remote['code'] ?? 'api.failed'), 'message' => (string)($remote['message'] ?? '')];
+            continue;
+        }
+        hardDeleteMaterialItem($pdo, $item);
+        $deleted++;
+    }
+    return ['target' => count($ids), 'deleted' => $deleted, 'failed' => count($failures), 'failures' => $failures];
+}
+
+function promoteTestMaterialItem(PDO $pdo): void
+{
+    ensureMaterialsFrontend();
+    $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+    $item = $id ? findMaterialItem($pdo, (int)$id, false) : null;
+    if (!$item || ($item['publication_type'] ?? 'normal') !== 'test') jsonResponse(['success' => false, 'message' => 'テスト公開データが見つかりません。'], 404);
+    requireMaterialPassword($item);
+    $name = normalizeString((string)($_POST['name'] ?? $item['name']));
+    $authorName = normalizeString((string)($_POST['author_name'] ?? $item['author_name']));
+    $notes = normalizeString((string)($_POST['notes'] ?? $item['notes']));
+    $tagId = filter_var($_POST['tag_id'] ?? $item['tag_id'], FILTER_VALIDATE_INT);
+    if ($name === '' || $authorName === '' || !$tagId) jsonResponse(['success' => false, 'message' => '名称、作者名、タグは必須です。'], 400);
+    $tagId = resolveMaterialTagFromRequest($pdo, (int)$tagId);
+    promoteTestMaterialRecord($pdo, (int)$id, $authorName, $name, $notes, $tagId);
+    if (isset($_POST['terms'])) replaceMaterialTerms($pdo, (int)$id, materialTermAnswersFromRequest());
+    $trialPlay = publishProxyReleaseToWebMugen($pdo, (int)$id, FRONTEND_ID);
+    jsonResponse([
+        'success' => true,
+        'message' => $trialPlay['success'] ? '正式公開へ切り替えました。' : '正式公開へ切り替えましたが、WebMUGENの更新に失敗しました。',
+        'trialPlay' => $trialPlay,
+        'item' => buildMaterialItem($pdo, (array)findMaterialItem($pdo, (int)$id, false), false, true),
+    ]);
+}
+
+function promoteTestMaterialRecord(PDO $pdo, int $id, string $authorName, string $name, string $notes, int $tagId): void
+{
+    $pdo->prepare('UPDATE material_items SET author_name = :author_name, name = :name, notes = :notes, tag_id = :tag_id, publication_type = "normal", expires_at = null, test_memo = "", updated_at = :updated_at WHERE id = :id AND publication_type = "test"')
+        ->execute([':author_name' => $authorName, ':name' => $name, ':notes' => $notes, ':tag_id' => $tagId, ':updated_at' => currentTimestamp(), ':id' => $id]);
 }
 
 function getAdminMaterialItem(PDO $pdo): void
@@ -5275,7 +5409,7 @@ function webMugenCatalogEndpointFromValue(string $configured, array $server, str
     }
     $query = [];
     parse_str((string)($parts['query'] ?? ''), $query);
-    if (!in_array($action, ['publish-character', 'publish-stage'], true)) {
+    if (!in_array($action, ['publish-character', 'publish-stage', 'delete-content'], true)) {
         throw new InvalidArgumentException('WebMUGEN API actionが正しくありません。');
     }
     $query['action'] = $action;
@@ -5291,6 +5425,12 @@ function deleteMaterialItem(PDO $pdo): void
         jsonResponse(['success' => false, 'message' => '素材が見つかりません。'], 404);
     }
     requireMaterialPassword($item);
+    if (FRONTEND_ID === 'proxy-release' && ($item['publication_type'] ?? 'normal') === 'test') {
+        $remote = deleteProxyReleaseFromWebMugen($pdo, (int)$id, FRONTEND_ID);
+        if (!($remote['success'] ?? false)) jsonResponse(['success' => false, 'message' => 'WebMUGEN側の削除に失敗したため、データを保持しました。' . (string)($remote['message'] ?? '')], 502);
+        hardDeleteMaterialItem($pdo, $item);
+        jsonResponse(['success' => true, 'message' => 'テスト公開データを完全に削除しました。']);
+    }
     $pdo->prepare('UPDATE material_items SET deleted_at = :deleted_at WHERE id = :id')
         ->execute([':deleted_at' => currentTimestamp(), ':id' => (int)$id]);
     jsonResponse(['success' => true, 'message' => '素材を削除しました。']);
@@ -5304,7 +5444,7 @@ function verifyMaterialPassword(PDO $pdo): void
         jsonResponse(['success' => false, 'message' => 'Material item was not found.'], 404);
     }
     requireMaterialPassword($item);
-    jsonResponse(['success' => true, 'message' => 'OK']);
+    jsonResponse(['success' => true, 'message' => 'OK', 'item' => buildMaterialItem($pdo, $item, false, true)]);
 }
 
 function requireMaterialPassword(array $item): void
@@ -5370,22 +5510,7 @@ function purgeMaterialItems(PDO $pdo): void
         if (!$item || ($item['deleted_at'] ?? null) === null) {
             continue;
         }
-        foreach (['archive_path', 'image_path'] as $column) {
-            $path = (string)($item[$column] ?? '');
-            if ($path !== '' && is_file($path)) {
-                @unlink($path);
-            }
-        }
-        $mediaStmt = $pdo->prepare('SELECT path FROM material_media WHERE item_id = :id');
-        $mediaStmt->execute([':id' => $id]);
-        foreach ($mediaStmt->fetchAll(PDO::FETCH_COLUMN) as $path) {
-            if (is_string($path) && is_file($path)) {
-                @unlink($path);
-            }
-        }
-        $pdo->prepare('DELETE FROM material_media WHERE item_id = :id')->execute([':id' => $id]);
-        $pdo->prepare('DELETE FROM material_item_terms WHERE item_id = :id')->execute([':id' => $id]);
-        $pdo->prepare('DELETE FROM material_items WHERE id = :id')->execute([':id' => $id]);
+        hardDeleteMaterialItem($pdo, $item);
     }
     jsonResponse(['success' => true, 'message' => '選択した削除済み素材を完全消去しました。']);
 }
