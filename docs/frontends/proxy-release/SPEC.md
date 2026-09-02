@@ -14,13 +14,23 @@ uploaded archives and organize them by tag and author.
 - Accepts archive uploads, with `zip` as the proxy-release default.
 - When a MUGEN character zip is selected, the frontend attempts to read `.air` and
   `.sff` files in the browser and generate an idle-motion GIF preview.
+- Existing ACT files referenced by Character DEF `pal1` through `pal12` are listed
+  in slot order. `pal1` is selected initially, and changing the slot regenerates
+  the GIF through palette routines synchronized from WebMUGEN's SFF v1 runtime.
 - A manually selected explanation image overrides the generated GIF.
 - HOME, list, post, delete, edit, manual, login, and admin screens follow the
   materials-library workflow.
 - After a proxy-release create or archive-changing update is committed, the server calls
   WebMUGEN's authenticated Catalog endpoint with the publication ID, actual stored ZIP
-  basename, and configured Stage ID. The publication ID controls stable Character identity;
-  the archive basename only selects a file below WebMUGEN's fixed proxy storage root.
+  basename, visibility, configured Stage ID, and, for unlisted publications, a persisted
+  128-bit random access key. The numeric publication ID remains the server-only lifecycle key;
+  the access key controls the opaque Catalog ID exposed in the trial URL.
+- Publication lifecycle and visibility are independent. Normal publications currently use
+  `normal + public`; seven-day test publications use `test + unlisted`. The latter remain in
+  WebMUGEN's Catalog for direct trial URLs but are excluded from its normal content selectors.
+- A test publication generates its access key once with `random_bytes(16)`. Re-registration,
+  promotion, Catalog rebuild, and deletion reuse that key, so the URL cannot be derived from
+  the sequential publication ID.
 - A successful registration stores and renders the item-specific WebMUGEN play URL on the
   release card. A failed registration preserves the published item and records a structured
   error so publication success is not confused with trial-play readiness.
@@ -41,8 +51,9 @@ uploaded archives and organize them by tag and author.
 
 ## Notes
 
-- The automatic GIF generator currently targets SFF v1/PCX sprites, matching the
-  WebMUGEN parser support used as the source implementation.
+- Proxy Release remains independently deployable. Its pure DEF/text/ACT helpers are
+  synchronized from a recorded WebMUGEN commit; SFF v1 applies ACT through the same
+  external reversed-index palette behavior. Existing SFF v2 WebMUGEN code is unchanged.
 - If AIR/SFF parsing fails, users can still upload a manual explanation image.
 - The administrator settings screen stores the WebMUGEN API Token in the server-side SQLite
   `security` settings and never reads the saved plaintext back into the browser. It also stores

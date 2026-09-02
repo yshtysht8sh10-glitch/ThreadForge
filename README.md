@@ -15,7 +15,7 @@ ThreadForge is a monorepo, but every application has an independent semantic ver
 | File Uploader | 1.0.2 | `frontends/file-uploader/package.json` |
 | Document Holder | 0.9.7 | `frontends/document-holder/package.json` |
 | Materials Library | 0.9.2 | `frontends/materials-library/package.json` |
-| Proxy Release | 0.10.0 | `frontends/proxy-release/package.json` |
+| Proxy Release | 0.10.4 | `frontends/proxy-release/package.json` |
 <!-- app-versions:end -->
 
 Run `npm run versions` to read the authoritative values mechanically.

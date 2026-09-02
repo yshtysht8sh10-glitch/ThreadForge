@@ -4,13 +4,24 @@ import type { SffDocument, SffSpriteNode } from '../sff/SffTypes';
 import { spriteKey } from './SpritePackLoader';
 import type { ImageDataSprite, ImageDataSpritePack } from './ImageDataSpriteTypes';
 
-export function convertSffV1ToImageDataSpritePack(buffer: ArrayBuffer): ImageDataSpritePack {
-  return convertSffDocumentToImageDataSpritePack(parseSffV1(buffer));
+export type SffSpritePackConverterOptions = {
+  externalPalette?: Uint8Array;
+  paletteIndexOrder?: 'normal' | 'reversed';
+};
+
+export function convertSffV1ToImageDataSpritePack(
+  buffer: ArrayBuffer,
+  options: SffSpritePackConverterOptions = {},
+): ImageDataSpritePack {
+  return convertSffDocumentToImageDataSpritePack(parseSffV1(buffer), options);
 }
 
-export function convertSffDocumentToImageDataSpritePack(document: SffDocument): ImageDataSpritePack {
+export function convertSffDocumentToImageDataSpritePack(
+  document: SffDocument,
+  options: SffSpritePackConverterOptions = {},
+): ImageDataSpritePack {
   const sprites = new Map<string, ImageDataSprite>();
-  const sharedPalette = findSharedPalette(document);
+  const sharedPalette = options.externalPalette ?? findSharedPalette(document);
 
   for (const sprite of document.sprites) {
     const sourceSprite = resolveLinkedSprite(document, sprite);
@@ -25,7 +36,9 @@ export function convertSffDocumentToImageDataSpritePack(document: SffDocument): 
 
     const pcx = decodePcx(rawData, {
       externalPalette: sharedPalette ?? undefined,
-      ignoreEmbeddedPalette: sourceSprite.samePalette,
+      ignoreEmbeddedPalette: options.externalPalette === undefined && sourceSprite.samePalette,
+      preferExternalPalette: options.externalPalette !== undefined,
+      paletteIndexOrder: options.paletteIndexOrder ?? 'normal',
     });
 
     sprites.set(spriteKey(sprite.groupNo, sprite.imageNo), {

@@ -31,6 +31,7 @@ The expected data shape is release-oriented:
 - `webmugen_character_id` stores the stable Catalog ID returned after server-side ZIP validation
 - `webmugen_play_url` stores the returned item-specific trial-play URL
 - `webmugen_error` stores the latest structured registration failure and is cleared on success
+- `webmugen_access_key` stores the 32-character lowercase hexadecimal access key generated for unlisted publications; it is never exposed by public APIs
 - the shared Bearer Token is stored as `security.webMugenApiToken` in the existing `settings`
   table; administrator reads expose only a `tokenConfigured` flag, never the plaintext
 - `config.webMugenApiUrl` and `config.webMugenStageId` store the same-host endpoint and Stage
@@ -44,4 +45,4 @@ The expected data shape is release-oriented:
 `proxy-release` must not read or write another frontend's DB or storage directory.
 ## Test publication lifecycle
 
-`material_items.publication_type` is `normal` or `test`. Test rows retain the shared publication ID and store an exact `expires_at` timestamp plus a short `test_memo`. Promotion updates the same row to `normal`, clears the expiry and memo, and retains its files and WebMUGEN stable ID. Expired test rows are hidden immediately; cleanup removes the WebMUGEN Catalog entry first and then deletes the row, ZIP, generated image, and media. A remote deletion failure retains the hidden local row for retry.
+`material_items.publication_type` (`normal` or `test`) and `material_items.visibility` (`public` or `unlisted`) are independent fields. Existing rows default to `normal + public`; rows that were already test publications when the visibility column is introduced are migrated to `test + unlisted`. New test publications use `test + unlisted` and receive a unique 128-bit `webmugen_access_key` on first WebMUGEN registration. Promotion updates the same row to `normal + public`, clears the expiry and memo, and retains its files, access key, and WebMUGEN stable ID. This separation permits future combinations such as `normal + unlisted` without overloading lifecycle state. Expired test rows are hidden immediately; cleanup removes the opaque WebMUGEN Catalog entry first and then deletes the row, ZIP, generated image, and media. A remote deletion failure retains the hidden local row and access key for retry.

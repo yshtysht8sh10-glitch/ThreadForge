@@ -90,6 +90,7 @@ export type MaterialItem = {
   deletedAt: string | null;
   adminOnly: boolean;
   publicationType: 'normal' | 'test';
+  visibility: 'public' | 'unlisted';
   expiresAt: string | null;
   testMemo: string;
   playUrl?: string | null;

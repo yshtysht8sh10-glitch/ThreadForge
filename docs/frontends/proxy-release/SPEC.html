@@ -75,6 +75,7 @@
 <li>materials-library と同じ素材投稿APIと runtime テーブルを利用します。</li>
 <li>代理公開の初期設定では、投稿ファイル形式を <code>zip</code> に限定します。</li>
 <li>MUGENキャラクターzipを選択すると、ブラウザ内で <code>.air</code> と <code>.sff</code> を読み取り、待機モーションGIFの自動生成を試みます。</li>
+<li>Character DEFの <code>pal1</code>〜<code>pal12</code> が参照する既存ACTを番号順に表示し、<code>pal1</code> を初期選択します。選択変更時はWebMUGENのSFF v1実装から同期したパレット処理でGIFを再生成します。</li>
 <li>説明用画像を手動選択した場合は、自動生成GIFより手動画像を優先します。</li>
 <li>HOME、一覧、投稿、削除、編集、取説、ログイン、管理画面は materials-library 相当の操作体系です。</li>
 <li>上部メニューの <code>試遊</code> は <code>ログイン</code> の右側に表示します。</li>
@@ -95,11 +96,15 @@
 </ul>
 <h2 id="注意">注意</h2>
 <ul>
-<li>自動GIF生成は、WebMUGEN由来の SFF v1 / PCX パーサで読めるデータを対象にします。</li>
+<li>Proxy Releaseは単独配備可能な状態を保ちます。DEF・文字コード・ACTの純粋処理だけを記録済みWebMUGEN commitから同期し、SFF v1では同じ外部ACT・逆順インデックス処理を使います。WebMUGEN側のSFF v2処理には変更を加えません。</li>
 <li>AIR/SFF の解析に失敗しても、手動で説明用画像を添付できます。</li>
 <li>リリースZipには runtime DB とアップロード済みファイルは含めません。</li>
 </ul>
 <h2 id="管理画面とwebmugen連携">管理画面とWebMUGEN連携</h2>
+<ul>
+<li>公開種別（<code>normal</code> / <code>test</code>）と可視性（<code>public</code> / <code>unlisted</code>）は独立して保持します。現在は通常公開を <code>normal + public</code>、7日間のテスト公開を <code>test + unlisted</code> とし、テスト公開はWebMUGEN Catalogへ登録しつつ通常のコンテンツ選択画面には表示せず、専用試遊URLからだけ選択できます。</li>
+<li>テスト公開の初回WebMUGEN登録時に128ビットの暗号学的乱数を一度だけ生成して保存します。試遊URLのCatalog IDには連番の公開IDではなくこのアクセスキーを使用し、再登録・正式公開への昇格・Catalog再構築・削除でも同じキーを維持します。</li>
+</ul>
 <ul>
 <li><code>データ編集</code> タブでは、既存公開データをID・名称・作者名・ZIPファイル名で検索し、通常の公開項目と保存先などの管理用情報を確認・編集できます。</li>
 <li>管理者はHTTP/HTTPSの試遊URLを手動保存できるほか、各データをWebMUGENへ個別登録・再登録できます。</li>
@@ -119,6 +124,10 @@
 </ul>
 <p><code>.sff</code> files in the browser and generate an idle-motion GIF preview.</p>
 <ul>
+<li>Existing ACT files referenced by Character DEF <code>pal1</code> through <code>pal12</code> are listed</li>
+</ul>
+<p>in slot order. <code>pal1</code> is selected initially, and changing the slot regenerates<br>the GIF through palette routines synchronized from WebMUGEN's SFF v1 runtime.</p>
+<ul>
 <li>A manually selected explanation image overrides the generated GIF.</li>
 <li>HOME, list, post, delete, edit, manual, login, and admin screens follow the</li>
 </ul>
@@ -126,7 +135,15 @@
 <ul>
 <li>After a proxy-release create or archive-changing update is committed, the server calls</li>
 </ul>
-<p>WebMUGEN's authenticated Catalog endpoint with the publication ID, actual stored ZIP<br>basename, and configured Stage ID. The publication ID controls stable Character identity;<br>the archive basename only selects a file below WebMUGEN's fixed proxy storage root.</p>
+<p>WebMUGEN's authenticated Catalog endpoint with the publication ID, actual stored ZIP<br>basename, visibility, configured Stage ID, and, for unlisted publications, a persisted<br>128-bit random access key. The numeric publication ID remains the server-only lifecycle key;<br>the access key controls the opaque Catalog ID exposed in the trial URL.</p>
+<ul>
+<li>Publication lifecycle and visibility are independent. Normal publications currently use</li>
+</ul>
+<p><code>normal + public</code>; seven-day test publications use <code>test + unlisted</code>. The latter remain in<br>WebMUGEN's Catalog for direct trial URLs but are excluded from its normal content selectors.</p>
+<ul>
+<li>A test publication generates its access key once with <code>random_bytes(16)</code>. Re-registration,</li>
+</ul>
+<p>promotion, Catalog rebuild, and deletion reuse that key, so the URL cannot be derived from<br>the sequential publication ID.</p>
 <ul>
 <li>A successful registration stores and renders the item-specific WebMUGEN play URL on the</li>
 </ul>
@@ -151,9 +168,9 @@
 <p>default.</p>
 <h2 id="notes">Notes</h2>
 <ul>
-<li>The automatic GIF generator currently targets SFF v1/PCX sprites, matching the</li>
+<li>Proxy Release remains independently deployable. Its pure DEF/text/ACT helpers are</li>
 </ul>
-<p>WebMUGEN parser support used as the source implementation.</p>
+<p>synchronized from a recorded WebMUGEN commit; SFF v1 applies ACT through the same<br>external reversed-index palette behavior. Existing SFF v2 WebMUGEN code is unchanged.</p>
 <ul>
 <li>If AIR/SFF parsing fails, users can still upload a manual explanation image.</li>
 <li>The administrator settings screen stores the WebMUGEN API Token in the server-side SQLite</li>

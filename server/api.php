@@ -4759,6 +4759,7 @@ function buildMaterialItem(PDO $pdo, array $row, bool $includeAdminData = false,
     $mediaStmt->execute([':item_id' => (int)$row['id']]);
     $userId = isset($row['user_id']) ? (int)$row['user_id'] : null;
     $publicationType = ($row['publication_type'] ?? 'normal') === 'test' ? 'test' : 'normal';
+    $visibility = ($row['visibility'] ?? 'public') === 'unlisted' ? 'unlisted' : 'public';
     $item = [
         'id' => (int)$row['id'],
         'userId' => $userId,
@@ -4785,6 +4786,7 @@ function buildMaterialItem(PDO $pdo, array $row, bool $includeAdminData = false,
         'deletedAt' => $row['deleted_at'] ?? null,
         'adminOnly' => materialItemIsAdminOnly($row),
         'publicationType' => $publicationType,
+        'visibility' => $visibility,
         'expiresAt' => $row['expires_at'] ?? null,
         'testMemo' => $publicationType === 'test' ? (string)($row['test_memo'] ?? '') : '',
         'playUrl' => $publicationType === 'test' && !$includeProtectedData && !$includeAdminData ? null : ($row['webmugen_play_url'] ?? null),
@@ -4843,6 +4845,7 @@ function createMaterialItem(PDO $pdo): void
     $audioFiles = materialUploadedFiles('audio');
     $draft = toBoolFlag($_POST['draft'] ?? false);
     $publicationType = FRONTEND_ID === 'proxy-release' && (string)($_POST['publication_type'] ?? 'normal') === 'test' ? 'test' : 'normal';
+    $visibility = $publicationType === 'test' ? 'unlisted' : 'public';
     $testMemo = $publicationType === 'test' ? normalizeString((string)($_POST['test_memo'] ?? '')) : '';
     if (mb_strlen($testMemo, 'UTF-8') > 200) jsonResponse(['success' => false, 'message' => 'ひとことメモは200文字以内で入力してください。'], 400);
     $expiresAt = $publicationType === 'test' ? testPublicationExpiresAt() : null;
@@ -4866,9 +4869,9 @@ function createMaterialItem(PDO $pdo): void
         $stmt = $pdo->prepare(
             'INSERT INTO material_items
              (user_id, author_name, name, notes, tag_id, archive_path, archive_original_name, archive_size_bytes,
-              image_path, image_original_name, password_hash, publication_type, expires_at, test_memo, draft, created_at, updated_at)
+              image_path, image_original_name, password_hash, publication_type, visibility, expires_at, test_memo, draft, created_at, updated_at)
              VALUES (:user_id, :author_name, :name, :notes, :tag_id, "", :archive_original_name, :archive_size_bytes,
-              null, null, :password_hash, :publication_type, :expires_at, :test_memo, :draft, :created_at, :updated_at)'
+              null, null, :password_hash, :publication_type, :visibility, :expires_at, :test_memo, :draft, :created_at, :updated_at)'
         );
         $stmt->execute([
             ':user_id' => $user ? (int)$user['id'] : null,
@@ -4877,6 +4880,7 @@ function createMaterialItem(PDO $pdo): void
             ':archive_size_bytes' => (int)$archive['size'],
             ':password_hash' => password_hash($password, PASSWORD_DEFAULT),
             ':publication_type' => $publicationType,
+            ':visibility' => $visibility,
             ':expires_at' => $expiresAt,
             ':test_memo' => $testMemo,
             ':draft' => $draft ? 1 : 0,
@@ -5003,10 +5007,17 @@ function publishProxyReleaseToWebMugen(PDO $pdo, int $itemId, string $frontendId
         return saveWebMugenTrialFailure($pdo, $itemId, 'config.url_invalid', $error->getMessage());
     }
     $stageId = trim((string)($settings['config']['webMugenStageId'] ?? 'cyber'));
+    try {
+        $accessKey = webMugenPublicationAccessKey($pdo, $item);
+    } catch (Throwable $error) {
+        return saveWebMugenTrialFailure($pdo, $itemId, 'access_key.failed', $error->getMessage());
+    }
     $payloadData = [
         'publicationId' => (string)$itemId,
         'archiveFile' => $archiveFile,
+        'visibility' => ($item['visibility'] ?? 'public') === 'unlisted' ? 'unlisted' : 'public',
     ];
+    if ($accessKey !== null) $payloadData['accessKey'] = $accessKey;
     if ($kind === 'stage') {
         $payloadData['characterId'] = trim((string)($settings['config']['webMugenCharacterId'] ?? 't-h-m-a'));
     } else {
@@ -5037,6 +5048,25 @@ function publishProxyReleaseToWebMugen(PDO $pdo, int $itemId, string $frontendId
         $pathKey => $body[$pathKey],
         'playUrl' => $body['playUrl'],
     ];
+}
+
+function webMugenPublicationAccessKey(PDO $pdo, array $item): ?string
+{
+    $accessKey = trim((string)($item['webmugen_access_key'] ?? ''));
+    if ($accessKey !== '') {
+        if (preg_match('/^[a-f0-9]{32}$/', $accessKey) !== 1) {
+            throw new RuntimeException('Stored WebMUGEN access key is invalid.');
+        }
+        return $accessKey;
+    }
+    if (($item['visibility'] ?? 'public') !== 'unlisted') return null;
+
+    $accessKey = bin2hex(random_bytes(16));
+    $pdo->prepare('UPDATE material_items SET webmugen_access_key = :access_key WHERE id = :id AND (webmugen_access_key IS NULL OR trim(webmugen_access_key) = "")')
+        ->execute([':access_key' => $accessKey, ':id' => (int)$item['id']]);
+    $stored = trim((string)$pdo->query('SELECT webmugen_access_key FROM material_items WHERE id = ' . (int)$item['id'])->fetchColumn());
+    if (preg_match('/^[a-f0-9]{32}$/', $stored) !== 1) throw new RuntimeException('WebMUGEN access key could not be stored.');
+    return $stored;
 }
 
 function webMugenPublicationKind(array $item): string
@@ -5089,7 +5119,10 @@ function deleteProxyReleaseFromWebMugen(PDO $pdo, int $itemId, string $frontendI
     } catch (InvalidArgumentException $error) {
         return ['success' => false, 'code' => 'config.url_invalid', 'message' => $error->getMessage()];
     }
-    $payload = json_encode(['publicationId' => (string)$itemId], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $payloadData = ['publicationId' => (string)$itemId];
+    $accessKey = trim((string)($item['webmugen_access_key'] ?? ''));
+    if ($accessKey !== '') $payloadData['accessKey'] = $accessKey;
+    $payload = json_encode($payloadData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     $requester ??= static fn(string $url, array $headers, string $body): array => httpRawRequest('POST', $url, $headers, $body);
     $result = $requester($endpoint, [
         'Content-Type: application/json',
@@ -5178,7 +5211,7 @@ function promoteTestMaterialItem(PDO $pdo): void
 
 function promoteTestMaterialRecord(PDO $pdo, int $id, string $authorName, string $name, string $notes, int $tagId): void
 {
-    $pdo->prepare('UPDATE material_items SET author_name = :author_name, name = :name, notes = :notes, tag_id = :tag_id, publication_type = "normal", expires_at = null, test_memo = "", updated_at = :updated_at WHERE id = :id AND publication_type = "test"')
+    $pdo->prepare('UPDATE material_items SET author_name = :author_name, name = :name, notes = :notes, tag_id = :tag_id, publication_type = "normal", visibility = "public", expires_at = null, test_memo = "", updated_at = :updated_at WHERE id = :id AND publication_type = "test"')
         ->execute([':author_name' => $authorName, ':name' => $name, ':notes' => $notes, ':tag_id' => $tagId, ':updated_at' => currentTimestamp(), ':id' => $id]);
 }
 

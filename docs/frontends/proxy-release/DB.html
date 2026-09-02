@@ -86,7 +86,9 @@ storage/data/</code></pre>
 <li>必要になればリリース用メタデータの追加を検討する</li>
 </ul>
 <h2 id="分離ルール">分離ルール</h2>
-<p><code>proxy-release</code> は他フロントのDBやストレージを読み書きしません。</p></article>
+<p><code>proxy-release</code> は他フロントのDBやストレージを読み書きしません。</p>
+<h2 id="テスト公開のライフサイクル">テスト公開のライフサイクル</h2>
+<p><code>material_items.publication_type</code>（<code>normal</code> / <code>test</code>）と <code>material_items.visibility</code>（<code>public</code> / <code>unlisted</code>）は独立した項目です。既存行は <code>normal + public</code> を既定とし、可視性カラム追加時に既存のテスト公開だけを <code>test + unlisted</code> へ移行します。新しいテスト公開は <code>test + unlisted</code> とし、初回のWebMUGEN登録時に128ビットの乱数を <code>webmugen_access_key</code> として保存します。正式公開への昇格は同じ行を <code>normal + public</code> に更新し、アクセスキーと不透明なCatalog IDは維持します。この分離により、将来の <code>normal + unlisted</code> も公開種別を流用せず表現できます。期限切れデータは直ちに一覧から隠し、不透明なWebMUGEN Catalogエントリの削除成功後にDB、ZIP、生成画像、メディアを削除します。WebMUGEN削除に失敗した場合は、再試行できるようアクセスキーを含む非表示のローカル行を保持します。</p></article>
       <article class="docs-article" data-language-panel="en"><h1 id="proxy-release-db">proxy-release DB</h1>
 <p><a href="../../DB.html">Back to DB index</a></p>
 <p>Frontend id: <code>proxy-release</code></p>
@@ -106,6 +108,7 @@ storage/data/</code></pre>
 <li><code>webmugen_character_id</code> stores the stable Catalog ID returned after server-side ZIP validation</li>
 <li><code>webmugen_play_url</code> stores the returned item-specific trial-play URL</li>
 <li><code>webmugen_error</code> stores the latest structured registration failure and is cleared on success</li>
+<li><code>webmugen_access_key</code> stores the 32-character lowercase hexadecimal access key generated for unlisted publications; it is never exposed by public APIs</li>
 <li>the shared Bearer Token is stored as <code>security.webMugenApiToken</code> in the existing <code>settings</code></li>
 </ul>
 <p>table; administrator reads expose only a <code>tokenConfigured</code> flag, never the plaintext</p>
@@ -121,7 +124,9 @@ storage/data/</code></pre>
 <li>future schema may add release metadata if title/message/settings are not enough</li>
 </ul>
 <h2 id="isolation-rule">Isolation Rule</h2>
-<p><code>proxy-release</code> must not read or write another frontend's DB or storage directory.</p></article>
+<p><code>proxy-release</code> must not read or write another frontend's DB or storage directory.</p>
+<h2 id="test-publication-lifecycle">Test publication lifecycle</h2>
+<p><code>material_items.publication_type</code> (<code>normal</code> or <code>test</code>) and <code>material_items.visibility</code> (<code>public</code> or <code>unlisted</code>) are independent fields. Existing rows default to <code>normal + public</code>; rows that were already test publications when the visibility column is introduced are migrated to <code>test + unlisted</code>. New test publications use <code>test + unlisted</code> and receive a unique 128-bit <code>webmugen_access_key</code> on first WebMUGEN registration. Promotion updates the same row to <code>normal + public</code>, clears the expiry and memo, and retains its files, access key, and WebMUGEN stable ID. This separation permits future combinations such as <code>normal + unlisted</code> without overloading lifecycle state. Expired test rows are hidden immediately; cleanup removes the opaque WebMUGEN Catalog entry first and then deletes the row, ZIP, generated image, and media. A remote deletion failure retains the hidden local row and access key for retry.</p></article>
       <footer>ThreadForge documentation · Generated from the repository Markdown sources.</footer>
     </main>
   </div>

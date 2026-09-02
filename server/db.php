@@ -235,8 +235,10 @@ function initializeDatabase(PDO $pdo): void
             password_hash TEXT NOT NULL,
             legacy_source TEXT,
             publication_type TEXT NOT NULL DEFAULT "normal",
+            visibility TEXT NOT NULL DEFAULT "public",
             expires_at TEXT,
             test_memo TEXT NOT NULL DEFAULT "",
+            webmugen_access_key TEXT,
             draft INTEGER NOT NULL DEFAULT 0,
             view_count INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
@@ -303,6 +305,10 @@ function initializeDatabase(PDO $pdo): void
     ensureColumnExists($pdo, 'material_tags', 'parent_id', 'INTEGER');
     ensureColumnExists($pdo, 'material_items', 'legacy_source', 'TEXT');
     ensureColumnExists($pdo, 'material_items', 'publication_type', 'TEXT NOT NULL DEFAULT "normal"');
+    $materialVisibilityAdded = ensureColumnExists($pdo, 'material_items', 'visibility', 'TEXT NOT NULL DEFAULT "public"');
+    if ($materialVisibilityAdded) {
+        $pdo->exec('UPDATE material_items SET visibility = "unlisted" WHERE publication_type = "test"');
+    }
     ensureColumnExists($pdo, 'material_items', 'expires_at', 'TEXT');
     ensureColumnExists($pdo, 'material_items', 'test_memo', 'TEXT NOT NULL DEFAULT ""');
     ensureColumnExists($pdo, 'material_items', 'draft', 'INTEGER NOT NULL DEFAULT 0');
@@ -310,6 +316,7 @@ function initializeDatabase(PDO $pdo): void
     ensureColumnExists($pdo, 'material_items', 'webmugen_character_id', 'TEXT');
     ensureColumnExists($pdo, 'material_items', 'webmugen_play_url', 'TEXT');
     ensureColumnExists($pdo, 'material_items', 'webmugen_error', 'TEXT');
+    ensureColumnExists($pdo, 'material_items', 'webmugen_access_key', 'TEXT');
 
     ensureDatabaseIndexes($pdo);
     ensureMaterialCatalogDefaults($pdo);
@@ -335,6 +342,7 @@ function ensureDatabaseIndexes(PDO $pdo): void
         'CREATE INDEX IF NOT EXISTS idx_material_items_user_deleted ON material_items(user_id, deleted_at, id)',
         'CREATE INDEX IF NOT EXISTS idx_material_items_deleted_created ON material_items(deleted_at, created_at, id)',
         'CREATE INDEX IF NOT EXISTS idx_material_items_test_expiry ON material_items(publication_type, expires_at, deleted_at)',
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_material_items_webmugen_access_key ON material_items(webmugen_access_key)',
         'CREATE UNIQUE INDEX IF NOT EXISTS idx_material_items_legacy_source ON material_items(legacy_source)',
         'CREATE INDEX IF NOT EXISTS idx_material_item_terms_item ON material_item_terms(item_id, term_id)',
         'CREATE INDEX IF NOT EXISTS idx_material_media_item_sort ON material_media(item_id, sort_order, id)',
@@ -345,18 +353,19 @@ function ensureDatabaseIndexes(PDO $pdo): void
     }
 }
 
-function ensureColumnExists(PDO $pdo, string $table, string $column, string $definition): void
+function ensureColumnExists(PDO $pdo, string $table, string $column, string $definition): bool
 {
     $stmt = $pdo->query('PRAGMA table_info(' . $table . ')');
     $columns = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($columns as $row) {
         if (($row['name'] ?? '') === $column) {
-            return;
+            return false;
         }
     }
 
     $pdo->exec('ALTER TABLE ' . $table . ' ADD COLUMN ' . $column . ' ' . $definition);
+    return true;
 }
 
 function buildPost(array $row): array

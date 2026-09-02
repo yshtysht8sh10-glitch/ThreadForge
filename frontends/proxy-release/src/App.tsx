@@ -1,6 +1,6 @@
 import { CSSProperties, FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { AdminMaterialItem, AdminUser, api, apiBase, defaultMaterialDesign, frontendId, groupMaterials, homeHref, MaterialDesign, MaterialItem, MaterialSettings, MaterialTag, MaterialTerm, mediaUrl, packAuthorGroups, TrialPlayBulkSummary, User } from './api';
-import { createIdleGifFromMugenZip } from './mugen-preview/idleGif';
+import { createIdleGifFromMugenZip, inspectMugenZipActPalettes, type MugenActPaletteOption } from './mugen-preview/idleGif';
 
 type Page = 'list' | 'post' | 'delete' | 'edit' | 'manual' | 'login' | 'admin';
 type AdminTab = 'items' | 'data' | 'deleted' | 'users' | 'maintenance' | 'analytics' | 'settings' | 'design';
@@ -137,14 +137,13 @@ function LibraryPage({ settings, items }: CommonProps) {
         <p>{settings.description}</p>
       </section>
       <nav className="catalog-index" aria-label="素材目次">
-        <span className="catalog-index-group"><a href="#test-publications">テスト中</a></span>
         {groups.map((group) => <span className="catalog-index-group" key={group.key}>
           <a href={`#group-${slug(group.key)}`}>{group.label}</a>
           {group.groups.map((inner) => <a className="author-index-link" key={inner.key} href={`#author-${slug(group.key)}-${slug(inner.key)}`}>{inner.label}</a>)}
         </span>)}
+        <span className="catalog-index-group"><a href="#test-publications">テスト中</a></span>
       </nav>
-      {groups.length === 0 && <Empty>登録された素材はありません。</Empty>}
-      <TestPublicationList items={testItems} />
+      {groups.length === 0 && testItems.length === 0 && <Empty>登録された素材はありません。</Empty>}
       {settings.groupParent === 'author'
         ? packAuthorGroups(groups.map((group) => ({
           ...group,
@@ -155,6 +154,7 @@ function LibraryPage({ settings, items }: CommonProps) {
         : groups.map((group) => (
           renderCatalogGroup(group, settings.trialPlayButtonsEnabled)
         ))}
+      <TestPublicationList items={testItems} />
     </>
   );
 }
@@ -163,14 +163,24 @@ function TestPublicationList({ items, selectable, selectedId, onSelect }: { item
   return <section className="test-publication-section" id="test-publications" aria-label="テスト公開一覧">
     <h2>テスト中</h2>
     <p className="help-text">テスト公開は登録から7日で自動削除されます。試遊URLは投稿パスワードで認証した編集画面だけに表示されます。</p>
-    {items.length === 0 ? <Empty>現在テスト中のデータはありません。</Empty> : <div className="test-publication-list">{items.map((item) => <label className={`test-publication-row ${selectedId === item.id ? 'selected' : ''}`} key={item.id}>
-      {selectable && <input type="radio" checked={selectedId === item.id} disabled={item.adminOnly} onChange={() => onSelect?.(item.id)} />}
-      <span className="test-publication-author">{item.authorName}</span>
-      <span className="test-publication-image">{item.imageUrl ? <img src={mediaUrl(item.imageUrl) ?? ''} alt="" loading="lazy" /> : 'NO IMAGE'}</span>
-      <strong title={item.archiveOriginalName}>{item.archiveOriginalName}</strong>
-      <span>{remainingDays(item.expiresAt)}</span>
-      <span className="test-publication-memo">{item.testMemo || 'メモなし'}</span>
-    </label>)}</div>}
+    {items.length === 0 ? <Empty>現在テスト中のデータはありません。</Empty> : <div className={`test-publication-list ${selectable ? 'selectable' : ''}`} role="table">
+      <div className="test-publication-header" role="row">
+        {selectable && <span role="columnheader">選択</span>}
+        <span role="columnheader">ユーザー名</span>
+        <span role="columnheader">立ちアニメ</span>
+        <span role="columnheader">ファイル名</span>
+        <span role="columnheader">残り期間</span>
+        <span role="columnheader">メモ</span>
+      </div>
+      {items.map((item) => <label className={`test-publication-row ${selectedId === item.id ? 'selected' : ''}`} key={item.id} role="row">
+        {selectable && <input type="radio" aria-label={`${item.archiveOriginalName}を選択`} checked={selectedId === item.id} disabled={item.adminOnly} onChange={() => onSelect?.(item.id)} />}
+        <span className="test-publication-author" data-label="ユーザー名">{item.authorName}</span>
+        <span className="test-publication-image-cell" data-label="立ちアニメ"><span className="test-publication-image">{item.imageUrl ? <img src={mediaUrl(item.imageUrl) ?? ''} alt="" loading="lazy" /> : 'NO IMAGE'}</span></span>
+        <strong className="test-publication-file" data-label="ファイル名" title={item.archiveOriginalName}>{item.archiveOriginalName}</strong>
+        <span className="test-publication-expiry" data-label="残り期間">{remainingDays(item.expiresAt)}</span>
+        <span className="test-publication-memo" data-label="メモ">{item.testMemo || 'メモなし'}</span>
+      </label>)}
+    </div>}
   </section>;
 }
 
@@ -237,9 +247,12 @@ function MaterialForm(props: CommonProps & {
   const [image, setImage] = useState<File | null>(null);
   const [generatedImage, setGeneratedImage] = useState<File | null>(null);
   const [previewStatus, setPreviewStatus] = useState('');
+  const [actPalettes, setActPalettes] = useState<MugenActPaletteOption[]>([]);
+  const [selectedPaletteSlot, setSelectedPaletteSlot] = useState<number | null>(null);
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
   const archiveInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const previewRequestRef = useRef(0);
   const [answers, setAnswers] = useState<Record<string, boolean | null>>(() => {
     if (item) return Object.fromEntries(item.terms.map((term) => [String(term.id), term.accepted]));
     return defaultTermAnswers(terms, user?.materials_default_terms);
@@ -302,19 +315,51 @@ function MaterialForm(props: CommonProps & {
     finally { setBusy(false); }
   };
 
+  const generateIdlePreview = async (file: File, paletteSlot: number | null, requestId: number) => {
+    const palette = actPalettes.find((candidate) => candidate.slot === paletteSlot);
+    const paletteLabel = palette ? `（pal${palette.slot} - ${palette.file}）` : '';
+    setPreviewStatus(`zip内のAIR/SFFから待機GIFを生成しています${paletteLabel}...`);
+    try {
+      const gif = await createIdleGifFromMugenZip(file, paletteSlot);
+      if (previewRequestRef.current !== requestId) return;
+      setGeneratedImage(gif);
+      setPreviewStatus(`待機GIFを自動生成しました${paletteLabel}: ${gif.name}`);
+    } catch (reason) {
+      if (previewRequestRef.current === requestId) setPreviewStatus((reason as Error).message);
+    }
+  };
+
   const handleArchiveChange = async (file: File | null) => {
+    const requestId = ++previewRequestRef.current;
     setArchive(file);
     setGeneratedImage(null);
     setPreviewStatus('');
+    setActPalettes([]);
+    setSelectedPaletteSlot(null);
     if (!file) return;
-    setPreviewStatus('zip内のAIR/SFFから待機GIFを生成しています...');
     try {
-      const gif = await createIdleGifFromMugenZip(file);
+      const paletteInfo = await inspectMugenZipActPalettes(file);
+      if (previewRequestRef.current !== requestId) return;
+      setActPalettes(paletteInfo.options);
+      setSelectedPaletteSlot(paletteInfo.defaultSlot);
+      const palette = paletteInfo.options.find((candidate) => candidate.slot === paletteInfo.defaultSlot);
+      const paletteLabel = palette ? `（pal${palette.slot} - ${palette.file}）` : '';
+      setPreviewStatus(`zip内のAIR/SFFから待機GIFを生成しています${paletteLabel}...`);
+      const gif = await createIdleGifFromMugenZip(file, paletteInfo.defaultSlot);
+      if (previewRequestRef.current !== requestId) return;
       setGeneratedImage(gif);
-      setPreviewStatus(`待機GIFを自動生成しました: ${gif.name}`);
+      setPreviewStatus(`待機GIFを自動生成しました${paletteLabel}: ${gif.name}`);
     } catch (reason) {
-      setPreviewStatus((reason as Error).message);
+      if (previewRequestRef.current === requestId) setPreviewStatus((reason as Error).message);
     }
+  };
+
+  const handlePaletteChange = (slot: number) => {
+    setSelectedPaletteSlot(slot);
+    setGeneratedImage(null);
+    if (!archive) return;
+    const requestId = ++previewRequestRef.current;
+    void generateIdlePreview(archive, slot, requestId);
   };
 
   if (testResult && mode === 'create') {
@@ -346,6 +391,14 @@ function MaterialForm(props: CommonProps & {
         <label><span>ファイル（{props.settings.allowedArchiveExtensions}）{mode === 'create' && <span className="required-marker" aria-hidden="true">*</span>}</span>
           <input ref={archiveInputRef} name="archive" type="file" required={mode === 'create'} accept={acceptExtensions(props.settings.allowedArchiveExtensions)} onChange={(event) => void handleArchiveChange(event.target.files?.[0] ?? null)} />
         </label>
+        {!isAudioTag && actPalettes.length > 0 && <label>適用パレット
+          <select value={selectedPaletteSlot ?? ''} onChange={(event) => handlePaletteChange(Number(event.target.value))}>
+            {actPalettes.map((palette) => <option key={palette.slot} value={palette.slot}>
+              {`pal${palette.slot} - ${palette.file}`}
+            </option>)}
+          </select>
+          <small className="help-text">選択を変えると、WebMUGENと同じパレット処理で待機GIFを再生成します。</small>
+        </label>}
         {isAudioTag
           ? <label>試聴用MP3（複数選択可）<input type="file" accept="audio/mpeg,.mp3" multiple onChange={(event) => setAudioFiles(Array.from(event.target.files ?? []))} /></label>
           : <label>説明用画像（任意・未選択時はzip内のAIR/SFFから待機GIFを生成）<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={(event) => setImage(event.target.files?.[0] ?? null)} /></label>}
@@ -434,6 +487,7 @@ function AdminMaterialInternalFields({
       <dl className="admin-detail-grid">
         <div><dt>投稿ID / publicationId</dt><dd>{item.id}</dd></div>
         <div><dt>公開種別</dt><dd>{item.publicationType === 'test' ? `テスト公開（${remainingDays(item.expiresAt)}）` : '通常公開'}</dd></div>
+        <div><dt>可視性</dt><dd>{item.visibility === 'unlisted' ? '限定公開（専用URLのみ）' : '一般公開'}</dd></div>
         <div><dt>公開状態</dt><dd>{draft ? '非公開（下書き）' : '公開'}</dd></div>
         <div><dt>ユーザーID</dt><dd>{item.userId ?? 'なし'}</dd></div>
         <div><dt>閲覧数</dt><dd>{item.viewCount}</dd></div>

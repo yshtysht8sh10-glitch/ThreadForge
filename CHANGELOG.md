@@ -4,6 +4,27 @@
 
 Each ThreadForge application follows semantic versioning independently. Entries without an application name below are historical Image Board entries and are now labeled accordingly; no historical release or tag was changed.
 
+## Proxy Release 0.10.4 - 2026-09-02
+
+- Read Character DEF `pal1` through `pal12` with WebMUGEN's production DEF parser and listed existing ACT files in slot order.
+- Defaulted to `pal1` and regenerated the idle GIF with WebMUGEN's ACT index order and SFF v1 external-palette behavior when the selection changes.
+- Kept the applications independently deployable by synchronizing only the pure ACT/DEF/text routines from a recorded WebMUGEN commit, without a runtime package dependency.
+
+## Proxy Release 0.10.3 - 2026-09-02
+
+- Moved the test-publication index and section after the Character and Stage sections.
+- Added column headings and a shared non-overlapping grid for test rows, with labeled stacked fields on narrow screens.
+
+## Proxy Release 0.10.2 - 2026-09-02
+
+- Generated and persisted a cryptographically random 128-bit access key for every unlisted WebMUGEN test publication.
+- Kept the numeric publication ID as the server-only lifecycle key while returning an opaque, stable trial-play URL across retries, promotion, and cleanup.
+
+## Proxy Release 0.10.1 - 2026-09-02
+
+- Separated publication lifecycle (`normal` / `test`) from visibility (`public` / `unlisted`).
+- Registered test publications in WebMUGEN as unlisted content and promoted them to public without changing their stable publication ID.
+
 ## Proxy Release 0.10.0 - 2026-09-02
 
 - Added password-managed seven-day test publications with compact listings and protected WebMUGEN trial URLs.

@@ -36,4 +36,4 @@ storage/data/
 `proxy-release` は他フロントのDBやストレージを読み書きしません。
 ## テスト公開のライフサイクル
 
-`material_items.publication_type` は `normal` または `test` です。テスト公開は共通の公開IDを使い、正確な `expires_at` と短い `test_memo` を保持します。正式公開時は同じ行を `normal` に更新し、期限とメモを解除します。期限切れデータは直ちに一覧から隠し、WebMUGEN Catalogの削除成功後にDB、ZIP、生成画像、メディアを削除します。WebMUGEN削除に失敗した場合は、再試行できるよう非表示のローカル行を保持します。
+`material_items.publication_type`（`normal` / `test`）と `material_items.visibility`（`public` / `unlisted`）は独立した項目です。既存行は `normal + public` を既定とし、可視性カラム追加時に既存のテスト公開だけを `test + unlisted` へ移行します。新しいテスト公開は `test + unlisted` とし、初回のWebMUGEN登録時に128ビットの乱数を `webmugen_access_key` として保存します。正式公開への昇格は同じ行を `normal + public` に更新し、アクセスキーと不透明なCatalog IDは維持します。この分離により、将来の `normal + unlisted` も公開種別を流用せず表現できます。期限切れデータは直ちに一覧から隠し、不透明なWebMUGEN Catalogエントリの削除成功後にDB、ZIP、生成画像、メディアを削除します。WebMUGEN削除に失敗した場合は、再試行できるようアクセスキーを含む非表示のローカル行を保持します。

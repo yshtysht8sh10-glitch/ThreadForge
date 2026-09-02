@@ -67,6 +67,33 @@
         </div>
       </header>
       <article class="docs-article" data-language-panel="ja"><h1 id="変更履歴">変更履歴</h1>
+<h2 id="proxy-release-0-10-4-2026-09-02">Proxy Release 0.10.4 - 2026-09-02</h2>
+<ul>
+<li>Character DEFの <code>pal1</code>〜<code>pal12</code> をWebMUGEN本体のDEF Parserで読み、存在するACTを番号順の選択欄へ表示するようにしました。</li>
+<li><code>pal1</code> を初期選択し、選択変更時はWebMUGEN本体と同じACT色順・SFF v1外部パレット処理で待機GIFを再生成します。</li>
+<li>別アプリ間の実行時依存を避けるため、ACT/DEF/文字コードの純粋処理だけをWebMUGENの確認済みcommitから同期コピーし、参照元をコード内に記録しました。</li>
+</ul>
+<h2 id="proxy-release-0-10-3-2026-09-02">Proxy Release 0.10.3 - 2026-09-02</h2>
+<ul>
+<li>目次と本文の「テスト中」を、MUGENキャラクター・MUGENステージの後へ移動しました。</li>
+<li>テスト中一覧へ列見出しを追加し、文字が重ならない共通グリッドと、狭い画面向けのラベル付き縦配置を追加しました。</li>
+</ul>
+<h2 id="proxy-release-0-10-2-2026-09-02">Proxy Release 0.10.2 - 2026-09-02</h2>
+<ul>
+<li>テスト公開ごとに128ビットの暗号学的乱数によるWebMUGENアクセスキーを生成・保存するようにしました。</li>
+<li>数値の公開IDをサーバー内部の管理キーとして維持しつつ、再登録・正式公開への昇格・削除でも同じ推測困難な試遊URLを使用します。</li>
+</ul>
+<h2 id="proxy-release-0-10-1-2026-09-02">Proxy Release 0.10.1 - 2026-09-02</h2>
+<ul>
+<li>公開種別（<code>normal</code> / <code>test</code>）と可視性（<code>public</code> / <code>unlisted</code>）を独立して管理するようにしました。</li>
+<li>テスト公開をWebMUGENでは限定公開としてCatalogへ登録し、同じ公開IDのまま正式公開時に一般公開へ切り替えるようにしました。</li>
+</ul>
+<h2 id="proxy-release-0-10-0-2026-09-02">Proxy Release 0.10.0 - 2026-09-02</h2>
+<ul>
+<li>パスワードで管理できる7日間のテスト代理公開、簡易一覧、認証後だけ表示するWebMUGEN試遊URLを追加しました。</li>
+<li>同じデータを正式公開へ昇格する機能と、手動・アクセス時・cronによる期限切れ削除を追加しました。</li>
+<li>期限切れテストが孤児を残さないよう、WebMUGEN Catalogの認証付き削除連携を追加しました。</li>
+</ul>
 <p>ThreadForgeのVersion履歴はアプリ単位です。過去のtagやReleaseは変更していません。</p>
 <h2 id="proxy-release-0-9-10-2026-08-26">Proxy Release 0.9.10 - 2026-08-26</h2>
 <ul>
@@ -119,6 +146,33 @@
 </ul></article>
       <article class="docs-article" data-language-panel="en"><h1 id="changelog">Changelog</h1>
 <p>Each ThreadForge application follows semantic versioning independently. Entries without an application name below are historical Image Board entries and are now labeled accordingly; no historical release or tag was changed.</p>
+<h2 id="proxy-release-0-10-4-2026-09-02">Proxy Release 0.10.4 - 2026-09-02</h2>
+<ul>
+<li>Read Character DEF <code>pal1</code> through <code>pal12</code> with WebMUGEN's production DEF parser and listed existing ACT files in slot order.</li>
+<li>Defaulted to <code>pal1</code> and regenerated the idle GIF with WebMUGEN's ACT index order and SFF v1 external-palette behavior when the selection changes.</li>
+<li>Kept the applications independently deployable by synchronizing only the pure ACT/DEF/text routines from a recorded WebMUGEN commit, without a runtime package dependency.</li>
+</ul>
+<h2 id="proxy-release-0-10-3-2026-09-02">Proxy Release 0.10.3 - 2026-09-02</h2>
+<ul>
+<li>Moved the test-publication index and section after the Character and Stage sections.</li>
+<li>Added column headings and a shared non-overlapping grid for test rows, with labeled stacked fields on narrow screens.</li>
+</ul>
+<h2 id="proxy-release-0-10-2-2026-09-02">Proxy Release 0.10.2 - 2026-09-02</h2>
+<ul>
+<li>Generated and persisted a cryptographically random 128-bit access key for every unlisted WebMUGEN test publication.</li>
+<li>Kept the numeric publication ID as the server-only lifecycle key while returning an opaque, stable trial-play URL across retries, promotion, and cleanup.</li>
+</ul>
+<h2 id="proxy-release-0-10-1-2026-09-02">Proxy Release 0.10.1 - 2026-09-02</h2>
+<ul>
+<li>Separated publication lifecycle (<code>normal</code> / <code>test</code>) from visibility (<code>public</code> / <code>unlisted</code>).</li>
+<li>Registered test publications in WebMUGEN as unlisted content and promoted them to public without changing their stable publication ID.</li>
+</ul>
+<h2 id="proxy-release-0-10-0-2026-09-02">Proxy Release 0.10.0 - 2026-09-02</h2>
+<ul>
+<li>Added password-managed seven-day test publications with compact listings and protected WebMUGEN trial URLs.</li>
+<li>Added in-place promotion to formal publication plus manual, access-time, and cron expiry cleanup.</li>
+<li>Added authenticated WebMUGEN Catalog deletion so expired tests do not leave orphan entries.</li>
+</ul>
 <h2 id="proxy-release-0-9-10-2026-08-26">Proxy Release 0.9.10 - 2026-08-26</h2>
 <ul>
 <li>Automatically selects dark or light Download text for sufficient contrast against the configured accent color.</li>

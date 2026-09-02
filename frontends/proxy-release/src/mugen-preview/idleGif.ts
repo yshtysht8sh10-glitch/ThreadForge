@@ -2,27 +2,38 @@ import { unzipSync } from 'fflate';
 import { GIFEncoder, applyPalette, quantize } from 'gifenc';
 import { parseAirText } from './air/AirParser';
 import type { AirAction, AirElement } from './air/AirTypes';
+import { getCharacterDefFiles, getDefSection, parseDefText } from './def/DefParser';
+import type { DefDocument } from './def/DefTypes';
+import { MUGEN_ACT_INDEX_ORDER } from './palette/MugenActPalette';
+import type { ImageDataSpritePack } from './sprite/ImageDataSpriteTypes';
 import { convertSffV1ToImageDataSpritePack } from './sprite/SffSpritePackConverter';
 import { spriteKey } from './sprite/SpritePackLoader';
+import { decodeMugenText } from './text/MugenTextDecoder';
 
 const CANVAS_SIZE = 220;
 const MAX_FRAMES = 12;
 const FRAME_DELAY_MS = 80;
 
-export async function createIdleGifFromMugenZip(zipFile: File): Promise<File> {
-  const entries = unzipSync(new Uint8Array(await zipFile.arrayBuffer()));
-  const airEntry = findEntry(entries, '.air');
-  const sffEntry = findEntry(entries, '.sff');
-  if (!airEntry || !sffEntry) {
-    throw new Error('zip内に.airと.sffが見つかりませんでした。説明用画像は任意選択してください。');
-  }
+export type MugenActPaletteOption = { slot: number; file: string; path: string };
+export type MugenActPaletteInfo = { options: MugenActPaletteOption[]; defaultSlot: number | null };
+export type MugenIdlePreviewAssets = {
+  action: AirAction;
+  sprites: ImageDataSpritePack;
+  selectedPalette: MugenActPaletteOption | null;
+};
 
-  const air = parseAirText(decodeText(airEntry));
-  const action = findIdleAction(air.actions);
-  if (!action) {
-    throw new Error('待機モーションとして使えるAIR actionが見つかりませんでした。');
-  }
-  const sprites = convertSffV1ToImageDataSpritePack(toArrayBuffer(sffEntry));
+export async function inspectMugenZipActPalettes(zipFile: File): Promise<MugenActPaletteInfo> {
+  const archive = await inspectCharacterArchive(zipFile);
+  return {
+    options: archive.palettes,
+    defaultSlot: archive.palettes.find((palette) => palette.slot === 1)?.slot
+      ?? archive.palettes[0]?.slot
+      ?? null,
+  };
+}
+
+export async function createIdleGifFromMugenZip(zipFile: File, paletteSlot: number | null = null): Promise<File> {
+  const { action, sprites } = await loadMugenIdlePreviewAssets(zipFile, paletteSlot);
   const frames = action.elements
     .filter((element) => element.groupNo >= 0 && element.imageNo >= 0)
     .slice(0, MAX_FRAMES);
@@ -57,21 +68,117 @@ export async function createIdleGifFromMugenZip(zipFile: File): Promise<File> {
   return new File([gif.bytes()], `${baseName}-idle.gif`, { type: 'image/gif' });
 }
 
-function findEntry(entries: Record<string, Uint8Array>, extension: string): Uint8Array | null {
-  const names = Object.keys(entries)
-    .filter((name) => name.toLowerCase().endsWith(extension))
-    .sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b));
-  return names.length ? entries[names[0]] : null;
+export async function loadMugenIdlePreviewAssets(
+  zipFile: File,
+  paletteSlot: number | null = null,
+): Promise<MugenIdlePreviewAssets> {
+  const archive = await inspectCharacterArchive(zipFile);
+  const selectedPalette = paletteSlot === null
+    ? archive.palettes.find((palette) => palette.slot === 1) ?? archive.palettes[0]
+    : archive.palettes.find((palette) => palette.slot === paletteSlot) ?? archive.palettes[0];
+
+  const air = parseAirText(decodeMugenText(archive.airEntry));
+  const action = findIdleAction(air.actions);
+  if (!action) {
+    throw new Error('待機モーションとして使えるAIR actionが見つかりませんでした。');
+  }
+  const sprites = convertSffV1ToImageDataSpritePack(toArrayBuffer(archive.sffEntry), selectedPalette ? {
+    externalPalette: archive.entries.get(selectedPalette.path),
+    paletteIndexOrder: MUGEN_ACT_INDEX_ORDER,
+  } : {});
+  return { action, sprites, selectedPalette: selectedPalette ?? null };
 }
 
-function decodeText(bytes: Uint8Array): string {
-  const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-  if (!utf8.includes('\uFFFD')) return utf8;
-  try {
-    return new TextDecoder('shift_jis').decode(bytes);
-  } catch {
-    return utf8;
+type CharacterArchive = {
+  entries: ReadonlyMap<string, Uint8Array>;
+  def: DefDocument;
+  airEntry: Uint8Array;
+  sffEntry: Uint8Array;
+  palettes: MugenActPaletteOption[];
+};
+
+async function inspectCharacterArchive(zipFile: File): Promise<CharacterArchive> {
+  const unzipped = unzipSync(new Uint8Array(await zipFile.arrayBuffer()));
+  const entries = new Map<string, Uint8Array>();
+  const entryKeys = new Map<string, string>();
+  for (const [path, bytes] of Object.entries(unzipped)) {
+    if (path.endsWith('/')) continue;
+    const normalized = normalizeZipPath(path);
+    entries.set(normalized, bytes);
+    entryKeys.set(normalized.toLowerCase(), normalized);
   }
+
+  const defPath = discoverCharacterDef(entries);
+  const def = parseDefText(decodeMugenText(entries.get(defPath)!));
+  const files = getCharacterDefFiles(def);
+  const basePath = directoryOf(defPath);
+  if (!files.anim || !files.sprite) {
+    throw new Error('Character DEFの[Files]にanimまたはspriteがありません。');
+  }
+  const resolveEntry = (relativePath: string): { path: string; bytes: Uint8Array } | null => {
+    const resolved = normalizeZipPath(resolveAssetPath(basePath, relativePath));
+    const actualPath = entryKeys.get(resolved.toLowerCase());
+    return actualPath ? { path: actualPath, bytes: entries.get(actualPath)! } : null;
+  };
+  const air = resolveEntry(files.anim);
+  const sff = resolveEntry(files.sprite);
+  if (!air || !sff) {
+    throw new Error('Character DEFが参照するAIRまたはSFFがZIP内に見つかりません。');
+  }
+  const palettes = (files.palettes ?? []).flatMap((palette) => {
+    const entry = resolveEntry(palette.file);
+    return entry ? [{ slot: palette.slot, file: palette.file, path: entry.path }] : [];
+  });
+  return { entries, def, airEntry: air.bytes, sffEntry: sff.bytes, palettes };
+}
+
+function discoverCharacterDef(entries: ReadonlyMap<string, Uint8Array>): string {
+  const candidates = Array.from(entries)
+    .filter(([path]) => path.toLowerCase().endsWith('.def'))
+    .filter(([, bytes]) => {
+      const def = parseDefText(decodeMugenText(bytes).replace(/^\uFEFF/, ''));
+      const files = getCharacterDefFiles(def);
+      return Boolean(getDefSection(def, 'Info') && getDefSection(def, 'Files') && files.cmd && (files.cns || files.st?.length) && files.anim);
+    })
+    .map(([path]) => path)
+    .sort((left, right) => pathDepth(left) - pathDepth(right)
+      || fileStem(left).length - fileStem(right).length
+      || left.localeCompare(right, 'en'));
+  if (!candidates.length) throw new Error('ZIP内に有効なCharacter DEFが見つかりません。');
+  return candidates[0];
+}
+
+function resolveAssetPath(basePath: string, relativePath: string): string {
+  if (!basePath) return relativePath;
+  return `${basePath.replace(/\/$/, '')}/${relativePath.replace(/^\.\//, '')}`;
+}
+
+function pathDepth(path: string): number {
+  return path.replace(/\\/g, '/').split('/').filter(Boolean).length;
+}
+
+function fileStem(path: string): string {
+  return (path.replace(/\\/g, '/').split('/').pop() ?? path).replace(/\.[^.]+$/, '');
+}
+
+function normalizeZipPath(path: string): string {
+  const segments: string[] = [];
+  for (const segment of path.replace(/\\/g, '/').split('/')) {
+    if (!segment || segment === '.') continue;
+    if (segment === '..') {
+      if (segments.length === 0) throw new Error(`ZIP内の不正なパスです: ${path}`);
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
+  }
+  return segments.join('/');
+}
+
+function directoryOf(path: string): string {
+  const normalized = path.replace(/\\/g, '/');
+  const slash = normalized.lastIndexOf('/');
+  return slash >= 0 ? normalized.slice(0, slash) : '';
 }
 
 function findIdleAction(actions: AirAction[]): AirAction | null {
@@ -81,7 +188,7 @@ function findIdleAction(actions: AirAction[]): AirAction | null {
     ?? null;
 }
 
-function animationBounds(elements: AirElement[], sprites: Map<string, { xAxis: number; yAxis: number; imageData: ImageData }>) {
+function animationBounds(elements: AirElement[], sprites: ImageDataSpritePack['sprites']) {
   const rects = elements.map((element) => {
     const sprite = sprites.get(spriteKey(element.groupNo, element.imageNo));
     if (!sprite) return null;
@@ -104,7 +211,7 @@ function animationBounds(elements: AirElement[], sprites: Map<string, { xAxis: n
 function drawElement(
   context: CanvasRenderingContext2D,
   element: AirElement,
-  sprites: Map<string, { xAxis: number; yAxis: number; imageData: ImageData }>,
+  sprites: ImageDataSpritePack['sprites'],
   bounds: { left: number; top: number; right: number; bottom: number },
 ) {
   const sprite = sprites.get(spriteKey(element.groupNo, element.imageNo));

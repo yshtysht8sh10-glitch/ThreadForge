@@ -24,6 +24,7 @@
     "build:docs": "node tools/build_docs.mjs",
     "test:image-board": "npm --prefix frontends/image-board test -- --run",
     "test:file-uploader": "npm --prefix frontends/file-uploader test -- --run",
+    "test:proxy-release": "npm --prefix frontends/proxy-release test -- --run",
     "test:materials-library": "npm --prefix frontends/materials-library test -- --run",
     "versions": "node tools/app_versions.mjs",
     "versions:check": "node tools/app_versions.mjs --check",
