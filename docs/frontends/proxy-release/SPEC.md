@@ -17,6 +17,10 @@ uploaded archives and organize them by tag and author.
 - Existing ACT files referenced by Character DEF `pal1` through `pal12` are listed
   in slot order. `pal1` is selected initially, and changing the slot regenerates
   the GIF through palette routines synchronized from WebMUGEN's SFF v1 runtime.
+- The palette selector also offers `Do not apply ACT`, which regenerates the GIF
+  with the SFF-embedded palette.
+- While creating a seven-day test publication, the name, short memo, and usage
+  terms controls are hidden.
 - A manually selected explanation image overrides the generated GIF.
 - HOME, list, post, delete, edit, manual, login, and admin screens follow the
   materials-library workflow.
@@ -38,8 +42,8 @@ uploaded archives and organize them by tag and author.
   primary action. Administrators can hide every item-specific trial-play button without
   deleting the stored URLs; the display setting defaults to enabled.
 - The navigation includes a `Trial Play` link to the right of the login item. The
-  destination is configurable from the admin settings screen. If no URL is set, the
-  item is displayed as disabled instead of linking to a fallback page.
+  destination is configurable from the admin settings screen. If no URL is set,
+  the item is not rendered.
 
 ## Visual Direction
 

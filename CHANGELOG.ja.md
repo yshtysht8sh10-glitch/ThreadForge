@@ -2,6 +2,12 @@
 
 [English changelog](CHANGELOG.md)
 
+## Proxy Release 0.10.5 - 2026-09-02
+
+- 上部メニューの試遊URLが未設定の場合、無効表示ではなく「試遊」項目自体を非表示にしました。
+- 待機GIFの適用パレットへ「ACT適用なし」を追加しました。
+- 新規投稿で「テスト代理公開（7日間）」を選択中は、名称・ひとことメモ・利用規約を非表示にしました。
+
 ## Proxy Release 0.10.4 - 2026-09-02
 
 - Character DEFの `pal1`〜`pal12` をWebMUGEN本体のDEF Parserで読み、存在するACTを番号順の選択欄へ表示するようにしました。

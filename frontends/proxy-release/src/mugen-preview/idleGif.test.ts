@@ -38,6 +38,13 @@ describe('MUGEN idle GIF palette source', () => {
     expect(paletteColorOffset(1, MUGEN_ACT_INDEX_ORDER)).toBe(254 * 3);
     expect(Array.from(sprite1!.imageData.data)).not.toEqual(Array.from(sprite2!.imageData.data));
   });
+
+  it('can generate preview assets without applying an ACT palette', async () => {
+    const withoutAct = await loadMugenIdlePreviewAssets(await fixtureZip(), null);
+
+    expect(withoutAct.selectedPalette).toBeNull();
+    expect(withoutAct.sprites.sprites.get('0,0')?.imageData.data.length).toBeGreaterThan(0);
+  });
 });
 
 async function fixtureZip(): Promise<File> {

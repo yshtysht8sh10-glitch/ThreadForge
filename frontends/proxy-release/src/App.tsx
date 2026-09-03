@@ -110,9 +110,7 @@ function Header({ settings, page, navigate, user }: { settings: MaterialSettings
         {tab('edit', '編集')}
         {tab('manual', '取説')}
         {tab('login', user ? user.materials_author_name || user.display_name : 'ログイン')}
-        {trialUrl
-          ? <a href={homeHref(trialUrl)} target="_blank" rel="noreferrer">試遊</a>
-          : <span className="disabled-link" aria-disabled="true">試遊</span>}
+        {trialUrl && <a href={homeHref(trialUrl)} target="_blank" rel="noreferrer">試遊</a>}
         <button className="admin-square" aria-label="管理画面" title="" onClick={() => navigate('admin')}>■</button>
       </nav>
     </header>
@@ -315,9 +313,11 @@ function MaterialForm(props: CommonProps & {
     finally { setBusy(false); }
   };
 
+  const simplifiedTestForm = mode === 'create' && publicationType === 'test';
+
   const generateIdlePreview = async (file: File, paletteSlot: number | null, requestId: number) => {
     const palette = actPalettes.find((candidate) => candidate.slot === paletteSlot);
-    const paletteLabel = palette ? `（pal${palette.slot} - ${palette.file}）` : '';
+    const paletteLabel = palette ? `（pal${palette.slot} - ${palette.file}）` : '（ACT適用なし）';
     setPreviewStatus(`zip内のAIR/SFFから待機GIFを生成しています${paletteLabel}...`);
     try {
       const gif = await createIdleGifFromMugenZip(file, paletteSlot);
@@ -343,7 +343,7 @@ function MaterialForm(props: CommonProps & {
       setActPalettes(paletteInfo.options);
       setSelectedPaletteSlot(paletteInfo.defaultSlot);
       const palette = paletteInfo.options.find((candidate) => candidate.slot === paletteInfo.defaultSlot);
-      const paletteLabel = palette ? `（pal${palette.slot} - ${palette.file}）` : '';
+      const paletteLabel = palette ? `（pal${palette.slot} - ${palette.file}）` : '（ACT適用なし）';
       setPreviewStatus(`zip内のAIR/SFFから待機GIFを生成しています${paletteLabel}...`);
       const gif = await createIdleGifFromMugenZip(file, paletteInfo.defaultSlot);
       if (previewRequestRef.current !== requestId) return;
@@ -354,7 +354,7 @@ function MaterialForm(props: CommonProps & {
     }
   };
 
-  const handlePaletteChange = (slot: number) => {
+  const handlePaletteChange = (slot: number | null) => {
     setSelectedPaletteSlot(slot);
     setGeneratedImage(null);
     if (!archive) return;
@@ -378,10 +378,10 @@ function MaterialForm(props: CommonProps & {
           <label><input type="radio" checked={publicationType === 'test'} onChange={() => setPublicationType('test')} />テスト代理公開（7日間）</label>
           {publicationType === 'test' && <p className="help-text">正式公開前の確認用です。7日後にファイルとWebMUGEN登録を自動削除します。試遊URLはパスワード認証後だけ確認できます。</p>}
         </fieldset>}
-        {publicationType === 'test' && <label>ひとことメモ<textarea maxLength={200} value={testMemo} onChange={(event) => setTestMemo(event.target.value)} placeholder="確認してほしい点など（200文字以内）" /></label>}
+        {publicationType === 'test' && !simplifiedTestForm && <label>ひとことメモ<textarea maxLength={200} value={testMemo} onChange={(event) => setTestMemo(event.target.value)} placeholder="確認してほしい点など（200文字以内）" /></label>}
         {(testResult ?? (item?.publicationType === 'test' ? item : null)) && <TestPublicationResult item={(testResult ?? item)!} setNotice={setNotice} setError={setError} />}
-        <div className="form-grid two-columns">
-          <label>名称<input value={name} onChange={(event) => setName(event.target.value)} required /></label>
+        <div className={`form-grid ${simplifiedTestForm ? '' : 'two-columns'}`}>
+          {!simplifiedTestForm && <label>名称<input value={name} onChange={(event) => setName(event.target.value)} required /></label>}
           <label><span>作者名<span className="required-marker" aria-hidden="true">*</span></span><input value={author} onChange={(event) => setAuthor(event.target.value)} required /></label>
         </div>
         <label>タグ<select value={tagId} onChange={(event) => setTagId(event.target.value)} required>
@@ -392,7 +392,8 @@ function MaterialForm(props: CommonProps & {
           <input ref={archiveInputRef} name="archive" type="file" required={mode === 'create'} accept={acceptExtensions(props.settings.allowedArchiveExtensions)} onChange={(event) => void handleArchiveChange(event.target.files?.[0] ?? null)} />
         </label>
         {!isAudioTag && actPalettes.length > 0 && <label>適用パレット
-          <select value={selectedPaletteSlot ?? ''} onChange={(event) => handlePaletteChange(Number(event.target.value))}>
+          <select value={selectedPaletteSlot ?? ''} onChange={(event) => handlePaletteChange(event.target.value === '' ? null : Number(event.target.value))}>
+            <option value="">ACT適用なし</option>
             {actPalettes.map((palette) => <option key={palette.slot} value={palette.slot}>
               {`pal${palette.slot} - ${palette.file}`}
             </option>)}
@@ -405,13 +406,13 @@ function MaterialForm(props: CommonProps & {
         {previewStatus && <p className="help-text">{previewStatus}</p>}
         {!isAudioTag && (preview || item?.imageUrl) && <img className="form-preview" src={preview ?? mediaUrl(item?.imageUrl ?? null) ?? ''} alt="説明画像プレビュー" />}
         {isAudioTag && (item?.media ?? []).map((media) => <audio className="form-audio" key={media.id} controls src={mediaUrl(media.url) ?? ''} />)}
-        <fieldset className="terms-editor"><legend>利用規約</legend>
+        {!simplifiedTestForm && <fieldset className="terms-editor"><legend>利用規約</legend>
           {terms.map((term) => <div className="term-choice" key={term.id}>
             <span><strong>{term.label}</strong><small>{term.description}</small></span>
             <label><input type="radio" name={`term-${term.id}`} checked={answers[String(term.id)] === true} onChange={() => setAnswers({ ...answers, [String(term.id)]: true })} />○</label>
             <label><input type="radio" name={`term-${term.id}`} checked={answers[String(term.id)] === false} onChange={() => setAnswers({ ...answers, [String(term.id)]: false })} />×</label>
           </div>)}
-        </fieldset>
+        </fieldset>}
         {props.admin && item && <AdminMaterialInternalFields
           item={item as AdminMaterialItem}
           playUrl={playUrl}

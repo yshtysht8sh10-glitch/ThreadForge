@@ -32,7 +32,7 @@ export async function inspectMugenZipActPalettes(zipFile: File): Promise<MugenAc
   };
 }
 
-export async function createIdleGifFromMugenZip(zipFile: File, paletteSlot: number | null = null): Promise<File> {
+export async function createIdleGifFromMugenZip(zipFile: File, paletteSlot: number | null | undefined = undefined): Promise<File> {
   const { action, sprites } = await loadMugenIdlePreviewAssets(zipFile, paletteSlot);
   const frames = action.elements
     .filter((element) => element.groupNo >= 0 && element.imageNo >= 0)
@@ -70,10 +70,12 @@ export async function createIdleGifFromMugenZip(zipFile: File, paletteSlot: numb
 
 export async function loadMugenIdlePreviewAssets(
   zipFile: File,
-  paletteSlot: number | null = null,
+  paletteSlot: number | null | undefined = undefined,
 ): Promise<MugenIdlePreviewAssets> {
   const archive = await inspectCharacterArchive(zipFile);
   const selectedPalette = paletteSlot === null
+    ? undefined
+    : paletteSlot === undefined
     ? archive.palettes.find((palette) => palette.slot === 1) ?? archive.palettes[0]
     : archive.palettes.find((palette) => palette.slot === paletteSlot) ?? archive.palettes[0];
 

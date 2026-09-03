@@ -4,6 +4,12 @@
 
 Each ThreadForge application follows semantic versioning independently. Entries without an application name below are historical Image Board entries and are now labeled accordingly; no historical release or tag was changed.
 
+## Proxy Release 0.10.5 - 2026-09-02
+
+- Hid the top navigation Trial Play item entirely when its URL is not configured.
+- Added an explicit `Do not apply ACT` choice for generated idle GIF previews.
+- Hid name, short memo, and usage terms while creating a seven-day test publication.
+
 ## Proxy Release 0.10.4 - 2026-09-02
 
 - Read Character DEF `pal1` through `pal12` with WebMUGEN's production DEF parser and listed existing ACT files in slot order.

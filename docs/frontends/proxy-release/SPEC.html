@@ -76,10 +76,12 @@
 <li>代理公開の初期設定では、投稿ファイル形式を <code>zip</code> に限定します。</li>
 <li>MUGENキャラクターzipを選択すると、ブラウザ内で <code>.air</code> と <code>.sff</code> を読み取り、待機モーションGIFの自動生成を試みます。</li>
 <li>Character DEFの <code>pal1</code>〜<code>pal12</code> が参照する既存ACTを番号順に表示し、<code>pal1</code> を初期選択します。選択変更時はWebMUGENのSFF v1実装から同期したパレット処理でGIFを再生成します。</li>
+<li>適用パレットでは <code>ACT適用なし</code> も選択でき、SFF内蔵パレットでGIFを再生成できます。</li>
+<li>新規投稿で <code>テスト代理公開（7日間）</code> を選択している間は、名称・ひとことメモ・利用規約を表示しません。</li>
 <li>説明用画像を手動選択した場合は、自動生成GIFより手動画像を優先します。</li>
 <li>HOME、一覧、投稿、削除、編集、取説、ログイン、管理画面は materials-library 相当の操作体系です。</li>
-<li>上部メニューの <code>試遊</code> は <code>ログイン</code> の右側に表示します。</li>
-<li>試遊リンク先は管理画面の設定から変更できます。URL未設定時はクリックできない無効表示にします。</li>
+<li>上部メニューの <code>試遊</code> は、試遊リンク先が設定されている場合だけ <code>ログイン</code> の右側に表示します。</li>
+<li>試遊リンク先は管理画面の設定から変更できます。URL未設定時は項目自体を表示しません。</li>
 <li>公開カードの主操作は、アクセント色で塗りつぶした白太字の <code>Download</code> ボタンとして表示します。</li>
 <li>管理画面の設定から、保存済み試遊URLを削除せず、各カードの試遊ボタンを一括非表示にできます。既定は表示です。</li>
 </ul>
@@ -128,6 +130,14 @@
 </ul>
 <p>in slot order. <code>pal1</code> is selected initially, and changing the slot regenerates<br>the GIF through palette routines synchronized from WebMUGEN's SFF v1 runtime.</p>
 <ul>
+<li>The palette selector also offers <code>Do not apply ACT</code>, which regenerates the GIF</li>
+</ul>
+<p>with the SFF-embedded palette.</p>
+<ul>
+<li>While creating a seven-day test publication, the name, short memo, and usage</li>
+</ul>
+<p>terms controls are hidden.</p>
+<ul>
 <li>A manually selected explanation image overrides the generated GIF.</li>
 <li>HOME, list, post, delete, edit, manual, login, and admin screens follow the</li>
 </ul>
@@ -155,7 +165,7 @@
 <ul>
 <li>The navigation includes a <code>Trial Play</code> link to the right of the login item. The</li>
 </ul>
-<p>destination is configurable from the admin settings screen. If no URL is set, the<br>item is displayed as disabled instead of linking to a fallback page.</p>
+<p>destination is configurable from the admin settings screen. If no URL is set,<br>the item is not rendered.</p>
 <h2 id="visual-direction">Visual Direction</h2>
 <ul>
 <li>The default color palette follows materials-library's gray theme.</li>
